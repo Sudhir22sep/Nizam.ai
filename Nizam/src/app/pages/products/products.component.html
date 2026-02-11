@@ -1,0 +1,43 @@
+<div class="products-container">
+  <h1>Our Products</h1>
+  
+  <div class="filters">
+    <h3>Filter by Category</h3>
+    <button 
+      class="filter-btn" 
+      [class.active]="selectedCategory === ''"
+      (click)="resetFilter()">
+      All Products
+    </button>
+    <button 
+      *ngFor="let category of categories"
+      class="filter-btn"
+      [class.active]="selectedCategory === category"
+      (click)="filterByCategory(category)">
+      {{ category }}
+    </button>
+  </div>
+
+  <div class="products-grid">
+    <div *ngFor="let product of products" class="product-card">
+      <div class="product-image">
+        <img [src]="product.image" [alt]="product.name">
+      </div>
+      <div class="product-info">
+        <h3>{{ product.name }}</h3>
+        <p class="category">{{ product.category }}</p>
+        <p class="description">{{ product.description }}</p>
+        <div class="product-footer">
+          <span class="price">${{ product.price | number: '1.2-2' }}</span>
+          <a [routerLink]="['/product', product.id]" class="btn-details">
+            View Details
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="products.length === 0" class="no-products">
+    <p>No products found in this category.</p>
+  </div>
+</div>

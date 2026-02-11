@@ -1,0 +1,49 @@
+<nav class="navbar">
+  <div class="navbar-container">
+    <div class="navbar-brand">
+      <a routerLink="/" class="logo">🏪 Nizam</a>
+    </div>
+
+    <button class="menu-toggle" (click)="toggleMenu()" [class.active]="isMenuOpen">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <ul class="nav-menu" [class.active]="isMenuOpen">
+      <li>
+        <a 
+          routerLink="/" 
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          (click)="closeMenu()">
+          Home
+        </a>
+      </li>
+      <li>
+        <a 
+          routerLink="/products" 
+          routerLinkActive="active"
+          (click)="closeMenu()">
+          Products
+        </a>
+      </li>
+      <li>
+        <a href="#about" (click)="closeMenu()">
+          About
+        </a>
+      </li>
+      <li>
+        <a href="#contact" (click)="closeMenu()">
+          Contact
+        </a>
+      </li>
+    </ul>
+
+    <div class="navbar-icons">
+      <a href="#search" class="icon-btn">🔍</a>
+      <a href="#cart" class="icon-btn">🛒 <span class="cart-count">0</span></a>
+      <a href="#account" class="icon-btn">👤</a>
+    </div>
+  </div>
+</nav>
