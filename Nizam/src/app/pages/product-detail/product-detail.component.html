@@ -1,0 +1,73 @@
+<div *ngIf="product" class="product-detail-container">
+  <a routerLink="/products" class="back-link">← Back to Products</a>
+
+  <div class="product-detail">
+    <div class="product-image">
+      <img [src]="product.image" [alt]="product.name">
+    </div>
+
+    <div class="product-details">
+      <h1>{{ product.name }}</h1>
+      <p class="category-tag">{{ product.category }}</p>
+      
+      <div class="rating">
+        <span class="stars">★★★★★</span>
+        <span class="review-count">(128 reviews)</span>
+      </div>
+
+      <p class="description">{{ product.description }}</p>
+
+      <div class="price-section">
+        <span class="price">${{ product.price | number: '1.2-2' }}</span>
+        <span class="availability">✓ In Stock</span>
+      </div>
+
+      <div class="quantity-section">
+        <label>Quantity:</label>
+        <div class="quantity-control">
+          <button (click)="decrementQuantity()" class="qty-btn">−</button>
+          <input type="number" [value]="quantity" readonly class="qty-input">
+          <button (click)="incrementQuantity()" class="qty-btn">+</button>
+        </div>
+      </div>
+
+      <div class="action-buttons">
+        <button (click)="addToCart()" class="btn-add-cart">
+          🛒 Add to Cart
+        </button>
+        <button class="btn-wishlist">
+          ❤️ Add to Wishlist
+        </button>
+      </div>
+
+      <div class="product-details-info">
+        <h3>Product Details</h3>
+        <ul>
+          <li>High quality materials</li>
+          <li>Durable and reliable</li>
+          <li>Easy to use</li>
+          <li>Lifetime warranty available</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <section class="related-products" *ngIf="relatedProducts.length > 0">
+    <h2>Related Products</h2>
+    <div class="related-grid">
+      <a 
+        *ngFor="let product of relatedProducts" 
+        [routerLink]="['/product', product.id]"
+        class="related-card">
+        <img [src]="product.image" [alt]="product.name">
+        <h4>{{ product.name }}</h4>
+        <p class="price">${{ product.price | number: '1.2-2' }}</p>
+      </a>
+    </div>
+  </section>
+</div>
+
+<div *ngIf="!product" class="not-found">
+  <p>Product not found</p>
+  <a routerLink="/products" class="back-link">Back to Products</a>
+</div>
