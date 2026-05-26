@@ -29,7 +29,7 @@
 }
 
 .logo:hover {
-  color: #007bff;
+  color: #d63f7d;
 }
 
 .nav-menu {
@@ -51,11 +51,11 @@
 }
 
 .nav-menu a:hover {
-  color: #007bff;
+  color: #d63f7d;
 }
 
 .nav-menu a.active {
-  color: #007bff;
+  color: #d63f7d;
 }
 
 .nav-menu a.active::after {
@@ -65,7 +65,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background-color: #007bff;
+  background-color: #d63f7d;
 }
 
 .navbar-icons {
@@ -84,7 +84,7 @@
 }
 
 .icon-btn:hover {
-  color: #007bff;
+  color: #d63f7d;
 }
 
 .cart-count {

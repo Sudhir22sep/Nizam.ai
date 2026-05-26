@@ -1,13 +1,13 @@
 <div class="products-container">
-  <h1>Our Products</h1>
+  <h1>Shop the Collection</h1>
   
   <div class="filters">
-    <h3>Filter by Category</h3>
+    <h3>Shop by category</h3>
     <button 
       class="filter-btn" 
       [class.active]="selectedCategory === ''"
       (click)="resetFilter()">
-      All Products
+      All
     </button>
     <button 
       *ngFor="let category of categories"
