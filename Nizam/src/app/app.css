@@ -1,0 +1,81 @@
+:host {
+  --brand-dark: #11131d;
+  --brand-primary: #d63f7d;
+  --brand-secondary: #f9c0d8;
+  --brand-muted: #f4f4f7;
+  --brand-accent: #231f20;
+  --brand-text: #1e1f29;
+  --brand-surface: #ffffff;
+  --brand-border: #e4e4eb;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--brand-text);
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+  background: #f9f7fb;
+}
+
+body {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+a.button {
+  font: inherit;
+}
+
+.app-shell {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0;
+}
+
+.site-footer {
+  padding: 30px 20px;
+  background: #1f1f2a;
+  color: #e9e9f2;
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 15px;
+  align-items: center;
+}
+
+.site-footer nav {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.site-footer a {
+  color: #f4f4f7;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.site-footer a:hover {
+  color: var(--brand-primary);
+}
+
+@media (max-width: 768px) {
+  .footer-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
