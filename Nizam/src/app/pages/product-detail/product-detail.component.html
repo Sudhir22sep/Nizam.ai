@@ -1,5 +1,5 @@
 <div *ngIf="product" class="product-detail-container">
-  <a routerLink="/products" class="back-link">← Back to Products</a>
+  <a routerLink="/products" class="back-link">← Back to Shop</a>
 
   <div class="product-detail">
     <div class="product-image">
@@ -12,7 +12,7 @@
       
       <div class="rating">
         <span class="stars">★★★★★</span>
-        <span class="review-count">(128 reviews)</span>
+        <span class="review-count">(254 reviews)</span>
       </div>
 
       <p class="description">{{ product.description }}</p>
@@ -41,19 +41,19 @@
       </div>
 
       <div class="product-details-info">
-        <h3>Product Details</h3>
+        <h3>Fabric & Fit</h3>
         <ul>
-          <li>High quality materials</li>
-          <li>Durable and reliable</li>
-          <li>Easy to use</li>
-          <li>Lifetime warranty available</li>
+          <li>Soft, breathable materials for all-day comfort</li>
+          <li>Expert tailoring for a refined silhouette</li>
+          <li>Designed for layering and seasonal versatility</li>
+          <li>Easy care: machine wash cold, lay flat to dry</li>
         </ul>
       </div>
     </div>
   </div>
 
   <section class="related-products" *ngIf="relatedProducts.length > 0">
-    <h2>Related Products</h2>
+    <h2>More styles you’ll love</h2>
     <div class="related-grid">
       <a 
         *ngFor="let product of relatedProducts" 
@@ -69,5 +69,5 @@
 
 <div *ngIf="!product" class="not-found">
   <p>Product not found</p>
-  <a routerLink="/products" class="back-link">Back to Products</a>
+  <a routerLink="/products" class="back-link">Back to Shop</a>
 </div>
