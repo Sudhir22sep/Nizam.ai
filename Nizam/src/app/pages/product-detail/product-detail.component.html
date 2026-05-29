@@ -3,7 +3,7 @@
 
   <div class="product-detail">
     <div class="product-image">
-      <img [src]="product.image" [alt]="product.name" loading="lazy" (error)="onImageError($event)">
+      <img [src]="product.image" [alt]="product.name" appImageFallback>
     </div>
 
     <div class="product-details">
@@ -59,10 +59,10 @@
     <h2>More styles you’ll love</h2>
     <div class="related-grid">
       <a 
-        *ngFor="let product of relatedProducts" 
+        *ngFor="let product of relatedProducts; trackBy: trackByProductId" 
         [routerLink]="['/product', product.id]"
         class="related-card">
-        <img [src]="product.image" [alt]="product.name" loading="lazy" (error)="onImageError($event)">
+        <img [src]="product.image" [alt]="product.name" appImageFallback>
         <h4>{{ product.name }}</h4>
         <p class="price">{{ product.price | price }}</p>
       </a>

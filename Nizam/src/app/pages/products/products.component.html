@@ -5,23 +5,23 @@
     <h3>Shop by category</h3>
     <button 
       class="filter-btn" 
-      [class.active]="selectedCategory === ''"
+      [class.active]="selectedCategory() === ''"
       (click)="resetFilter()">
       All
     </button>
     <button 
-      *ngFor="let category of categories"
+      *ngFor="let category of categories()"
       class="filter-btn"
-      [class.active]="selectedCategory === category"
+      [class.active]="selectedCategory() === category"
       (click)="filterByCategory(category)">
       {{ category }}
     </button>
   </div>
 
   <div class="products-grid">
-    <div *ngFor="let product of products" class="product-card">
+    <div *ngFor="let product of filteredProducts(); trackBy: trackByProductId" class="product-card">
       <div class="product-image">
-        <img [src]="product.image" [alt]="product.name" loading="lazy" (error)="onImageError($event)">
+        <img [src]="product.image" [alt]="product.name" appImageFallback>
       </div>
       <div class="product-info">
         <h3>{{ product.name }}</h3>

@@ -1,0 +1,90 @@
+[
+  {
+    "id": 1,
+    "name": "Satin Slip Dress",
+    "description": "A sleek silhouette in satin with a delicate cowl neckline, perfect for evening outings and warm-weather style.",
+    "price": 84.99,
+    "image": "images/products/satin-slip-dress.svg",
+    "category": "Women"
+  },
+  {
+    "id": 2,
+    "name": "Denim Trucker Jacket",
+    "description": "A modern take on a classic trucker jacket with structured shoulders and a comfortable vintage wash.",
+    "price": 119.99,
+    "image": "images/products/denim-trucker-jacket.svg",
+    "category": "Men"
+  },
+  {
+    "id": 3,
+    "name": "Leather Tote Bag",
+    "description": "A supple leather tote with clean lines and interior pockets for everyday essentials.",
+    "price": 138.0,
+    "image": "images/products/leather-tote-bag.svg",
+    "category": "Accessories"
+  },
+  {
+    "id": 4,
+    "name": "Linen Relaxed Shirt",
+    "description": "Breathable linen in a relaxed fit, designed for effortless layering and refined casual dressing.",
+    "price": 79.5,
+    "image": "images/products/linen-relaxed-shirt.svg",
+    "category": "Men"
+  },
+  {
+    "id": 5,
+    "name": "Silk Scarf",
+    "description": "A timeless silk scarf featuring an elegant print to elevate any outfit.",
+    "price": 49.95,
+    "image": "images/products/silk-scarf.svg",
+    "category": "Accessories"
+  },
+  {
+    "id": 6,
+    "name": "Stitched Leather Sneakers",
+    "description": "Minimal leather sneakers with cushioned comfort and polished details for everyday wear.",
+    "price": 112.0,
+    "image": "images/products/leather-sneakers.svg",
+    "category": "Footwear"
+  },
+  {
+    "id": 7,
+    "name": "Cashmere Crewneck",
+    "description": "A soft cashmere crewneck with a refined fit and luxurious feel for cozy layering.",
+    "price": 149.99,
+    "image": "images/products/cashmere-crewneck.svg",
+    "category": "Women"
+  },
+  {
+    "id": 8,
+    "name": "Tailored Chinos",
+    "description": "Smart casual chinos cut with a tailored silhouette, ready for work or weekend plans.",
+    "price": 89.0,
+    "image": "images/products/tailored-chinos.svg",
+    "category": "Men"
+  },
+  {
+    "id": 9,
+    "name": "MENA Heritage Tee",
+    "description": "Premium cotton T-shirt with an elegant MENA-inspired motif.",
+    "price": 25.0,
+    "image": "images/products/mena-heritage-tee.svg",
+    "category": "Men"
+  },
+  {
+    "id": 10,
+    "name": "Arabesque Pocket Tee",
+    "description": "Comfort-fit tee featuring a subtle arabesque pocket print, breathable and durable.",
+    "price": 22.5,
+    "image": "images/products/arabesque-pocket-tee.svg",
+    "category": "Men"
+  },
+  {
+    "id": 11,
+    "name": "Gulf Coast Slim Tee",
+    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
+    "price": 24.0,
+    "image": "images/products/gulf-coast-slim-tee.svg",
+    "category": "Men"
+  }
+]
