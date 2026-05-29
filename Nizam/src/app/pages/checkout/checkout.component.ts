@@ -20,6 +20,7 @@ export class CheckoutComponent {
   cardNumber = '';
   expiry = '';
   cvc = '';
+  paymentMethod: 'card' | 'cod' = 'card';
   orderConfirmed = false;
   confirmationReference = '';
 
@@ -50,11 +51,13 @@ export class CheckoutComponent {
       address: this.address,
       items: this.items,
       total: this.totalAmount,
-      currency: this.currency.getCurrency()
+      currency: this.currency.getCurrency(),
+      paymentMethod: this.paymentMethod,
     };
 
     try {
-      const response = await fetch('/api/create-checkout-session', {
+      const endpoint = this.paymentMethod === 'cod' ? '/api/create-cod-order' : '/api/create-checkout-session';
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -64,7 +67,19 @@ export class CheckoutComponent {
 
       const result = await response.json();
 
-      if (!response.ok || !result.success || !result.url) {
+      if (!response.ok || !result.success) {
+        alert(result.message || 'Unable to complete order.');
+        return;
+      }
+
+      if (this.paymentMethod === 'cod') {
+        this.orderConfirmed = true;
+        this.confirmationReference = result.orderReference || '';
+        this.cartService.clearCart();
+        return;
+      }
+
+      if (!result.url) {
         alert(result.message || 'Unable to create a checkout session.');
         return;
       }
