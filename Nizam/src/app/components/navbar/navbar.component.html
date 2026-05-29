@@ -29,12 +29,31 @@
         </a>
       </li>
       <li>
+        <a 
+          routerLink="/cart"
+          routerLinkActive="active"
+          (click)="closeMenu()">
+          Cart
+        </a>
+      </li>
+      <li>
+        <a 
+          routerLink="/checkout"
+          routerLinkActive="active"
+          (click)="closeMenu()">
+          Checkout
+        </a>
+      </li>
+      <li>
         <a href="#about" (click)="closeMenu()">
           About
         </a>
       </li>
       <li>
-        <a href="#contact" (click)="closeMenu()">
+        <a 
+          routerLink="/contact"
+          routerLinkActive="active"
+          (click)="closeMenu()">
           Contact
         </a>
       </li>
@@ -42,7 +61,9 @@
 
     <div class="navbar-icons">
       <a href="#search" class="icon-btn">🔍</a>
-      <a href="#cart" class="icon-btn">🛒 <span class="cart-count">0</span></a>
+      <a routerLink="/cart" class="icon-btn">
+        🛒 <span class="cart-count">{{ cartService.getItemCount() }}</span>
+      </a>
       <a href="#account" class="icon-btn">👤</a>
     </div>
   </div>
