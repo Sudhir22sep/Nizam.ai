@@ -1,0 +1,78 @@
+<div class="checkout-page">
+  <h1>Checkout</h1>
+
+  <div *ngIf="orderConfirmed" class="order-confirmation">
+    <h2>Thank you for your purchase!</h2>
+    <p>Your order reference is <strong>{{ confirmationReference }}</strong>.</p>
+    <p>We’ll send shipping updates to <strong>{{ email }}</strong>.</p>
+    <a routerLink="/products" class="btn-primary">Continue shopping</a>
+  </div>
+
+  <div *ngIf="!orderConfirmed">
+    <div class="checkout-layout">
+      <section class="cart-summary">
+        <h2>Order summary</h2>
+        <div *ngIf="items.length > 0; else emptyCart">
+          <div *ngFor="let item of items" class="cart-item">
+            <div>
+              <h3>{{ item.product.name }}</h3>
+              <p>{{ item.quantity }} × ${{ item.product.price | number:'1.2-2' }}</p>
+            </div>
+            <div class="item-total">
+              ${{ item.product.price * item.quantity | number:'1.2-2' }}
+            </div>
+          </div>
+
+          <div class="cart-total">
+            <span>Total</span>
+            <strong>${{ totalAmount | number:'1.2-2' }}</strong>
+          </div>
+        </div>
+
+        <ng-template #emptyCart>
+          <p>Your cart is empty. Add a product and return to checkout.</p>
+          <a routerLink="/products" class="btn-secondary">Go to shop</a>
+        </ng-template>
+      </section>
+
+      <section class="payment-form" *ngIf="items.length > 0">
+        <h2>Payment & shipping</h2>
+
+        <form (ngSubmit)="submitOrder()">
+          <label>
+            Full name
+            <input type="text" [(ngModel)]="name" name="name" required />
+          </label>
+
+          <label>
+            Email address
+            <input type="email" [(ngModel)]="email" name="email" required />
+          </label>
+
+          <label>
+            Shipping address
+            <textarea [(ngModel)]="address" name="address" rows="3" required></textarea>
+          </label>
+
+          <label>
+            Card number
+            <input type="text" [(ngModel)]="cardNumber" name="cardNumber" maxlength="19" required />
+          </label>
+
+          <div class="card-row">
+            <label>
+              Expiry
+              <input type="text" [(ngModel)]="expiry" name="expiry" maxlength="5" placeholder="MM/YY" required />
+            </label>
+            <label>
+              CVC
+              <input type="text" [(ngModel)]="cvc" name="cvc" maxlength="4" required />
+            </label>
+          </div>
+
+          <button type="submit" class="btn-primary">Submit payment</button>
+        </form>
+      </section>
+    </div>
+  </div>
+</div>

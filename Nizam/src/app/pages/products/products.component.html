@@ -29,9 +29,14 @@
         <p class="description">{{ product.description }}</p>
         <div class="product-footer">
           <span class="price">${{ product.price | number: '1.2-2' }}</span>
-          <a [routerLink]="['/product', product.id]" class="btn-details">
-            View Details
-          </a>
+          <div class="product-actions">
+            <a [routerLink]="['/product', product.id]" class="btn-details">
+              View Details
+            </a>
+            <button class="btn-add-cart" (click)="addToCart(product)">
+              Add to cart
+            </button>
+          </div>
         </div>
       </div>
     </div>

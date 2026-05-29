@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ProductService, Product } from '../../services/product.service';
+import { CartService } from '../../services/cart.service';
 
 @Component({
   selector: 'app-products',
@@ -15,7 +16,10 @@ export class ProductsComponent implements OnInit {
   categories: string[] = [];
   selectedCategory: string = '';
 
-  constructor(private productService: ProductService) {}
+  constructor(
+    private productService: ProductService,
+    private cartService: CartService
+  ) {}
 
   ngOnInit() {
     this.loadProducts();
@@ -39,5 +43,10 @@ export class ProductsComponent implements OnInit {
   resetFilter() {
     this.selectedCategory = '';
     this.loadProducts();
+  }
+
+  addToCart(product: Product) {
+    this.cartService.addToCart(product, 1);
+    alert(`${product.name} has been added to your cart.`);
   }
 }
