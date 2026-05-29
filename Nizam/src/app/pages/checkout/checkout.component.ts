@@ -32,8 +32,8 @@ export class CheckoutComponent {
   }
 
   async submitOrder() {
-    if (!this.name || !this.email || !this.address || !this.cardNumber || !this.expiry || !this.cvc) {
-      alert('Please complete all payment and shipping fields before submitting your order.');
+    if (!this.name || !this.email || !this.address) {
+      alert('Please complete name, email and shipping address.');
       return;
     }
 
@@ -51,7 +51,7 @@ export class CheckoutComponent {
     };
 
     try {
-      const response = await fetch('/api/order-confirmation', {
+      const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -61,16 +61,15 @@ export class CheckoutComponent {
 
       const result = await response.json();
 
-      if (!response.ok || !result.success) {
-        alert(result.message || 'Payment confirmation failed. Please try again.');
+      if (!response.ok || !result.success || !result.url) {
+        alert(result.message || 'Unable to create a checkout session.');
         return;
       }
 
-      this.orderConfirmed = true;
-      this.confirmationReference = result.orderReference || `ORDER-${Date.now()}`;
-      this.cartService.clearCart();
+      // Redirect to Stripe Checkout
+      window.location.href = result.url;
     } catch (error) {
-      console.error('Order confirmation failed', error);
+      console.error('Create checkout session failed', error);
       alert('Unable to complete checkout at this time. Please try again later.');
     }
   }
