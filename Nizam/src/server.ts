@@ -7,6 +7,15 @@ import {
 import express from 'express';
 import { join } from 'node:path';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+import Stripe from 'stripe';
+import { promises as fs } from 'fs';
+
+const dataDir = join(import.meta.dirname, '../data');
+const ordersFile = join(dataDir, 'orders.json');
+
+const stripeSecret = process.env['STRIPE_SECRET_KEY'];
+const stripe = stripeSecret ? new Stripe(stripeSecret, { apiVersion: '2022-11-15' }) : null;
+const appUrl = process.env['APP_URL'] || 'http://localhost:4200';
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
@@ -18,6 +27,30 @@ const sesClient = sesRegion ? new SESClient({ region: sesRegion }) : null;
 const verifiedSender = process.env['SES_VERIFIED_SENDER'] || 'hello@ganeshacollections.com';
 
 app.use(express.json());
+
+async function ensureDataDir() {
+  try {
+    await fs.mkdir(dataDir, { recursive: true });
+    try {
+      await fs.access(ordersFile);
+    } catch {
+      await fs.writeFile(ordersFile, JSON.stringify([]));
+    }
+  } catch (e) {
+    console.error('Failed to ensure data dir', e);
+  }
+}
+
+async function readOrders() {
+  await ensureDataDir();
+  const raw = await fs.readFile(ordersFile, 'utf-8');
+  return JSON.parse(raw || '[]');
+}
+
+async function writeOrders(orders: any[]) {
+  await ensureDataDir();
+  await fs.writeFile(ordersFile, JSON.stringify(orders, null, 2));
+}
 
 async function sendEmail(params: { to: string | string[]; subject: string; text: string; html: string }) {
   const { to, subject, text, html } = params;
@@ -129,6 +162,12 @@ app.post('/api/order-confirmation', async (req, res) => {
   const orderReference = `ORDER-${Date.now()}`;
 
   try {
+    // persist order
+    const orders = await readOrders();
+    const order = { orderReference, name, email, items, total, status: 'created', createdAt: new Date().toISOString() };
+    orders.push(order);
+    await writeOrders(orders);
+
     const mail = buildOrderConfirmationMessage({ name, email, items, total, orderReference });
     await sendEmail({
       to: email,
@@ -141,6 +180,96 @@ app.post('/api/order-confirmation', async (req, res) => {
   } catch (error) {
     console.error('Failed to send order confirmation email:', error);
     return res.status(500).json({ success: false, message: 'Unable to send order confirmation email.' });
+  }
+});
+
+// Create a Stripe Checkout session and persist the order as pending
+app.post('/api/create-checkout-session', async (req, res) => {
+  if (!stripe) {
+    return res.status(500).json({ success: false, message: 'Stripe is not configured.' });
+  }
+
+  const { name, email, address, items, total } = req.body;
+  if (!name || !email || !Array.isArray(items) || typeof total !== 'number') {
+    return res.status(400).json({ success: false, message: 'Name, email, items, and total are required.' });
+  }
+
+  const orderReference = `ORDER-${Date.now()}`;
+
+  try {
+    // persist order as pending
+    const orders = await readOrders();
+    const order = { orderReference, name, email, address, items, total, status: 'pending', createdAt: new Date().toISOString() };
+    orders.push(order);
+    await writeOrders(orders);
+
+    // build line items for Stripe
+    const line_items = items.map((it: any) => ({
+      price_data: {
+        currency: 'usd',
+        product_data: { name: it.product.name },
+        unit_amount: Math.round(it.product.price * 100),
+      },
+      quantity: it.quantity,
+    }));
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'payment',
+      line_items,
+      success_url: `${appUrl}/checkout-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/checkout?canceled=true`,
+      metadata: { orderReference },
+      customer_email: email,
+    });
+
+    return res.status(200).json({ success: true, url: session.url });
+  } catch (err) {
+    console.error('create-checkout-session error', err);
+    return res.status(500).json({ success: false, message: 'Unable to create checkout session.' });
+  }
+});
+
+// Confirm payment after redirect by retrieving session and updating order
+app.post('/api/confirm-payment', async (req, res) => {
+  if (!stripe) {
+    return res.status(500).json({ success: false, message: 'Stripe is not configured.' });
+  }
+
+  const { sessionId } = req.body;
+  if (!sessionId) {
+    return res.status(400).json({ success: false, message: 'sessionId is required.' });
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ['payment_intent'] });
+    const paid = String((session as any).payment_status) === 'paid';
+    const orderReference = (session as any).metadata?.['orderReference'] || '';
+
+    const orders = await readOrders();
+    const order = orders.find((o: any) => o.orderReference === orderReference);
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
+
+    if (paid) {
+      order.status = 'paid';
+      order.paymentIntent = session.payment_intent;
+      await writeOrders(orders);
+
+      // send confirmation email
+      try {
+        const mail = buildOrderConfirmationMessage({ name: order.name, email: order.email, items: order.items, total: order.total, orderReference });
+        await sendEmail({ to: order.email, subject: mail.subject, text: mail.text, html: mail.html });
+      } catch (e) {
+        console.error('Failed to send post-payment confirmation email', e);
+      }
+
+      return res.status(200).json({ success: true, orderReference });
+    }
+
+    return res.status(400).json({ success: false, message: 'Payment not completed.' });
+  } catch (err) {
+    console.error('confirm-payment error', err);
+    return res.status(500).json({ success: false, message: 'Unable to confirm payment.' });
   }
 });
 
