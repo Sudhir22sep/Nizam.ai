@@ -2,13 +2,14 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PricePipe } from '../../pipes/price.pipe';
+import { ImageFallbackDirective } from '../../directives/image-fallback.directive';
 import { ProductService, Product } from '../../services/product.service';
 import { CartService } from '../../services/cart.service';
 
 @Component({
   selector: 'app-product-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, PricePipe],
+  imports: [CommonModule, RouterLink, PricePipe, ImageFallbackDirective],
   templateUrl: './product-detail.component.html',
   styleUrl: './product-detail.component.css'
 })
@@ -47,6 +48,10 @@ export class ProductDetailComponent implements OnInit {
     }
   }
 
+  trackByProductId(_: number, product: Product) {
+    return product.id;
+  }
+
   addToCart() {
     if (!this.product) {
       return;
@@ -55,10 +60,5 @@ export class ProductDetailComponent implements OnInit {
     alert(`${this.quantity} ${this.product.name} item(s) added to cart.`);
   }
 
-  onImageError(event: Event) {
-    const img = event.target as HTMLImageElement;
-    if (img) {
-      img.src = 'images/products/placeholder.svg';
-    }
-  }
+  // image fallback handled by ImageFallbackDirective
 }

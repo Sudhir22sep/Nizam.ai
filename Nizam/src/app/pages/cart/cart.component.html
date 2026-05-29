@@ -3,8 +3,8 @@
 
   <div *ngIf="items.length > 0; else emptyCart">
     <div class="cart-items">
-      <div *ngFor="let item of items" class="cart-item">
-        <img [src]="item.product.image" [alt]="item.product.name" loading="lazy" (error)="onImageError($event)">
+      <div *ngFor="let item of items; trackBy: trackByCartItem" class="cart-item">
+        <img [src]="item.product.image" [alt]="item.product.name" appImageFallback>
         <div class="item-details">
           <h2>{{ item.product.name }}</h2>
           <p>{{ item.product.description }}</p>
