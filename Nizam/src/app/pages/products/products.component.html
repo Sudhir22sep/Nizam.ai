@@ -21,14 +21,14 @@
   <div class="products-grid">
     <div *ngFor="let product of products" class="product-card">
       <div class="product-image">
-        <img [src]="product.image" [alt]="product.name">
+        <img [src]="product.image" [alt]="product.name" loading="lazy" (error)="onImageError($event)">
       </div>
       <div class="product-info">
         <h3>{{ product.name }}</h3>
         <p class="category">{{ product.category }}</p>
         <p class="description">{{ product.description }}</p>
         <div class="product-footer">
-          <span class="price">${{ product.price | number: '1.2-2' }}</span>
+          <span class="price">{{ product.price | price }}</span>
           <div class="product-actions">
             <a [routerLink]="['/product', product.id]" class="btn-details">
               View Details

@@ -9,4 +9,11 @@ import { RouterLink } from '@angular/router';
   templateUrl: './home.component.html',
   styleUrl: './home.component.css'
 })
-export class HomeComponent {}
+export class HomeComponent {
+  onImageError(event: Event) {
+    const img = event?.target as HTMLImageElement;
+    if (img) {
+      img.src = 'images/products/placeholder.svg';
+    }
+  }
+}

@@ -64,6 +64,12 @@
       <a routerLink="/cart" class="icon-btn">
         🛒 <span class="cart-count">{{ cartService.getItemCount() }}</span>
       </a>
+      <select class="currency-select" [value]="currentCurrency" (change)="changeCurrency($any($event.target).value)">
+        <option value="INR">INR</option>
+        <option value="USD">USD</option>
+        <option value="AED">AED</option>
+        <option value="SAR">SAR</option>
+      </select>
       <a href="#account" class="icon-btn">👤</a>
     </div>
   </div>

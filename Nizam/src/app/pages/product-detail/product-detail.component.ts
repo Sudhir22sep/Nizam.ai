@@ -1,13 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { PricePipe } from '../../pipes/price.pipe';
 import { ProductService, Product } from '../../services/product.service';
 import { CartService } from '../../services/cart.service';
 
 @Component({
   selector: 'app-product-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, PricePipe],
   templateUrl: './product-detail.component.html',
   styleUrl: './product-detail.component.css'
 })
@@ -52,5 +53,12 @@ export class ProductDetailComponent implements OnInit {
     }
     this.cartService.addToCart(this.product, this.quantity);
     alert(`${this.quantity} ${this.product.name} item(s) added to cart.`);
+  }
+
+  onImageError(event: Event) {
+    const img = event.target as HTMLImageElement;
+    if (img) {
+      img.src = 'images/products/placeholder.svg';
+    }
   }
 }

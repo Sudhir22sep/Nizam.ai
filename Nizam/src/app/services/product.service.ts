@@ -20,7 +20,7 @@ export class ProductService {
       name: 'Satin Slip Dress',
       description: 'A sleek silhouette in satin with a delicate cowl neckline, perfect for evening outings and warm-weather style.',
       price: 84.99,
-      image: 'https://via.placeholder.com/600x800?text=Satin+Slip+Dress',
+      image: 'images/products/satin-slip-dress.svg',
       category: 'Women'
     },
     {
@@ -28,7 +28,7 @@ export class ProductService {
       name: 'Denim Trucker Jacket',
       description: 'A modern take on a classic trucker jacket with structured shoulders and a comfortable vintage wash.',
       price: 119.99,
-      image: 'https://via.placeholder.com/600x800?text=Denim+Trucker+Jacket',
+      image: 'images/products/denim-trucker-jacket.svg',
       category: 'Men'
     },
     {
@@ -36,7 +36,7 @@ export class ProductService {
       name: 'Leather Tote Bag',
       description: 'A supple leather tote with clean lines and interior pockets for everyday essentials.',
       price: 138.00,
-      image: 'https://via.placeholder.com/600x800?text=Leather+Tote+Bag',
+      image: 'images/products/leather-tote-bag.svg',
       category: 'Accessories'
     },
     {
@@ -44,7 +44,7 @@ export class ProductService {
       name: 'Linen Relaxed Shirt',
       description: 'Breathable linen in a relaxed fit, designed for effortless layering and refined casual dressing.',
       price: 79.50,
-      image: 'https://via.placeholder.com/600x800?text=Linen+Relaxed+Shirt',
+      image: 'images/products/linen-relaxed-shirt.svg',
       category: 'Men'
     },
     {
@@ -52,7 +52,7 @@ export class ProductService {
       name: 'Silk Scarf',
       description: 'A timeless silk scarf featuring an elegant print to elevate any outfit.',
       price: 49.95,
-      image: 'https://via.placeholder.com/600x800?text=Silk+Scarf',
+      image: 'images/products/silk-scarf.svg',
       category: 'Accessories'
     },
     {
@@ -60,7 +60,7 @@ export class ProductService {
       name: 'Stitched Leather Sneakers',
       description: 'Minimal leather sneakers with cushioned comfort and polished details for everyday wear.',
       price: 112.00,
-      image: 'https://via.placeholder.com/600x800?text=Leather+Sneakers',
+      image: 'images/products/leather-sneakers.svg',
       category: 'Footwear'
     },
     {
@@ -68,7 +68,7 @@ export class ProductService {
       name: 'Cashmere Crewneck',
       description: 'A soft cashmere crewneck with a refined fit and luxurious feel for cozy layering.',
       price: 149.99,
-      image: 'https://via.placeholder.com/600x800?text=Cashmere+Crewneck',
+      image: 'images/products/cashmere-crewneck.svg',
       category: 'Women'
     },
     {
@@ -76,7 +76,33 @@ export class ProductService {
       name: 'Tailored Chinos',
       description: 'Smart casual chinos cut with a tailored silhouette, ready for work or weekend plans.',
       price: 89.00,
-      image: 'https://via.placeholder.com/600x800?text=Tailored+Chinos',
+      image: 'images/products/tailored-chinos.svg',
+      category: 'Men'
+    }
+    ,
+    // MENA / regional products - sample T-shirts
+    {
+      id: 9,
+      name: 'MENA Heritage Tee',
+      description: 'Premium cotton T-shirt with an elegant MENA-inspired motif.',
+      price: 25.00,
+      image: 'images/products/mena-heritage-tee.svg',
+      category: 'Men'
+    },
+    {
+      id: 10,
+      name: 'Arabesque Pocket Tee',
+      description: 'Comfort-fit tee featuring a subtle arabesque pocket print, breathable and durable.',
+      price: 22.50,
+      image: 'images/products/arabesque-pocket-tee.svg',
+      category: 'Men'
+    },
+    {
+      id: 11,
+      name: 'Gulf Coast Slim Tee',
+      description: 'Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.',
+      price: 24.00,
+      image: 'images/products/gulf-coast-slim-tee.svg',
       category: 'Men'
     }
   ];
