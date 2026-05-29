@@ -3,7 +3,7 @@
 
   <div class="product-detail">
     <div class="product-image">
-      <img [src]="product.image" [alt]="product.name">
+      <img [src]="product.image" [alt]="product.name" loading="lazy" (error)="onImageError($event)">
     </div>
 
     <div class="product-details">
@@ -18,7 +18,7 @@
       <p class="description">{{ product.description }}</p>
 
       <div class="price-section">
-        <span class="price">${{ product.price | number: '1.2-2' }}</span>
+        <span class="price">{{ product.price | price }}</span>
         <span class="availability">✓ In Stock</span>
       </div>
 
@@ -62,9 +62,9 @@
         *ngFor="let product of relatedProducts" 
         [routerLink]="['/product', product.id]"
         class="related-card">
-        <img [src]="product.image" [alt]="product.name">
+        <img [src]="product.image" [alt]="product.name" loading="lazy" (error)="onImageError($event)">
         <h4>{{ product.name }}</h4>
-        <p class="price">${{ product.price | number: '1.2-2' }}</p>
+        <p class="price">{{ product.price | price }}</p>
       </a>
     </div>
   </section>

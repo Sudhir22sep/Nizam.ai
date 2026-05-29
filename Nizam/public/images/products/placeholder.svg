@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800">
+  <rect width="100%" height="100%" fill="#f3f4f6"/>
+  <g fill="#d1d5db" font-family="Arial, Helvetica, sans-serif" font-size="24" text-anchor="middle">
+    <text x="50%" y="48%">Image</text>
+    <text x="50%" y="56%">not available</text>
+  </g>
+</svg>

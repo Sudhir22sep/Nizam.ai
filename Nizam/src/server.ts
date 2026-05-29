@@ -26,7 +26,21 @@ const sesRegion = process.env['SES_REGION'];
 const sesClient = sesRegion ? new SESClient({ region: sesRegion }) : null;
 const verifiedSender = process.env['SES_VERIFIED_SENDER'] || 'hello@ganeshacollections.com';
 
+// parse JSON bodies for most routes
 app.use(express.json());
+
+// Simple server-side currency rates (relative to USD)
+const serverRates: Record<string, number> = {
+  USD: 1,
+  INR: 82.5,
+  AED: 3.67,
+  SAR: 3.75,
+};
+
+function formatCurrency(amount: number, currency = 'USD') {
+  const symbol = currency === 'INR' ? '₹' : currency === 'AED' ? 'د.إ ' : currency === 'SAR' ? '﷼ ' : '$';
+  return `${symbol}${amount.toFixed(2)}`;
+}
 
 async function ensureDataDir() {
   try {
@@ -189,7 +203,7 @@ app.post('/api/create-checkout-session', async (req, res) => {
     return res.status(500).json({ success: false, message: 'Stripe is not configured.' });
   }
 
-  const { name, email, address, items, total } = req.body;
+  const { name, email, address, items, total, currency } = req.body;
   if (!name || !email || !Array.isArray(items) || typeof total !== 'number') {
     return res.status(400).json({ success: false, message: 'Name, email, items, and total are required.' });
   }
@@ -199,16 +213,20 @@ app.post('/api/create-checkout-session', async (req, res) => {
   try {
     // persist order as pending
     const orders = await readOrders();
-    const order = { orderReference, name, email, address, items, total, status: 'pending', createdAt: new Date().toISOString() };
+    const order = { orderReference, name, email, address, items, total, currency: currency || 'USD', status: 'pending', createdAt: new Date().toISOString() };
     orders.push(order);
     await writeOrders(orders);
 
     // build line items for Stripe
+    const targetCurrency = (currency || 'USD').toUpperCase();
+    const rate = serverRates[targetCurrency] ?? 1;
+    const minor = 100; // cents/paise
+
     const line_items = items.map((it: any) => ({
       price_data: {
-        currency: 'usd',
+        currency: targetCurrency.toLowerCase(),
         product_data: { name: it.product.name },
-        unit_amount: Math.round(it.product.price * 100),
+        unit_amount: Math.round(it.product.price * rate * minor),
       },
       quantity: it.quantity,
     }));
@@ -257,6 +275,7 @@ app.post('/api/confirm-payment', async (req, res) => {
 
       // send confirmation email
       try {
+        // Format totals using order currency if available
         const mail = buildOrderConfirmationMessage({ name: order.name, email: order.email, items: order.items, total: order.total, orderReference });
         await sendEmail({ to: order.email, subject: mail.subject, text: mail.text, html: mail.html });
       } catch (e) {
@@ -270,6 +289,43 @@ app.post('/api/confirm-payment', async (req, res) => {
   } catch (err) {
     console.error('confirm-payment error', err);
     return res.status(500).json({ success: false, message: 'Unable to confirm payment.' });
+  }
+});
+
+// Stripe webhook endpoint (optional signature verification)
+app.post('/webhook/stripe', async (req, res) => {
+  if (!stripe) {
+    return res.status(500).send('Stripe not configured');
+  }
+
+  const event = req.body;
+
+  try {
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      const orderReference = session.metadata?.orderReference || '';
+
+      const orders = await readOrders();
+      const order = orders.find((o: any) => o.orderReference === orderReference);
+      if (order) {
+        order.status = 'paid';
+        order.paymentIntent = session.payment_intent || session.payment_intent_id || null;
+        await writeOrders(orders);
+
+        // send confirmation email (best-effort)
+        try {
+          const mail = buildOrderConfirmationMessage({ name: order.name, email: order.email, items: order.items, total: order.total, orderReference });
+          await sendEmail({ to: order.email, subject: mail.subject, text: mail.text, html: mail.html });
+        } catch (e) {
+          console.error('Failed to send webhook confirmation email', e);
+        }
+      }
+    }
+
+    return res.json({ received: true });
+  } catch (e) {
+    console.error('webhook processing error', e);
+    return res.status(500).send('Webhook processing error');
   }
 });
 

@@ -2,12 +2,14 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { PricePipe } from '../../pipes/price.pipe';
+import { CurrencyService } from '../../services/currency.service';
 import { CartService } from '../../services/cart.service';
 
 @Component({
   selector: 'app-checkout',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, PricePipe],
   templateUrl: './checkout.component.html',
   styleUrl: './checkout.component.css'
 })
@@ -21,7 +23,7 @@ export class CheckoutComponent {
   orderConfirmed = false;
   confirmationReference = '';
 
-  constructor(public cartService: CartService) {}
+  constructor(public cartService: CartService, private currency: CurrencyService) {}
 
   get items() {
     return this.cartService.getItems();
@@ -48,6 +50,7 @@ export class CheckoutComponent {
       address: this.address,
       items: this.items,
       total: this.totalAmount,
+      currency: this.currency.getCurrency()
     };
 
     try {
