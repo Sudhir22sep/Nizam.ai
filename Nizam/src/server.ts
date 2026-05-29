@@ -107,8 +107,10 @@ function buildOrderConfirmationMessage(params: {
   items: Array<{ product: { name: string; price: number }; quantity: number }>;
   total: number;
   orderReference: string;
+  paymentMethod?: string;
 }) {
-  const { name, email, items, total, orderReference } = params;
+  const { name, email, items, total, orderReference, paymentMethod } = params;
+  const methodLabel = paymentMethod === 'COD' ? 'Cash on Delivery (COD)' : 'Card payment';
   const itemRows = items.map((item) => `
     <tr>
       <td>${item.product.name}</td>
@@ -122,9 +124,10 @@ function buildOrderConfirmationMessage(params: {
 
   return {
     subject: `Order confirmation — ${orderReference}`,
-    text: `Thank you for your order, ${name}!\n\nOrder reference: ${orderReference}\n\nItems:\n${itemText}\n\nTotal: $${total.toFixed(2)}\n\nWe will ship to:\n${email}`,
+    text: `Thank you for your order, ${name}!\n\nOrder reference: ${orderReference}\nPayment method: ${methodLabel}\n\nItems:\n${itemText}\n\nTotal: $${total.toFixed(2)}\n\nWe will ship to:\n${email}\n\nFor dropshipping or wholesale inquiries, email dropship@ganeshacollections.com.`,
     html: `<p>Thank you for your order, <strong>${name}</strong>!</p>
       <p>Order reference: <strong>${orderReference}</strong></p>
+      <p>Payment method: <strong>${methodLabel}</strong></p>
       <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; width:100%;">
         <thead>
           <tr>
@@ -139,8 +142,19 @@ function buildOrderConfirmationMessage(params: {
         </tbody>
       </table>
       <p><strong>Total: $${total.toFixed(2)}</strong></p>
-      <p>We will ship your order shortly.</p>`,
+      <p>We will ship your order shortly.</p>
+      <p>For dropshipping or wholesale inquiries, email <strong>dropship@ganeshacollections.com</strong>.</p>`,
   };
+}
+
+async function trySendEmail(params: { to: string | string[]; subject: string; text: string; html: string }) {
+  try {
+    await sendEmail(params);
+    return true;
+  } catch (error) {
+    console.warn('Email not sent:', error instanceof Error ? error.message : error);
+    return false;
+  }
 }
 
 app.post('/api/contact', async (req, res) => {
@@ -152,22 +166,22 @@ app.post('/api/contact', async (req, res) => {
 
   try {
     const mail = buildContactMessage({ name, email, message });
-    await sendEmail({
+    const sent = await trySendEmail({
       to: verifiedSender,
       subject: mail.subject,
       text: mail.text,
       html: mail.html,
     });
 
-    return res.status(200).json({ success: true, message: 'Contact message sent successfully.' });
+    return res.status(200).json({ success: true, message: sent ? 'Contact message sent successfully.' : 'Contact message received. Email service is not configured, but we have recorded your request.' });
   } catch (error) {
-    console.error('Failed to send contact email:', error);
-    return res.status(500).json({ success: false, message: 'Unable to send contact email.' });
+    console.error('Failed to handle contact submission:', error);
+    return res.status(500).json({ success: false, message: 'Unable to send your contact message at this time.' });
   }
 });
 
 app.post('/api/order-confirmation', async (req, res) => {
-  const { name, email, items, total } = req.body;
+  const { name, email, items, total, paymentMethod } = req.body;
 
   if (!name || !email || !Array.isArray(items) || typeof total !== 'number') {
     return res.status(400).json({ success: false, message: 'Name, email, items, and total are required.' });
@@ -176,24 +190,23 @@ app.post('/api/order-confirmation', async (req, res) => {
   const orderReference = `ORDER-${Date.now()}`;
 
   try {
-    // persist order
     const orders = await readOrders();
-    const order = { orderReference, name, email, items, total, status: 'created', createdAt: new Date().toISOString() };
+    const order = { orderReference, name, email, items, total, paymentMethod: paymentMethod || 'CARD', status: 'created', createdAt: new Date().toISOString() };
     orders.push(order);
     await writeOrders(orders);
 
-    const mail = buildOrderConfirmationMessage({ name, email, items, total, orderReference });
-    await sendEmail({
+    const mail = buildOrderConfirmationMessage({ name, email, items, total, orderReference, paymentMethod: order.paymentMethod });
+    const sent = await trySendEmail({
       to: email,
       subject: mail.subject,
       text: mail.text,
       html: mail.html,
     });
 
-    return res.status(200).json({ success: true, orderReference, message: 'Order confirmation sent successfully.' });
+    return res.status(200).json({ success: true, orderReference, message: sent ? 'Order confirmation sent successfully.' : 'Order recorded successfully. Email service not configured.' });
   } catch (error) {
     console.error('Failed to send order confirmation email:', error);
-    return res.status(500).json({ success: false, message: 'Unable to send order confirmation email.' });
+    return res.status(500).json({ success: false, message: 'Unable to record order at this time.' });
   }
 });
 
@@ -213,7 +226,7 @@ app.post('/api/create-checkout-session', async (req, res) => {
   try {
     // persist order as pending
     const orders = await readOrders();
-    const order = { orderReference, name, email, address, items, total, currency: currency || 'USD', status: 'pending', createdAt: new Date().toISOString() };
+    const order = { orderReference, name, email, address, items, total, currency: currency || 'USD', paymentMethod: 'CARD', status: 'pending', createdAt: new Date().toISOString() };
     orders.push(order);
     await writeOrders(orders);
 
@@ -245,6 +258,35 @@ app.post('/api/create-checkout-session', async (req, res) => {
   } catch (err) {
     console.error('create-checkout-session error', err);
     return res.status(500).json({ success: false, message: 'Unable to create checkout session.' });
+  }
+});
+
+app.post('/api/create-cod-order', async (req, res) => {
+  const { name, email, address, items, total, currency } = req.body;
+  if (!name || !email || !Array.isArray(items) || typeof total !== 'number') {
+    return res.status(400).json({ success: false, message: 'Name, email, items, and total are required.' });
+  }
+
+  const orderReference = `ORDER-${Date.now()}`;
+
+  try {
+    const orders = await readOrders();
+    const order = { orderReference, name, email, address, items, total, currency: currency || 'USD', paymentMethod: 'COD', status: 'pending', createdAt: new Date().toISOString() };
+    orders.push(order);
+    await writeOrders(orders);
+
+    const mail = buildOrderConfirmationMessage({ name, email, items, total, orderReference, paymentMethod: 'COD' });
+    const sent = await trySendEmail({
+      to: email,
+      subject: mail.subject,
+      text: mail.text,
+      html: mail.html,
+    });
+
+    return res.status(200).json({ success: true, orderReference, message: sent ? 'Order placed with COD. Confirmation email sent.' : 'Order placed with COD. Email service is not configured.' });
+  } catch (err) {
+    console.error('create-cod-order error', err);
+    return res.status(500).json({ success: false, message: 'Unable to place COD order.' });
   }
 });
 

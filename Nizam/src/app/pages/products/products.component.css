@@ -13,27 +13,32 @@ h1 {
 
 .filters {
   margin-bottom: 40px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
   text-align: center;
 }
 
 .filters h3 {
   color: #5c5b6d;
-  margin-bottom: 18px;
-  font-size: 1rem;
-  letter-spacing: 0.1em;
+  margin-bottom: 0;
+  font-size: 0.95rem;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
+  font-weight: 700;
 }
 
 .filter-btn {
   background-color: #f5f1f8;
   border: 1px solid #ece8f2;
   color: #4c4b5a;
-  padding: 12px 22px;
-  margin: 5px;
+  padding: 12px 24px;
   border-radius: 999px;
   cursor: pointer;
   transition: all 0.25s ease;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 700;
 }
 

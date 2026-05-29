@@ -54,24 +54,44 @@
             <textarea [(ngModel)]="address" name="address" rows="3" required></textarea>
           </label>
 
-          <label>
-            Card number
-            <input type="text" [(ngModel)]="cardNumber" name="cardNumber" maxlength="19" required />
-          </label>
+          <fieldset class="payment-methods">
+            <legend>Payment method</legend>
+            <label>
+              <input type="radio" name="paymentMethod" value="card" [(ngModel)]="paymentMethod" />
+              Pay with card
+            </label>
+            <label>
+              <input type="radio" name="paymentMethod" value="cod" [(ngModel)]="paymentMethod" />
+              Cash on delivery (COD)
+            </label>
+          </fieldset>
 
-          <div class="card-row">
+          <div *ngIf="paymentMethod === 'card'">
             <label>
-              Expiry
-              <input type="text" [(ngModel)]="expiry" name="expiry" maxlength="5" placeholder="MM/YY" required />
+              Card number
+              <input type="text" [(ngModel)]="cardNumber" name="cardNumber" maxlength="19" required />
             </label>
-            <label>
-              CVC
-              <input type="text" [(ngModel)]="cvc" name="cvc" maxlength="4" required />
-            </label>
+
+            <div class="card-row">
+              <label>
+                Expiry
+                <input type="text" [(ngModel)]="expiry" name="expiry" maxlength="5" placeholder="MM/YY" required />
+              </label>
+              <label>
+                CVC
+                <input type="text" [(ngModel)]="cvc" name="cvc" maxlength="4" required />
+              </label>
+            </div>
           </div>
 
-          <button type="submit" class="btn-primary">Submit payment</button>
+          <button type="submit" class="btn-primary">
+            {{ paymentMethod === 'cod' ? 'Place order with COD' : 'Submit payment' }}
+          </button>
         </form>
+
+        <p class="hint">
+          For dropshipping or wholesale inquiries, please email <strong>dropship@ganeshacollections.com</strong>.
+        </p>
       </section>
     </div>
   </div>
