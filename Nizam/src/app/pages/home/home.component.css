@@ -3,20 +3,22 @@
 }
 
 .promo-banner {
-  background: #11131d;
-  color: white;
+  background: linear-gradient(135deg, rgba(255, 107, 129, 0.96), rgba(127, 90, 240, 0.95));
+  color: #fff;
   text-align: center;
-  padding: 12px 20px;
+  padding: 14px 20px;
   font-size: 0.95rem;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  border-radius: 0 0 36px 36px;
 }
 
 .hero {
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
+  grid-template-columns: 1.05fr 0.95fr;
   gap: 40px;
   align-items: center;
-  padding: 80px 20px;
+  padding: 80px 20px 40px;
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -26,27 +28,29 @@
 }
 
 .eyebrow {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 1rem;
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  color: #b38852;
+  color: var(--brand-secondary);
   font-weight: 700;
 }
 
 .hero-copy h1 {
-  font-size: clamp(2.8rem, 4vw, 4.4rem);
+  font-size: clamp(2.8rem, 4vw, 4.8rem);
   margin: 0 0 24px 0;
-  line-height: 1.03;
-  color: #11131d;
+  line-height: 0.98;
+  color: var(--brand-dark);
 }
 
 .hero-copy p {
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   max-width: 520px;
   margin: 0 0 32px 0;
-  color: #4b4b59;
+  color: #4f4b6f;
 }
 
 .hero-actions {
@@ -66,23 +70,21 @@
   border-radius: 999px;
   font-weight: 700;
   text-decoration: none;
-  transition: transform 0.25s ease, background-color 0.25s ease, color 0.25s ease;
 }
 
 .cta-button {
-  background: #11131d;
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
   color: white;
 }
 
 .cta-button:hover {
   transform: translateY(-2px);
-  background: #2a2f4b;
 }
 
 .text-link,
 .link-secondary {
-  color: #11131d;
-  background: rgba(17, 19, 29, 0.08);
+  color: var(--brand-dark);
+  background: rgba(127, 90, 240, 0.08);
 }
 
 .section-head {
@@ -95,8 +97,9 @@
 
 .section-head h2 {
   margin: 0;
-  font-size: 2.2rem;
+  font-size: clamp(2rem, 2.5vw, 2.5rem);
   line-height: 1.05;
+  color: var(--brand-dark);
 }
 
 .hero-highlights {
@@ -107,39 +110,51 @@
 }
 
 .hero-highlights div {
-  background: white;
-  padding: 18px 20px;
-  border-radius: 20px;
-  box-shadow: 0 14px 32px rgba(34, 35, 49, 0.06);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 22px 24px;
+  border-radius: 28px;
+  box-shadow: var(--brand-shadow);
 }
 
 .hero-highlights strong {
   display: block;
   margin-bottom: 8px;
-  color: #11131d;
+  color: var(--brand-dark);
   font-size: 1rem;
 }
 
 .hero-highlights span {
-  color: #5c5b6d;
+  color: #6b6586;
   font-size: 0.95rem;
 }
 
 .hero-visual {
-  min-height: 500px;
+  min-height: 520px;
   border-radius: 40px;
   overflow: hidden;
-  background: linear-gradient(180deg, #f9f4ee 0%, #fff 100%);
+  position: relative;
+  background: radial-gradient(circle at top left, rgba(127, 90, 240, 0.2), transparent 32%),
+    linear-gradient(180deg, #f6f0ff 0%, #fff 100%);
   display: grid;
   place-items: center;
 }
 
+.hero-visual::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 20%, rgba(255, 107, 129, 0.18), transparent 24%),
+    radial-gradient(circle at 85% 30%, rgba(72, 191, 227, 0.14), transparent 24%);
+}
+
 .hero-card {
+  position: relative;
   width: 100%;
   max-width: 520px;
   border-radius: 40px;
   overflow: hidden;
-  box-shadow: 0 28px 70px rgba(17, 19, 29, 0.12);
+  box-shadow: 0 32px 90px rgba(18, 15, 44, 0.16);
+  transform: translateY(0);
 }
 
 .hero-card img {
@@ -164,26 +179,28 @@
 }
 
 .category-card {
-  background: white;
+  background: linear-gradient(135deg, rgba(127, 90, 240, 0.06), rgba(255, 107, 129, 0.06));
+  border: 1px solid rgba(127, 90, 240, 0.16);
   border-radius: 28px;
-  padding: 32px;
-  box-shadow: 0 18px 40px rgba(34, 35, 49, 0.08);
+  padding: 34px;
+  box-shadow: var(--brand-shadow);
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .category-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 24px 50px rgba(34, 35, 49, 0.14);
+  box-shadow: 0 30px 95px rgba(18, 15, 44, 0.12);
 }
 
 .category-card h3 {
   margin: 0 0 14px 0;
   font-size: 1.4rem;
+  color: var(--brand-dark);
 }
 
 .category-card p {
   margin: 0;
-  color: #5c5b6d;
+  color: #5f5b78;
   line-height: 1.75;
 }
 
@@ -194,10 +211,118 @@
 }
 
 .value-card {
-  background: #fff8f1;
+  background: linear-gradient(135deg, rgba(255, 107, 129, 0.08), rgba(72, 191, 227, 0.08));
   border-radius: 28px;
   padding: 32px;
-  box-shadow: 0 16px 38px rgba(34, 35, 49, 0.05);
+  box-shadow: var(--brand-shadow);
+}
+
+.value-card h3 {
+  margin-bottom: 14px;
+  color: var(--brand-dark);
+}
+
+.value-card p {
+  margin: 0;
+  color: #5e5671;
+  line-height: 1.85;
+}
+
+.about-section,
+.contact-section {
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.about-copy,
+.contact-copy {
+  max-width: 720px;
+}
+
+.about-copy h2,
+.contact-copy h2 {
+  font-size: clamp(2rem, 3vw, 2.8rem);
+  margin-bottom: 18px;
+  color: var(--brand-dark);
+}
+
+.about-copy p,
+.contact-copy p {
+  color: #5e5671;
+  line-height: 1.8;
+  font-size: 1.05rem;
+}
+
+.contact-copy .cta-button {
+  margin-top: 24px;
+}
+
+@media (max-width: 980px) {
+  .hero {
+    grid-template-columns: 1fr;
+    padding: 60px 20px 30px;
+  }
+
+  .hero-copy {
+    max-width: none;
+  }
+
+  .hero-visual {
+    min-height: 420px;
+  }
+
+  .hero-highlights {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .hero {
+    gap: 28px;
+  }
+
+  .promo-banner {
+    padding: 12px 16px;
+    font-size: 0.95rem;
+  }
+
+  .featured-categories,
+  .about-section,
+  .contact-section,
+  .value-grid {
+    padding: 42px 16px;
+  }
+
+  .hero-actions,
+  .section-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .hero {
+    padding: 48px 14px 24px;
+  }
+
+  .hero-copy h1 {
+    font-size: 2.4rem;
+  }
+
+  .hero-visual {
+    min-height: 340px;
+  }
+
+  .hero-highlights div,
+  .category-card,
+  .value-card {
+    padding: 22px;
+  }
+
+  .hero-actions {
+    width: 100%;
+  }
 }
 
 .value-card h3 {

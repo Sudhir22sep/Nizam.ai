@@ -9,5 +9,5 @@ import { NavbarComponent } from './components/navbar/navbar.component';
   styleUrl: './app.css'
 })
 export class App {
-  protected readonly title = signal('Ganesha Collections');
+  protected readonly title = signal('nizam.ai');
 }

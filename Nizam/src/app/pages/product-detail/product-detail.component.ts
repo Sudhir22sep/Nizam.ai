@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, effect, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PricePipe } from '../../pipes/price.pipe';
@@ -17,6 +17,7 @@ export class ProductDetailComponent implements OnInit {
   product: Product | undefined;
   relatedProducts: Product[] = [];
   quantity: number = 1;
+  private productId: number | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -26,16 +27,32 @@ export class ProductDetailComponent implements OnInit {
 
   ngOnInit() {
     this.route.params.subscribe(params => {
-      const id = parseInt(params['id'], 10);
-      this.product = this.productService.getProductById(id);
-      
-      if (this.product) {
-        this.relatedProducts = this.productService
-          .getProductsByCategory(this.product.category)
-          .filter(p => p.id !== this.product!.id)
-          .slice(0, 3);
+      this.productId = parseInt(params['id'], 10);
+      this.updateProduct();
+    });
+
+    effect(() => {
+      if (this.productId !== null) {
+        this.updateProduct();
       }
     });
+  }
+
+  private updateProduct() {
+    if (this.productId === null) {
+      return;
+    }
+
+    this.product = this.productService.getProductById(this.productId);
+
+    if (this.product) {
+      this.relatedProducts = this.productService
+        .getProductsByCategory(this.product.category)
+        .filter(p => p.id !== this.product!.id)
+        .slice(0, 3);
+    } else {
+      this.relatedProducts = [];
+    }
   }
 
   incrementQuantity() {
