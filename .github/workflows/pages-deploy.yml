@@ -6,41 +6,47 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
+          cache-dependency-path: Nizam/package-lock.json
 
       - name: Install dependencies
+        working-directory: Nizam
         run: npm ci
-        working-directory: Nizam
 
-      - name: Build app
+      - name: Build application
+        working-directory: Nizam
         run: npm run build
-        working-directory: Nizam
 
-      - name: Prepare Pages artifact
+      - name: Prepare GitHub Pages artifact
         run: |
-          mkdir -p output
-          cp -a Nizam/dist/Nizam/browser/. output/
-          printf 'ammacollectivewear.com' > output/CNAME
+          mkdir -p dist-output
+          cp -r Nizam/dist/Nizam/browser/* dist-output/
+          echo 'ammacollectivewear.com' > dist-output/CNAME
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v2
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          path: output
+          path: dist-output
 
       - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v1
+        id: deployment
+        uses: actions/deploy-pages@v2
