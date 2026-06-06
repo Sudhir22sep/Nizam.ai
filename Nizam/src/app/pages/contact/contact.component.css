@@ -11,6 +11,7 @@
 .contact-page p {
   color: #555;
   max-width: 680px;
+  line-height: 1.75;
 }
 
 form {
@@ -58,4 +59,22 @@ button {
 
 .contact-details h2 {
   margin-top: 0;
+}
+
+@media (max-width: 760px) {
+  .contact-page {
+    padding: 1.5rem 1rem;
+  }
+
+  form {
+    gap: 1rem;
+  }
+
+  button {
+    width: 100%;
+  }
+
+  .contact-details {
+    padding: 1.4rem;
+  }
 }

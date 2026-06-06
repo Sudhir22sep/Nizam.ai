@@ -1,0 +1,50 @@
+pipeline {
+  agent any
+
+  environment {
+    NODE_VERSION = '22'
+    SES_REGION = credentials('SES_REGION')
+    SES_VERIFIED_SENDER = credentials('SES_VERIFIED_SENDER')
+  }
+
+  stages {
+    stage('Install dependencies') {
+      steps {
+        script {
+          sh 'npm install'
+        }
+      }
+    }
+
+    stage('Run tests') {
+      steps {
+        script {
+          sh 'npm test'
+        }
+      }
+    }
+
+    stage('Build application') {
+      steps {
+        script {
+          sh 'npm run build'
+        }
+      }
+    }
+
+    stage('Archive build artifacts') {
+      steps {
+        archiveArtifacts artifacts: 'dist/**', fingerprint: true
+      }
+    }
+  }
+
+  post {
+    success {
+      echo 'Build completed successfully. The application is ready for deployment.'
+    }
+    failure {
+      echo 'Build failed. Check the console output for errors.'
+    }
+  }
+}

@@ -7,6 +7,8 @@ export interface Product {
   price: number;
   image: string;
   category: string;
+  arPreviewAvailable?: boolean;
+  arModelUrl?: string;
 }
 
 @Injectable({ providedIn: 'root' })

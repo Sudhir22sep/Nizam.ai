@@ -24,7 +24,7 @@ const angularApp = new AngularNodeAppEngine();
 
 const sesRegion = process.env['SES_REGION'];
 const sesClient = sesRegion ? new SESClient({ region: sesRegion }) : null;
-const verifiedSender = process.env['SES_VERIFIED_SENDER'] || 'hello@ganeshacollections.com';
+const verifiedSender = process.env['SES_VERIFIED_SENDER'] || 'sudhir.22sep@gmail.com';
 
 // parse JSON bodies for most routes
 app.use(express.json());
@@ -124,7 +124,7 @@ function buildOrderConfirmationMessage(params: {
 
   return {
     subject: `Order confirmation — ${orderReference}`,
-    text: `Thank you for your order, ${name}!\n\nOrder reference: ${orderReference}\nPayment method: ${methodLabel}\n\nItems:\n${itemText}\n\nTotal: $${total.toFixed(2)}\n\nWe will ship to:\n${email}\n\nFor dropshipping or wholesale inquiries, email dropship@ganeshacollections.com.`,
+    text: `Thank you for your order, ${name}!\n\nOrder reference: ${orderReference}\nPayment method: ${methodLabel}\n\nItems:\n${itemText}\n\nTotal: $${total.toFixed(2)}\n\nWe will ship to:\n${email}\n\nFor dropshipping or wholesale inquiries, email sudhir.22sep@gmail.com.`,
     html: `<p>Thank you for your order, <strong>${name}</strong>!</p>
       <p>Order reference: <strong>${orderReference}</strong></p>
       <p>Payment method: <strong>${methodLabel}</strong></p>
@@ -143,7 +143,7 @@ function buildOrderConfirmationMessage(params: {
       </table>
       <p><strong>Total: $${total.toFixed(2)}</strong></p>
       <p>We will ship your order shortly.</p>
-      <p>For dropshipping or wholesale inquiries, email <strong>dropship@ganeshacollections.com</strong>.</p>`,
+      <p>For dropshipping or wholesale inquiries, email <strong>sudhir.22sep@gmail.com</strong>.</p>`,
   };
 }
 

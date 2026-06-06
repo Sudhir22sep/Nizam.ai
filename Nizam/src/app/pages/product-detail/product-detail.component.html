@@ -31,6 +31,36 @@
         </div>
       </div>
 
+      <div class="arkit-panel">
+        <div class="arkit-header">
+          <span class="arkit-badge">ARKit</span>
+          <h3>Augmented reality preview</h3>
+        </div>
+
+        <p class="arkit-description" *ngIf="product.arPreviewAvailable; else arComingSoon">
+          Preview this product in AR on supported iOS devices when ARKit support is available.
+        </p>
+
+        <a
+          *ngIf="product.arPreviewAvailable && product.arModelUrl"
+          class="btn-arkit"
+          [href]="product.arModelUrl"
+          rel="ar"
+          target="_blank"
+        >
+          View in AR
+        </a>
+
+        <ng-template #arComingSoon>
+          <button class="btn-arkit btn-arkit-disabled" disabled>
+            ARKit preview coming soon
+          </button>
+          <p class="arkit-note">
+            We are preparing an immersive AR shopping experience for iOS devices.
+          </p>
+        </ng-template>
+      </div>
+
       <div class="action-buttons">
         <button (click)="addToCart()" class="btn-add-cart">
           🛒 Add to Cart
