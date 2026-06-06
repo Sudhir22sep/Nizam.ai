@@ -35,6 +35,7 @@ jobs:
         run: |
           mkdir -p output
           cp -a Nizam/dist/Nizam/browser/. output/
+          printf 'ammacollectivewear.com' > output/CNAME
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v2
