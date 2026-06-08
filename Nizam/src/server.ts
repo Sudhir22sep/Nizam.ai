@@ -8,10 +8,11 @@ import express from 'express';
 import { join } from 'node:path';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import Stripe from 'stripe';
-import { promises as fs } from 'fs';
+import { MongoClient, Db } from 'mongodb';
 
-const dataDir = join(import.meta.dirname, '../data');
-const ordersFile = join(dataDir, 'orders.json');
+const mongoUrl = process.env['MONGODB_URI'] || 'mongodb://localhost:27017/nizam_ai';
+let mongoClient: MongoClient | null = null;
+let db: Db | null = null;
 
 const stripeSecret = process.env['STRIPE_SECRET_KEY'];
 const stripe = stripeSecret ? new Stripe(stripeSecret, { apiVersion: '2022-11-15' }) : null;
@@ -42,28 +43,52 @@ function formatCurrency(amount: number, currency = 'USD') {
   return `${symbol}${amount.toFixed(2)}`;
 }
 
-async function ensureDataDir() {
+// Initialize MongoDB connection
+async function initializeMongoDB() {
   try {
-    await fs.mkdir(dataDir, { recursive: true });
-    try {
-      await fs.access(ordersFile);
-    } catch {
-      await fs.writeFile(ordersFile, JSON.stringify([]));
-    }
-  } catch (e) {
-    console.error('Failed to ensure data dir', e);
+    mongoClient = new MongoClient(mongoUrl);
+    await mongoClient.connect();
+    db = mongoClient.db();
+    
+    // Create indexes for better performance
+    const ordersCollection = db.collection('orders');
+    const usersCollection = db.collection('users');
+    const contactsCollection = db.collection('contacts');
+    
+    await ordersCollection.createIndex({ orderReference: 1 }, { unique: true });
+    await ordersCollection.createIndex({ email: 1 });
+    await usersCollection.createIndex({ email: 1 }, { unique: true });
+    await contactsCollection.createIndex({ email: 1 });
+    
+    console.log('MongoDB connected successfully');
+  } catch (error) {
+    console.error('Failed to connect to MongoDB:', error);
+    process.exit(1);
   }
 }
 
-async function readOrders() {
-  await ensureDataDir();
-  const raw = await fs.readFile(ordersFile, 'utf-8');
-  return JSON.parse(raw || '[]');
+// Get or create orders collection
+async function getOrdersCollection() {
+  if (!db) {
+    throw new Error('MongoDB not initialized');
+  }
+  return db.collection('orders');
 }
 
-async function writeOrders(orders: any[]) {
-  await ensureDataDir();
-  await fs.writeFile(ordersFile, JSON.stringify(orders, null, 2));
+// Get or create users collection
+async function getUsersCollection() {
+  if (!db) {
+    throw new Error('MongoDB not initialized');
+  }
+  return db.collection('users');
+}
+
+// Get or create contacts collection
+async function getContactsCollection() {
+  if (!db) {
+    throw new Error('MongoDB not initialized');
+  }
+  return db.collection('contacts');
 }
 
 async function sendEmail(params: { to: string | string[]; subject: string; text: string; html: string }) {
@@ -165,6 +190,17 @@ app.post('/api/contact', async (req, res) => {
   }
 
   try {
+    const contactsCollection = await getContactsCollection();
+    
+    const contact = {
+      name,
+      email,
+      message,
+      createdAt: new Date(),
+    };
+    
+    await contactsCollection.insertOne(contact);
+
     const mail = buildContactMessage({ name, email, message });
     const sent = await trySendEmail({
       to: verifiedSender,
@@ -180,6 +216,52 @@ app.post('/api/contact', async (req, res) => {
   }
 });
 
+// Save user profile/account data
+app.post('/api/save-user', async (req, res) => {
+  const { name, email, phone, address } = req.body;
+
+  if (!name || !email) {
+    return res.status(400).json({ success: false, message: 'Name and email are required.' });
+  }
+
+  try {
+    const usersCollection = await getUsersCollection();
+
+    // Check if user already exists
+    const existingUser = await usersCollection.findOne({ email });
+    if (existingUser) {
+      // Update existing user
+      await usersCollection.updateOne(
+        { email },
+        {
+          $set: {
+            name,
+            phone: phone || (existingUser as any).phone,
+            address: address || (existingUser as any).address,
+            updatedAt: new Date(),
+          },
+        }
+      );
+      return res.status(200).json({ success: true, userId: (existingUser as any)._id, message: 'User profile updated successfully.' });
+    }
+
+    // Create new user
+    const user = {
+      name,
+      email,
+      phone: phone || '',
+      address: address || '',
+      createdAt: new Date(),
+    };
+
+    const result = await usersCollection.insertOne(user);
+    return res.status(200).json({ success: true, userId: result.insertedId, message: 'User profile saved successfully.' });
+  } catch (error) {
+    console.error('Failed to save user:', error);
+    return res.status(500).json({ success: false, message: 'Unable to save user data.' });
+  }
+});
+
 app.post('/api/order-confirmation', async (req, res) => {
   const { name, email, items, total, paymentMethod } = req.body;
 
@@ -190,10 +272,20 @@ app.post('/api/order-confirmation', async (req, res) => {
   const orderReference = `ORDER-${Date.now()}`;
 
   try {
-    const orders = await readOrders();
-    const order = { orderReference, name, email, items, total, paymentMethod: paymentMethod || 'CARD', status: 'created', createdAt: new Date().toISOString() };
-    orders.push(order);
-    await writeOrders(orders);
+    const ordersCollection = await getOrdersCollection();
+    
+    const order = { 
+      orderReference, 
+      name, 
+      email, 
+      items, 
+      total, 
+      paymentMethod: paymentMethod || 'CARD', 
+      status: 'created', 
+      createdAt: new Date() 
+    };
+    
+    await ordersCollection.insertOne(order);
 
     const mail = buildOrderConfirmationMessage({ name, email, items, total, orderReference, paymentMethod: order.paymentMethod });
     const sent = await trySendEmail({
@@ -224,11 +316,23 @@ app.post('/api/create-checkout-session', async (req, res) => {
   const orderReference = `ORDER-${Date.now()}`;
 
   try {
+    const ordersCollection = await getOrdersCollection();
+    
     // persist order as pending
-    const orders = await readOrders();
-    const order = { orderReference, name, email, address, items, total, currency: currency || 'USD', paymentMethod: 'CARD', status: 'pending', createdAt: new Date().toISOString() };
-    orders.push(order);
-    await writeOrders(orders);
+    const order = { 
+      orderReference, 
+      name, 
+      email, 
+      address, 
+      items, 
+      total, 
+      currency: currency || 'USD', 
+      paymentMethod: 'CARD', 
+      status: 'pending', 
+      createdAt: new Date() 
+    };
+    
+    await ordersCollection.insertOne(order);
 
     // build line items for Stripe
     const targetCurrency = (currency || 'USD').toUpperCase();
@@ -270,10 +374,22 @@ app.post('/api/create-cod-order', async (req, res) => {
   const orderReference = `ORDER-${Date.now()}`;
 
   try {
-    const orders = await readOrders();
-    const order = { orderReference, name, email, address, items, total, currency: currency || 'USD', paymentMethod: 'COD', status: 'pending', createdAt: new Date().toISOString() };
-    orders.push(order);
-    await writeOrders(orders);
+    const ordersCollection = await getOrdersCollection();
+    
+    const order = { 
+      orderReference, 
+      name, 
+      email, 
+      address, 
+      items, 
+      total, 
+      currency: currency || 'USD', 
+      paymentMethod: 'COD', 
+      status: 'pending', 
+      createdAt: new Date() 
+    };
+    
+    await ordersCollection.insertOne(order);
 
     const mail = buildOrderConfirmationMessage({ name, email, items, total, orderReference, paymentMethod: 'COD' });
     const sent = await trySendEmail({
@@ -302,24 +418,30 @@ app.post('/api/confirm-payment', async (req, res) => {
   }
 
   try {
+    const ordersCollection = await getOrdersCollection();
+    
     const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ['payment_intent'] });
     const paid = String((session as any).payment_status) === 'paid';
     const orderReference = (session as any).metadata?.['orderReference'] || '';
 
-    const orders = await readOrders();
-    const order = orders.find((o: any) => o.orderReference === orderReference);
+    const order = await ordersCollection.findOne({ orderReference });
     if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
 
     if (paid) {
-      order.status = 'paid';
-      order.paymentIntent = session.payment_intent;
-      await writeOrders(orders);
+      await ordersCollection.updateOne(
+        { orderReference },
+        {
+          $set: {
+            status: 'paid',
+            paymentIntent: session.payment_intent,
+          },
+        }
+      );
 
       // send confirmation email
       try {
-        // Format totals using order currency if available
-        const mail = buildOrderConfirmationMessage({ name: order.name, email: order.email, items: order.items, total: order.total, orderReference });
-        await sendEmail({ to: order.email, subject: mail.subject, text: mail.text, html: mail.html });
+        const mail = buildOrderConfirmationMessage({ name: (order as any).name, email: (order as any).email, items: (order as any).items, total: (order as any).total, orderReference });
+        await sendEmail({ to: (order as any).email, subject: mail.subject, text: mail.text, html: mail.html });
       } catch (e) {
         console.error('Failed to send post-payment confirmation email', e);
       }
@@ -343,21 +465,28 @@ app.post('/webhook/stripe', async (req, res) => {
   const event = req.body;
 
   try {
+    const ordersCollection = await getOrdersCollection();
+    
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
       const orderReference = session.metadata?.orderReference || '';
 
-      const orders = await readOrders();
-      const order = orders.find((o: any) => o.orderReference === orderReference);
+      const order = await ordersCollection.findOne({ orderReference });
       if (order) {
-        order.status = 'paid';
-        order.paymentIntent = session.payment_intent || session.payment_intent_id || null;
-        await writeOrders(orders);
+        await ordersCollection.updateOne(
+          { orderReference },
+          {
+            $set: {
+              status: 'paid',
+              paymentIntent: session.payment_intent || session.payment_intent_id || null,
+            },
+          }
+        );
 
         // send confirmation email (best-effort)
         try {
-          const mail = buildOrderConfirmationMessage({ name: order.name, email: order.email, items: order.items, total: order.total, orderReference });
-          await sendEmail({ to: order.email, subject: mail.subject, text: mail.text, html: mail.html });
+          const mail = buildOrderConfirmationMessage({ name: (order as any).name, email: (order as any).email, items: (order as any).items, total: (order as any).total, orderReference });
+          await sendEmail({ to: (order as any).email, subject: mail.subject, text: mail.text, html: mail.html });
         } catch (e) {
           console.error('Failed to send webhook confirmation email', e);
         }
@@ -412,12 +541,19 @@ app.use((req, res, next) => {
  */
 if (isMainModule(import.meta.url) || process.env['pm_id']) {
   const port = process.env['PORT'] || 4000;
-  app.listen(port, (error) => {
-    if (error) {
-      throw error;
-    }
+  
+  // Initialize MongoDB before starting the server
+  initializeMongoDB().then(() => {
+    app.listen(port, (error) => {
+      if (error) {
+        throw error;
+      }
 
-    console.log(`Node Express server listening on http://localhost:${port}`);
+      console.log(`Node Express server listening on http://localhost:${port}`);
+    });
+  }).catch((error) => {
+    console.error('Failed to start server:', error);
+    process.exit(1);
   });
 }
 
