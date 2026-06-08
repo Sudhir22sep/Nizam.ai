@@ -37,16 +37,11 @@ jobs:
         run: |
           mkdir -p dist-output
           cp -r Nizam/dist/Nizam/browser/* dist-output/
-          echo 'ammacollectivewear.com' > dist-output/CNAME
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist-output
+          echo 'ammawears.com' > dist-output/CNAME
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: dist-output
-          cname: ammacollectivewear.com
+          cname: ammawears.com
