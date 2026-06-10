@@ -1,2 +1,2 @@
 # Nizam.ai
-An e-commerce platform
+Fashion stor for the AmmaWears.com , online clothing toer, buy clothes, donate clothes to the needful.

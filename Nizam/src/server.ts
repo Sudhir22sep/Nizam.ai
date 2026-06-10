@@ -38,6 +38,8 @@ const serverRates: Record<string, number> = {
   SAR: 3.75,
 };
 
+let mongoInitPromise: Promise<void> | null = null;
+
 function formatCurrency(amount: number, currency = 'USD') {
   const symbol = currency === 'INR' ? '₹' : currency === 'AED' ? 'د.إ ' : currency === 'SAR' ? '﷼ ' : '$';
   return `${symbol}${amount.toFixed(2)}`;
@@ -67,8 +69,18 @@ async function initializeMongoDB() {
   }
 }
 
+function ensureMongoDBInitialized() {
+  if (!mongoInitPromise) {
+    mongoInitPromise = initializeMongoDB();
+  }
+
+  return mongoInitPromise;
+}
+
 // Get or create orders collection
 async function getOrdersCollection() {
+  await ensureMongoDBInitialized();
+
   if (!db) {
     throw new Error('MongoDB not initialized');
   }
@@ -77,6 +89,8 @@ async function getOrdersCollection() {
 
 // Get or create users collection
 async function getUsersCollection() {
+  await ensureMongoDBInitialized();
+
   if (!db) {
     throw new Error('MongoDB not initialized');
   }
@@ -85,6 +99,8 @@ async function getUsersCollection() {
 
 // Get or create contacts collection
 async function getContactsCollection() {
+  await ensureMongoDBInitialized();
+
   if (!db) {
     throw new Error('MongoDB not initialized');
   }
@@ -543,7 +559,7 @@ if (isMainModule(import.meta.url) || process.env['pm_id']) {
   const port = process.env['PORT'] || 4000;
   
   // Initialize MongoDB before starting the server
-  initializeMongoDB().then(() => {
+  ensureMongoDBInitialized().then(() => {
     app.listen(port, (error) => {
       if (error) {
         throw error;
