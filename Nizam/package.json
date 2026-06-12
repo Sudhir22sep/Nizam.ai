@@ -37,7 +37,8 @@
     "stripe": "^12.6.0",
     "mongodb": "^6.3.0",
     "rxjs": "~7.8.0",
-    "tslib": "^2.3.0"
+    "tslib": "^2.3.0",
+    "homepage": "."
   },
   "devDependencies": {
     "@angular/build": "^21.1.1",
