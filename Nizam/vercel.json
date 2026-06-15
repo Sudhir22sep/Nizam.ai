@@ -1,3 +1,9 @@
-
-
-{ "rewrites": [{ "source": "/(.*)", "destination": "/" }] }
+{
+  "outputDirectory": "dist/Nizam/browser",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
