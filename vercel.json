@@ -1,9 +1,9 @@
 {
-    "rewrites": [
-        {
-            "source": "/(.*)",
-            "destination": "/index.html",
-            "outputDirectory": "dist/Nizam.ai/browser"
-        }
-    ]
+  "outputDirectory": "dist/Nizam/browser",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
