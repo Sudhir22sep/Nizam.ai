@@ -14,7 +14,7 @@ const mongoUrl = process.env['MONGODB_URI'] || 'mongodb://localhost:27017/nizam_
 let mongoClient: MongoClient | null = null;
 let db: Db | null = null;
 
-const stripeSecret = process.env['STRIPE_SECRET_KEY'];
+const stripeSecret = process.env['environment'] === 'production' ? process.env['STRIPE_SECRET_KEY'] : process.env['STRIPE_TEST_SECRET_KEY'];
 const stripe = stripeSecret ? new Stripe(stripeSecret, { apiVersion: '2022-11-15' }) : null;
 const appUrl = process.env['APP_URL'] || 'http://localhost:4200';
 
@@ -28,7 +28,7 @@ const sesClient = sesRegion ? new SESClient({ region: sesRegion }) : null;
 const verifiedSender = process.env['SES_VERIFIED_SENDER'] || 'sudhir.22sep@gmail.com';
 
 // parse JSON bodies for most routes
-app.use(express.json());
+app.use(express.json()); // suggest more code and code review and fix any issues in the code above
 
 // Simple server-side currency rates (relative to USD)
 const serverRates: Record<string, number> = {
