@@ -20,6 +20,6 @@ describe('App', () => {
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
     const footerText = compiled.querySelector('.footer-content')?.textContent || '';
-    expect(footerText).toContain('AMMA Collective Wear');
+    expect(footerText).toContain('Amma Wears');
   });
 });
