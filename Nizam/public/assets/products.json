@@ -4,7 +4,7 @@
     "name": "Satin Slip Dress",
     "description": "A sleek silhouette in satin with a delicate cowl neckline, perfect for evening outings and warm-weather style.",
     "price": 84.99,
-    "image": "images/products/satin-slip-dress.svg",
+    "image": "images/products/satin-slip-dress.jpeg",
     "category": "Women"
   },
   {
@@ -12,7 +12,7 @@
     "name": "Denim Trucker Jacket",
     "description": "A modern take on a classic trucker jacket with structured shoulders and a comfortable vintage wash.",
     "price": 119.99,
-    "image": "images/products/denim-trucker-jacket.svg",
+    "image": "images/products/denim-trucker-jacket.jpeg",
     "category": "Men"
   },
   {
@@ -86,5 +86,45 @@
     "price": 24.0,
     "image": "images/products/gulf-coast-slim-tee.svg",
     "category": "Men"
+  },
+  {
+    "id": 12,
+    "name": "Premium Slim Tee",
+    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
+    "price": 24.0,
+    "image": "images/products/Premium-shirt.jpeg",
+    "category": "Men"
+  },
+  {
+    "id": 13,
+    "name": "Premium Slim Tee",
+    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
+    "price": 24.0,
+    "image": "images/products/Tshirt.jpeg",
+    "category": "Men"
+  },
+  {
+    "id": 14,
+    "name": "Premium Slim Tee",
+    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
+    "price": 24.0,
+    "image": "images/products/Tshirt2.jpeg",
+    "category": "Men"
+  },
+  {
+    "id": 15,
+    "name": "Premium Slim Tee",
+    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
+    "price": 24.0,
+    "image": "images/products/hoody.jpeg",
+    "category": "Men"
+  },
+  {
+    "id": 16,
+    "name": "Satin slip dress",
+    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
+    "price": 24.0,
+    "image": "images/products/satin.jpg",
+    "category": "Women"
   }
 ]
