@@ -12,7 +12,7 @@
     "name": "Denim Trucker Jacket",
     "description": "A modern take on a classic trucker jacket with structured shoulders and a comfortable vintage wash.",
     "price": 119.99,
-    "image": "images/products/denim-trucker-jacket.jpeg",
+    "image": "images/products/denim-trucker-jeans.jpeg",
     "category": "Men"
   },
   {
@@ -92,7 +92,7 @@
     "name": "Premium Slim Tee",
     "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
     "price": 24.0,
-    "image": "images/products/Premium-shirt.jpeg",
+    "image": "images/products/premium-shirt.jpeg",
     "category": "Men"
   },
   {
