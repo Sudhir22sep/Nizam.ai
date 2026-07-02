@@ -1,5 +1,6 @@
 {
   "outputDirectory": "dist/Nizam/browser",
+  "rootDirectory": "Nizam",
   "rewrites": [
     {
       "source": "/(.*)",
