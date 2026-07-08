@@ -33,7 +33,7 @@ app.use(express.json()); // suggest more code and code review and fix any issues
 // Simple server-side currency rates (relative to USD)
 const serverRates: Record<string, number> = {
   USD: 1,
-  INR: 82.5,
+  INR: 95.21,
   AED: 3.67,
   SAR: 3.75,
 };
@@ -51,17 +51,17 @@ async function initializeMongoDB() {
     mongoClient = new MongoClient(mongoUrl);
     await mongoClient.connect();
     db = mongoClient.db();
-    
+
     // Create indexes for better performance
     const ordersCollection = db.collection('orders');
     const usersCollection = db.collection('users');
     const contactsCollection = db.collection('contacts');
-    
+
     await ordersCollection.createIndex({ orderReference: 1 }, { unique: true });
     await ordersCollection.createIndex({ email: 1 });
     await usersCollection.createIndex({ email: 1 }, { unique: true });
     await contactsCollection.createIndex({ email: 1 });
-    
+
     console.log('MongoDB connected successfully');
   } catch (error) {
     console.error('Failed to connect to MongoDB:', error);
@@ -207,14 +207,14 @@ app.post('/api/contact', async (req, res) => {
 
   try {
     const contactsCollection = await getContactsCollection();
-    
+
     const contact = {
       name,
       email,
       message,
       createdAt: new Date(),
     };
-    
+
     await contactsCollection.insertOne(contact);
 
     const mail = buildContactMessage({ name, email, message });
@@ -289,18 +289,18 @@ app.post('/api/order-confirmation', async (req, res) => {
 
   try {
     const ordersCollection = await getOrdersCollection();
-    
-    const order = { 
-      orderReference, 
-      name, 
-      email, 
-      items, 
-      total, 
-      paymentMethod: paymentMethod || 'CARD', 
-      status: 'created', 
-      createdAt: new Date() 
+
+    const order = {
+      orderReference,
+      name,
+      email,
+      items,
+      total,
+      paymentMethod: paymentMethod || 'CARD',
+      status: 'created',
+      createdAt: new Date()
     };
-    
+
     await ordersCollection.insertOne(order);
 
     const mail = buildOrderConfirmationMessage({ name, email, items, total, orderReference, paymentMethod: order.paymentMethod });
@@ -333,21 +333,21 @@ app.post('/api/create-checkout-session', async (req, res) => {
 
   try {
     const ordersCollection = await getOrdersCollection();
-    
+
     // persist order as pending
-    const order = { 
-      orderReference, 
-      name, 
-      email, 
-      address, 
-      items, 
-      total, 
-      currency: currency || 'USD', 
-      paymentMethod: 'CARD', 
-      status: 'pending', 
-      createdAt: new Date() 
+    const order = {
+      orderReference,
+      name,
+      email,
+      address,
+      items,
+      total,
+      currency: currency || 'USD',
+      paymentMethod: 'CARD',
+      status: 'pending',
+      createdAt: new Date()
     };
-    
+
     await ordersCollection.insertOne(order);
 
     // build line items for Stripe
@@ -391,20 +391,20 @@ app.post('/api/create-cod-order', async (req, res) => {
 
   try {
     const ordersCollection = await getOrdersCollection();
-    
-    const order = { 
-      orderReference, 
-      name, 
-      email, 
-      address, 
-      items, 
-      total, 
-      currency: currency || 'USD', 
-      paymentMethod: 'COD', 
-      status: 'pending', 
-      createdAt: new Date() 
+
+    const order = {
+      orderReference,
+      name,
+      email,
+      address,
+      items,
+      total,
+      currency: currency || 'USD',
+      paymentMethod: 'COD',
+      status: 'pending',
+      createdAt: new Date()
     };
-    
+
     await ordersCollection.insertOne(order);
 
     const mail = buildOrderConfirmationMessage({ name, email, items, total, orderReference, paymentMethod: 'COD' });
@@ -435,7 +435,7 @@ app.post('/api/confirm-payment', async (req, res) => {
 
   try {
     const ordersCollection = await getOrdersCollection();
-    
+
     const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ['payment_intent'] });
     const paid = String((session as any).payment_status) === 'paid';
     const orderReference = (session as any).metadata?.['orderReference'] || '';
@@ -482,7 +482,7 @@ app.post('/webhook/stripe', async (req, res) => {
 
   try {
     const ordersCollection = await getOrdersCollection();
-    
+
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
       const orderReference = session.metadata?.orderReference || '';
@@ -557,7 +557,7 @@ app.use((req, res, next) => {
  */
 if (isMainModule(import.meta.url) || process.env['pm_id']) {
   const port = process.env['PORT'] || 4000;
-  
+
   // Initialize MongoDB before starting the server
   ensureMongoDBInitialized().then(() => {
     app.listen(port, (error) => {
