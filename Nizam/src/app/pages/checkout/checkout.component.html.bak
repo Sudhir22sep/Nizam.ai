@@ -57,6 +57,10 @@
           <fieldset class="payment-methods">
             <legend>Payment method</legend>
             <label>
+              <input type="radio" name="paymentMethod" value="stripe" [(ngModel)]="paymentMethod" />
+              Stripe Checkout
+            </label>
+            <label>
               <input type="radio" name="paymentMethod" value="razorpay" [(ngModel)]="paymentMethod" />
               Razorpay
             </label>
@@ -65,6 +69,10 @@
               Cash on delivery (COD)
             </label>
           </fieldset>
+
+          <div *ngIf="paymentMethod === 'stripe'" class="payment-note">
+            <p>You will enter your card details on Stripe's secure checkout page.</p>
+          </div>
 
           <div *ngIf="paymentMethod === 'razorpay'" class="payment-note">
             <p>You will enter your card details in Razorpay's secure popup.</p>

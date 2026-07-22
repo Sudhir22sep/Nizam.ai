@@ -23,36 +23,32 @@ export class ProductDetailComponent implements OnInit {
     private route: ActivatedRoute,
     private productService: ProductService,
     private cartService: CartService
-  ) {}
-
-  ngOnInit() {
-    this.route.params.subscribe(params => {
-      this.productId = parseInt(params['id'], 10);
-      this.updateProduct();
-    });
-
+  ) {
     effect(() => {
       if (this.productId !== null) {
-        this.updateProduct();
+        const products = this.productService.getProducts();
+        if (products.length > 0) {
+          const product = this.productService.getProductById(this.productId);
+          if (product) {
+            this.product = product;
+            this.relatedProducts = this.productService
+              .getProductsByCategory(product.category)
+              .filter(p => p.id !== product.id)
+              .slice(0, 3);
+          } else {
+            this.product = undefined;
+            this.relatedProducts = [];
+          }
+        }
+        // If products are not loaded yet, we do nothing and wait for the next effect run when products are loaded.
       }
     });
   }
 
-  private updateProduct() {
-    if (this.productId === null) {
-      return;
-    }
-
-    this.product = this.productService.getProductById(this.productId);
-
-    if (this.product) {
-      this.relatedProducts = this.productService
-        .getProductsByCategory(this.product.category)
-        .filter(p => p.id !== this.product!.id)
-        .slice(0, 3);
-    } else {
-      this.relatedProducts = [];
-    }
+  ngOnInit() {
+    this.route.params.subscribe(params => {
+      this.productId = parseInt(params['id'], 10);
+    });
   }
 
   incrementQuantity() {
