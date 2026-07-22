@@ -7,21 +7,49 @@ import {
 import express from 'express';
 import { join } from 'node:path';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
-import Stripe from 'stripe';
+import Razorpay from 'razorpay';
+//import Stripe from 'stripe';
 import { MongoClient, Db } from 'mongodb';
 
 const mongoUrl = process.env['MONGODB_URI'] || 'mongodb://localhost:27017/nizam_ai';
 let mongoClient: MongoClient | null = null;
 let db: Db | null = null;
 
-const stripeSecret = process.env['environment'] === 'production' ? process.env['STRIPE_SECRET_KEY'] : process.env['STRIPE_TEST_SECRET_KEY'];
-const stripe = stripeSecret ? new Stripe(stripeSecret, { apiVersion: '2022-11-15' }) : null;
+//const stripeSecret = process.env['environment'] === 'production' ? process.env['STRIPE_SECRET_KEY'] : process.env['STRIPE_TEST_SECRET_KEY'];
+//const stripe = stripeSecret ? new Stripe(stripeSecret, { apiVersion: '2022-11-15' }) : null;
+
+const razorpayKeyId = process.env['environment'] === 'production'
+  ? process.env['RAZORPAY_KEY_ID']
+  : process.env['RAZORPAY_TEST_KEY_ID'];
+const razorpayKeySecret = process.env['environment'] === 'production'
+  ? process.env['RAZORPAY_KEY_SECRET']
+  : process.env['RAZORPAY_TEST_KEY_SECRET'];
+const razorpay = razorpayKeyId && razorpayKeySecret
+  ? new Razorpay({ key_id: razorpayKeyId, key_secret: razorpayKeySecret })
+  : null;
+
 const appUrl = process.env['APP_URL'] || 'http://localhost:4200';
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
 const app = express();
-const angularApp = new AngularNodeAppEngine();
+
+// Load manifest at module load time for production builds
+let manifest: any;
+try {
+  const manifestPath = join(import.meta.dirname, 'angular-app-engine-manifest.mjs');
+  const fs = await import('node:fs');
+  if (fs.existsSync(manifestPath)) {
+    const manifestUrl = new URL('angular-app-engine-manifest.mjs', import.meta.url).href;
+    const manifestModule = await import(manifestUrl);
+    manifest = manifestModule.default;
+  }
+} catch {
+  // Manifest not found, will use default behavior
+}
+
+// Create AngularNodeAppEngine with manifest (for production) or without (for dev)
+const angularApp = new AngularNodeAppEngine(manifest);
 
 const sesRegion = process.env['SES_REGION'];
 const sesClient = sesRegion ? new SESClient({ region: sesRegion }) : null;
@@ -48,7 +76,7 @@ function formatCurrency(amount: number, currency = 'USD') {
 // Initialize MongoDB connection
 async function initializeMongoDB() {
   try {
-    mongoClient = new MongoClient(mongoUrl);
+    mongoClient = new MongoClient(mongoUrl, { serverSelectionTimeoutMS: 5000 });
     await mongoClient.connect();
     db = mongoClient.db();
 
@@ -65,13 +93,18 @@ async function initializeMongoDB() {
     console.log('MongoDB connected successfully');
   } catch (error) {
     console.error('Failed to connect to MongoDB:', error);
-    process.exit(1);
+    // Don't exit, just continue without DB
   }
 }
 
+let mongoInitPromise: Promise<void> | null = null;
+
 function ensureMongoDBInitialized() {
   if (!mongoInitPromise) {
-    mongoInitPromise = initializeMongoDB();
+    mongoInitPromise = initializeMongoDB().catch((error) => {
+      console.error('MongoDB connection failed, continuing without database:', error.message);
+      // Don't exit, just continue without DB
+    });
   }
 
   return mongoInitPromise;
