@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: nizam-ai
+    runtime: node
+    region: oregon  # or frankfurt, singapore, etc.
+    plan: free  # or starter, standard, etc.
+    buildCommand: npm install && npm run build
+    startCommand: node dist/Nizam/server/main.server.mjs
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4000"
+      - key: MONGODB_URI
+        sync: false  # Set in Render dashboard
+      - key: SES_REGION
+        sync: false  # Set in Render dashboard
+      - key: SES_VERIFIED_SENDER
+        sync: false  # Set in Render dashboard
+      - key: RAZORPAY_KEY_ID
+        sync: false  # Set in Render dashboard
+      - key: RAZORPAY_KEY_SECRET
+        sync: false  # Set in Render dashboard
+      - key: RAZORPAY_TEST_KEY_ID
+        sync: false
+      - key: RAZORPAY_TEST_KEY_SECRET
+        sync: false
+      - key: APP_URL
+        value: "https://nizam-ai.onrender.com"  # Update with your actual URL
+      - key: environment
+        value: "production"
+    healthCheckPath: /health
+    autoDeploy: true
