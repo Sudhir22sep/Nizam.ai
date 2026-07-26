@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@angular/ssr": "^22.0.6",
+    "razorpay": "^2.9.6"
+  }
+}

@@ -1,4 +1,4 @@
-import { Component, effect, OnInit } from '@angular/core';
+import { Component, effect, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PricePipe } from '../../pipes/price.pipe';
@@ -14,45 +14,43 @@ import { CartService } from '../../services/cart.service';
   styleUrl: './product-detail.component.css'
 })
 export class ProductDetailComponent implements OnInit {
+  private route = inject(ActivatedRoute);
+  private productService = inject(ProductService);
+  private cartService = inject(CartService);
+
   product: Product | undefined;
   relatedProducts: Product[] = [];
   quantity: number = 1;
   private productId: number | null = null;
 
-  constructor(
-    private route: ActivatedRoute,
-    private productService: ProductService,
-    private cartService: CartService
-  ) {}
-
-  ngOnInit() {
-    this.route.params.subscribe(params => {
-      this.productId = parseInt(params['id'], 10);
-      this.updateProduct();
-    });
-
-    effect(() => {
+  constructor() {
+    effect(async () => {
       if (this.productId !== null) {
-        this.updateProduct();
+        // Ensure products are loaded before accessing
+        await this.productService.ensureLoaded();
+        
+        const products = this.productService.getProducts();
+        if (products().length > 0) {
+          const product = this.productService.getProductById(this.productId);
+          if (product) {
+            this.product = product;
+            this.relatedProducts = this.productService
+              .getProductsByCategory(product.category)
+              .filter(p => p.id !== product.id)
+              .slice(0, 3);
+          } else {
+            this.product = undefined;
+            this.relatedProducts = [];
+          }
+        }
       }
     });
   }
 
-  private updateProduct() {
-    if (this.productId === null) {
-      return;
-    }
-
-    this.product = this.productService.getProductById(this.productId);
-
-    if (this.product) {
-      this.relatedProducts = this.productService
-        .getProductsByCategory(this.product.category)
-        .filter(p => p.id !== this.product!.id)
-        .slice(0, 3);
-    } else {
-      this.relatedProducts = [];
-    }
+  ngOnInit() {
+    this.route.params.subscribe(params => {
+      this.productId = parseInt(params['id'], 10);
+    });
   }
 
   incrementQuantity() {

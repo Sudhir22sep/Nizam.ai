@@ -7,21 +7,61 @@ import {
 import express from 'express';
 import { join } from 'node:path';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
-import Stripe from 'stripe';
+import Razorpay from 'razorpay';
+//import Stripe from 'stripe';
 import { MongoClient, Db } from 'mongodb';
+import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
 
 const mongoUrl = process.env['MONGODB_URI'] || 'mongodb://localhost:27017/nizam_ai';
 let mongoClient: MongoClient | null = null;
 let db: Db | null = null;
 
-const stripeSecret = process.env['environment'] === 'production' ? process.env['STRIPE_SECRET_KEY'] : process.env['STRIPE_TEST_SECRET_KEY'];
-const stripe = stripeSecret ? new Stripe(stripeSecret, { apiVersion: '2022-11-15' }) : null;
+//const stripeSecret = process.env['environment'] === 'production' ? process.env['STRIPE_SECRET_KEY'] : process.env['STRIPE_TEST_SECRET_KEY'];
+//const stripe = stripeSecret ? new Stripe(stripeSecret, { apiVersion: '2022-11-15' }) : null;
+
+const razorpayKeyId = process.env['environment'] === 'production'
+  ? process.env['RAZORPAY_KEY_ID']
+  : process.env['RAZORPAY_TEST_KEY_ID'];
+const razorpayKeySecret = process.env['environment'] === 'production'
+  ? process.env['RAZORPAY_KEY_SECRET']
+  : process.env['RAZORPAY_TEST_KEY_SECRET'];
+const razorpay = razorpayKeyId && razorpayKeySecret
+  ? new Razorpay({ key_id: razorpayKeyId, key_secret: razorpayKeySecret })
+  : null;
+
 const appUrl = process.env['APP_URL'] || 'http://localhost:4200';
 
-const browserDistFolder = join(import.meta.dirname, '../browser');
+// Use import.meta.dirname directly - it will resolve correctly both in dev (src/) and production (dist/Nizam/server/)
+const __dirname = import.meta.dirname;
+const browserDistFolder = join(__dirname, '../browser');
 
 const app = express();
-const angularApp = new AngularNodeAppEngine();
+
+// Lazy initialization of AngularNodeAppEngine to handle both dev and production
+// In dev mode (Vite), the manifest doesn't exist yet, so we defer initialization
+let angularApp: AngularNodeAppEngine | null = null;
+
+function getAngularApp(): AngularNodeAppEngine {
+  if (!angularApp) {
+    try {
+      // Check if manifest exists (production build)
+      // The manifest is in the same directory as this server file
+      const manifestPath = join(__dirname, 'angular-app-engine-manifest.mjs');
+      if (existsSync(manifestPath)) {
+        angularApp = new AngularNodeAppEngine();
+      } else {
+        // In development mode, we'll use a fallback or throw a more helpful error
+        throw new Error('Angular app engine manifest not found. Run "npm run build" for production, or use "ng serve --ssr" for development SSR.');
+      }
+    } catch (error) {
+      console.warn('AngularNodeAppEngine initialization failed:', error instanceof Error ? error.message : error);
+      // Create a minimal fallback for API routes to work in dev
+      angularApp = null as any;
+    }
+  }
+  return angularApp!;
+}
 
 const sesRegion = process.env['SES_REGION'];
 const sesClient = sesRegion ? new SESClient({ region: sesRegion }) : null;
@@ -48,7 +88,7 @@ function formatCurrency(amount: number, currency = 'USD') {
 // Initialize MongoDB connection
 async function initializeMongoDB() {
   try {
-    mongoClient = new MongoClient(mongoUrl);
+    mongoClient = new MongoClient(mongoUrl, { serverSelectionTimeoutMS: 5000 });
     await mongoClient.connect();
     db = mongoClient.db();
 
@@ -65,13 +105,17 @@ async function initializeMongoDB() {
     console.log('MongoDB connected successfully');
   } catch (error) {
     console.error('Failed to connect to MongoDB:', error);
-    process.exit(1);
+    // Don't exit, just continue without DB
   }
 }
 
+
 function ensureMongoDBInitialized() {
   if (!mongoInitPromise) {
-    mongoInitPromise = initializeMongoDB();
+    mongoInitPromise = initializeMongoDB().catch((error) => {
+      console.error('MongoDB connection failed, continuing without database:', error.message);
+      // Don't exit, just continue without DB
+    });
   }
 
   return mongoInitPromise;
@@ -319,67 +363,68 @@ app.post('/api/order-confirmation', async (req, res) => {
 });
 
 // Create a Stripe Checkout session and persist the order as pending
-app.post('/api/create-checkout-session', async (req, res) => {
-  if (!stripe) {
-    return res.status(500).json({ success: false, message: 'Stripe is not configured.' });
-  }
-
-  const { name, email, address, items, total, currency } = req.body;
-  if (!name || !email || !Array.isArray(items) || typeof total !== 'number') {
-    return res.status(400).json({ success: false, message: 'Name, email, items, and total are required.' });
-  }
-
-  const orderReference = `ORDER-${Date.now()}`;
-
-  try {
-    const ordersCollection = await getOrdersCollection();
-
-    // persist order as pending
-    const order = {
-      orderReference,
-      name,
-      email,
-      address,
-      items,
-      total,
-      currency: currency || 'USD',
-      paymentMethod: 'CARD',
-      status: 'pending',
-      createdAt: new Date()
-    };
-
-    await ordersCollection.insertOne(order);
-
-    // build line items for Stripe
-    const targetCurrency = (currency || 'USD').toUpperCase();
-    const rate = serverRates[targetCurrency] ?? 1;
-    const minor = 100; // cents/paise
-
-    const line_items = items.map((it: any) => ({
-      price_data: {
-        currency: targetCurrency.toLowerCase(),
-        product_data: { name: it.product.name },
-        unit_amount: Math.round(it.product.price * rate * minor),
-      },
-      quantity: it.quantity,
-    }));
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      mode: 'payment',
-      line_items,
-      success_url: `${appUrl}/checkout-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/checkout?canceled=true`,
-      metadata: { orderReference },
-      customer_email: email,
-    });
-
-    return res.status(200).json({ success: true, url: session.url });
-  } catch (err) {
-    console.error('create-checkout-session error', err);
-    return res.status(500).json({ success: false, message: 'Unable to create checkout session.' });
-  }
-});
+// DISABLED: Stripe not configured
+// app.post('/api/create-checkout-session', async (req, res) => {
+//   if (!stripe) {
+//     return res.status(500).json({ success: false, message: 'Stripe is not configured.' });
+//   }
+//
+//   const { name, email, address, items, total, currency } = req.body;
+//   if (!name || !email || !Array.isArray(items) || typeof total !== 'number') {
+//     return res.status(400).json({ success: false, message: 'Name, email, items, and total are required.' });
+//   }
+//
+//   const orderReference = `ORDER-${Date.now()}`;
+//
+//   try {
+//     const ordersCollection = await getOrdersCollection();
+//
+//     // persist order as pending
+//     const order = {
+//       orderReference,
+//       name,
+//       email,
+//       address,
+//       items,
+//       total,
+//       currency: currency || 'USD',
+//       paymentMethod: 'CARD',
+//       status: 'pending',
+//       createdAt: new Date()
+//     };
+//
+//     await ordersCollection.insertOne(order);
+//
+//     // build line items for Stripe
+//     const targetCurrency = (currency || 'USD').toUpperCase();
+//     const rate = serverRates[targetCurrency] ?? 1;
+//     const minor = 100; // cents/paise
+//
+//     const line_items = items.map((it: any) => ({
+//       price_data: {
+//         currency: targetCurrency.toLowerCase(),
+//         product_data: { name: it.product.name },
+//         unit_amount: Math.round(it.product.price * rate * minor),
+//       },
+//       quantity: it.quantity,
+//     }));
+//
+//     const session = await stripe.checkout.sessions.create({
+//       payment_method_types: ['card'],
+//       mode: 'payment',
+//       line_items,
+//       success_url: `${appUrl}/checkout-success?session_id={CHECKOUT_SESSION_ID}`,
+//       cancel_url: `${appUrl}/checkout?canceled=true`,
+//       metadata: { orderReference },
+//       customer_email: email,
+//     });
+//
+//     return res.status(200).json({ success: true, url: session.url });
+//   } catch (err) {
+//     console.error('create-checkout-session error', err);
+//     return res.status(500).json({ success: false, message: 'Unable to create checkout session.' });
+//   }
+// });
 
 app.post('/api/create-cod-order', async (req, res) => {
   const { name, email, address, items, total, currency } = req.body;
@@ -423,98 +468,100 @@ app.post('/api/create-cod-order', async (req, res) => {
 });
 
 // Confirm payment after redirect by retrieving session and updating order
-app.post('/api/confirm-payment', async (req, res) => {
-  if (!stripe) {
-    return res.status(500).json({ success: false, message: 'Stripe is not configured.' });
-  }
-
-  const { sessionId } = req.body;
-  if (!sessionId) {
-    return res.status(400).json({ success: false, message: 'sessionId is required.' });
-  }
-
-  try {
-    const ordersCollection = await getOrdersCollection();
-
-    const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ['payment_intent'] });
-    const paid = String((session as any).payment_status) === 'paid';
-    const orderReference = (session as any).metadata?.['orderReference'] || '';
-
-    const order = await ordersCollection.findOne({ orderReference });
-    if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
-
-    if (paid) {
-      await ordersCollection.updateOne(
-        { orderReference },
-        {
-          $set: {
-            status: 'paid',
-            paymentIntent: session.payment_intent,
-          },
-        }
-      );
-
-      // send confirmation email
-      try {
-        const mail = buildOrderConfirmationMessage({ name: (order as any).name, email: (order as any).email, items: (order as any).items, total: (order as any).total, orderReference });
-        await sendEmail({ to: (order as any).email, subject: mail.subject, text: mail.text, html: mail.html });
-      } catch (e) {
-        console.error('Failed to send post-payment confirmation email', e);
-      }
-
-      return res.status(200).json({ success: true, orderReference });
-    }
-
-    return res.status(400).json({ success: false, message: 'Payment not completed.' });
-  } catch (err) {
-    console.error('confirm-payment error', err);
-    return res.status(500).json({ success: false, message: 'Unable to confirm payment.' });
-  }
-});
+// DISABLED: Stripe not configured
+// app.post('/api/confirm-payment', async (req, res) => {
+//   if (!stripe) {
+//     return res.status(500).json({ success: false, message: 'Stripe is not configured.' });
+//   }
+//
+//   const { sessionId } = req.body;
+//   if (!sessionId) {
+//     return res.status(400).json({ success: false, message: 'sessionId is required.' });
+//   }
+//
+//   try {
+//     const ordersCollection = await getOrdersCollection();
+//
+//     const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ['payment_intent'] });
+//     const paid = String((session as any).payment_status) === 'paid';
+//     const orderReference = (session as any).metadata?.['orderReference'] || '';
+//
+//     const order = await ordersCollection.findOne({ orderReference });
+//     if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
+//
+//     if (paid) {
+//       await ordersCollection.updateOne(
+//         { orderReference },
+//         {
+//           $set: {
+//             status: 'paid',
+//             paymentIntent: session.payment_intent,
+//           },
+//         }
+//       );
+//
+//       // send confirmation email
+//       try {
+//         const mail = buildOrderConfirmationMessage({ name: (order as any).name, email: (order as any).email, items: (order as any).items, total: (order as any).total, orderReference });
+//         await sendEmail({ to: (order as any).email, subject: mail.subject, text: mail.text, html: mail.html });
+//       } catch (e) {
+//         console.error('Failed to send post-payment confirmation email', e);
+//       }
+//
+//       return res.status(200).json({ success: true, orderReference });
+//     }
+//
+//     return res.status(400).json({ success: false, message: 'Payment not completed.' });
+//   } catch (err) {
+//     console.error('confirm-payment error', err);
+//     return res.status(500).json({ success: false, message: 'Unable to confirm payment.' });
+//   }
+// });
 
 // Stripe webhook endpoint (optional signature verification)
-app.post('/webhook/stripe', async (req, res) => {
-  if (!stripe) {
-    return res.status(500).send('Stripe not configured');
-  }
-
-  const event = req.body;
-
-  try {
-    const ordersCollection = await getOrdersCollection();
-
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
-      const orderReference = session.metadata?.orderReference || '';
-
-      const order = await ordersCollection.findOne({ orderReference });
-      if (order) {
-        await ordersCollection.updateOne(
-          { orderReference },
-          {
-            $set: {
-              status: 'paid',
-              paymentIntent: session.payment_intent || session.payment_intent_id || null,
-            },
-          }
-        );
-
-        // send confirmation email (best-effort)
-        try {
-          const mail = buildOrderConfirmationMessage({ name: (order as any).name, email: (order as any).email, items: (order as any).items, total: (order as any).total, orderReference });
-          await sendEmail({ to: (order as any).email, subject: mail.subject, text: mail.text, html: mail.html });
-        } catch (e) {
-          console.error('Failed to send webhook confirmation email', e);
-        }
-      }
-    }
-
-    return res.json({ received: true });
-  } catch (e) {
-    console.error('webhook processing error', e);
-    return res.status(500).send('Webhook processing error');
-  }
-});
+// DISABLED: Stripe not configured
+// app.post('/webhook/stripe', async (req, res) => {
+//   if (!stripe) {
+//     return res.status(500).send('Stripe not configured');
+//   }
+//
+//   const event = req.body;
+//
+//   try {
+//     const ordersCollection = await getOrdersCollection();
+//
+//     if (event.type === 'checkout.session.completed') {
+//       const session = event.data.object;
+//       const orderReference = session.metadata?.orderReference || '';
+//
+//       const order = await ordersCollection.findOne({ orderReference });
+//       if (order) {
+//         await ordersCollection.updateOne(
+//           { orderReference },
+//           {
+//             $set: {
+//               status: 'paid',
+//               paymentIntent: session.payment_intent || session.payment_intent_id || null,
+//             },
+//           }
+//         );
+//
+//         // send confirmation email (best-effort)
+//         try {
+//           const mail = buildOrderConfirmationMessage({ name: (order as any).name, email: (order as any).email, items: (order as any).items, total: (order as any).total, orderReference });
+//           await sendEmail({ to: (order as any).email, subject: mail.subject, text: mail.text, html: mail.html });
+//         } catch (e) {
+//           console.error('Failed to send webhook confirmation email', e);
+//         }
+//       }
+//     }
+//
+//     return res.json({ received: true });
+//   } catch (e) {
+//     console.error('webhook processing error', e);
+//     return res.status(500).send('Webhook processing error');
+//   }
+// });
 
 /**
  * Example Express Rest API endpoints can be defined here.
@@ -527,6 +574,16 @@ app.post('/webhook/stripe', async (req, res) => {
  * });
  * ```
  */
+
+// Health check endpoint for Render/load balancers
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    mongodb: db ? 'connected' : 'disconnected'
+  });
+});
 
 /**
  * Serve static files from /browser
@@ -542,13 +599,25 @@ app.use(
 /**
  * Handle all other requests by rendering the Angular application.
  */
-app.use((req, res, next) => {
-  angularApp
-    .handle(req)
-    .then((response) =>
-      response ? writeResponseToNodeResponse(response, res) : next(),
-    )
-    .catch(next);
+app.use(async (req, res, next) => {
+  try {
+    const engine = getAngularApp();
+    if (!engine) {
+      // In development without SSR, serve index.csr.html for client-side routing
+      const fallbackHtml = join(browserDistFolder, 'index.csr.html');
+      return res.sendFile(fallbackHtml, (err) => {
+        if (err) {
+          console.error('Failed to serve fallback HTML:', err);
+          next(err);
+        }
+      });
+    }
+    const response = await engine.handle(req);
+    response ? writeResponseToNodeResponse(response, res) : next();
+  } catch (err) {
+    console.error('SSR Error:', err);
+    next(err);
+  }
 });
 
 /**
@@ -560,12 +629,13 @@ if (isMainModule(import.meta.url) || process.env['pm_id']) {
 
   // Initialize MongoDB before starting the server
   ensureMongoDBInitialized().then(() => {
-    app.listen(port, (error) => {
-      if (error) {
-        throw error;
-      }
-
+    const server = app.listen(port, () => {
       console.log(`Node Express server listening on http://localhost:${port}`);
+    });
+
+    server.on('error', (error) => {
+      console.error('Server experienced an execution error:', error);
+      throw error;
     });
   }).catch((error) => {
     console.error('Failed to start server:', error);
@@ -577,3 +647,6 @@ if (isMainModule(import.meta.url) || process.env['pm_id']) {
  * Request handler used by the Angular CLI (for dev-server and during build) or Firebase Cloud Functions.
  */
 export const reqHandler = createNodeRequestHandler(app);
+
+// Export app as default for Angular SSR
+export default app;

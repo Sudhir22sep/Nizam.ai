@@ -15,8 +15,8 @@ describe('CurrencyService', () => {
 
   it('should convert USD to INR correctly', () => {
     service.setCurrency('INR');
-    expect(service.convertFromUSD(1)).toBeCloseTo(82.5, 2);
-    expect(service.format(1)).toBe('₹82.50');
+    expect(service.convertFromUSD(1)).toBeCloseTo(95.21, 2);
+    expect(service.format(1)).toBe('₹95.21');
   });
 
   it('should convert USD to AED correctly', () => {

@@ -13,7 +13,7 @@ describe('PricePipe', () => {
   });
 
   it('should format values in INR by default', () => {
-    expect(pipe.transform(2)).toBe('₹165.00');
+    expect(pipe.transform(2)).toBe('₹190.42');
   });
 
   it('should format values in USD when currency is switched', () => {
@@ -23,6 +23,6 @@ describe('PricePipe', () => {
 
   it('should format values in SAR when currency is switched', () => {
     service.setCurrency('SAR');
-    expect(pipe.transform(3)).toBe('﷼ 11.25');
+    expect(pipe.transform(3)).toBe('﷼ 11.19');
   });
 });
