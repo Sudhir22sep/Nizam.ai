@@ -58,7 +58,7 @@
             <legend>Payment method</legend>
             <label>
               <input type="radio" name="paymentMethod" value="razorpay" [(ngModel)]="paymentMethod" />
-              Razorpay
+              Online Payment (Card/UPI)
             </label>
             <label>
               <input type="radio" name="paymentMethod" value="cod" [(ngModel)]="paymentMethod" />
@@ -67,7 +67,7 @@
           </fieldset>
 
           <div *ngIf="paymentMethod === 'razorpay'" class="payment-note">
-            <p>You will enter your card details in Razorpay's secure popup.</p>
+            <p>You will enter your card/UPI details in a secure payment popup.</p>
           </div>
 
           <button type="submit" class="btn-primary">

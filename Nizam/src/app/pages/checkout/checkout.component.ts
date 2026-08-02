@@ -42,13 +42,17 @@ export class CheckoutComponent {
       return;
     }
 
+    // Convert the USD cart total to the selected currency for payment
+    const selectedCurrency = this.currency.getCurrency();
+    const totalInSelectedCurrency = this.currency.convertFromUSD(this.totalAmount);
+
     const orderPayload = {
       name: this.name,
       email: this.email,
       address: this.address,
       items: this.items,
-      total: this.totalAmount,
-      currency: this.currency.getCurrency(),
+      total: totalInSelectedCurrency,
+      currency: selectedCurrency,
       paymentMethod: this.paymentMethod,
     };
 
