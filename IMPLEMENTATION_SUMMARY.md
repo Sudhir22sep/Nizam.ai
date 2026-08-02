@@ -18,7 +18,12 @@ All user data now persists to MongoDB:
 | `/api/order-confirmation` | POST | Manual orders | `orders` collection |
 | `/api/create-checkout-session` | POST | Stripe payment initiation | `orders` collection |
 | `/api/create-cod-order` | POST | Cash on Delivery orders | `orders` collection |
+| `/api/create-razorpay-order` | POST | Razorpay payment initiation | `orders` collection |
+| `/api/confirm-razorpay-payment` | POST | Razorpay payment confirmation | Updates `orders` collection |
 | `/api/confirm-payment` | POST | Payment confirmation | Updates `orders` collection |
+| `/api/orders` | GET | List orders with filters | Reads `orders` collection |
+| `/api/orders/:orderReference` | GET | Get single order | Reads `orders` collection |
+| `/api/orders/:orderReference/status` | PATCH | Update order status | Updates `orders` collection |
 //| `/webhook/stripe` | POST | Stripe webhooks | Updates `orders` collection |
 
 ### 3. **MongoDB Collections Created**

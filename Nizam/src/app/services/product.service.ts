@@ -30,27 +30,30 @@ export class ProductService {
       let data: Product[];
 
       if (isPlatformServer(this.platformId)) {
-        // SSR: Read file directly from filesystem using dynamic imports
-        // to avoid bundling Node.js built-ins for the browser
-        const { readFileSync } = await import('fs');
-        const { join } = await import('path');
-        const { fileURLToPath } = await import('url');
+        // SSR: Read file directly from filesystem using require()
+        // to avoid TypeScript static analysis issues in browser builds/tests
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const fs = require('fs') as { readFileSync: (path: string, encoding: string) => string };
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const path = require('path') as { join: (...paths: string[]) => string };
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const url = require('url') as { fileURLToPath: (url: string) => string };
         
-        const __filename = fileURLToPath(import.meta.url);
-        const __dirname = join(__filename, '..');
+        const __filename = url.fileURLToPath(import.meta.url);
+        const __dirname = path.join(__filename, '..');
         const possiblePaths = [
           // Production build path
-          join(__dirname, '../../browser/assets/products.json'),
+          path.join(__dirname, '../../browser/assets/products.json'),
           // Alternative production path
-          join(__dirname, '../../../browser/assets/products.json'),
+          path.join(__dirname, '../../../browser/assets/products.json'),
           // Dev path
-          join(__dirname, '../../../public/assets/products.json'),
+          path.join(__dirname, '../../../public/assets/products.json'),
         ];
 
         let fileContent: string | null = null;
-        for (const path of possiblePaths) {
+        for (const p of possiblePaths) {
           try {
-            fileContent = readFileSync(path, 'utf-8');
+            fileContent = fs.readFileSync(p, 'utf-8');
             break;
           } catch {
             // Try next path

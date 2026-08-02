@@ -1,6 +1,10 @@
 {
   "dependencies": {
     "@angular/ssr": "^22.0.6",
+    "dotenv": "^17.4.2",
     "razorpay": "^2.9.6"
+  },
+  "scripts": {
+    "build": "ng build"
   }
 }
