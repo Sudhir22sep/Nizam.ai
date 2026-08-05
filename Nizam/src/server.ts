@@ -705,7 +705,7 @@ app.post('/api/create-razorpay-order', async (req, res) => {
 });
 
 /**
- * Confirm Razorpay payment after successful payment
+ * Confirm Razorpay payment after successful payment (client-side callback)
  */
 app.post('/api/confirm-razorpay-payment', async (req, res) => {
 // Guard against invalid response object
@@ -766,6 +766,117 @@ app.post('/api/confirm-razorpay-payment', async (req, res) => {
   } catch (err) {
     console.error('confirm-razorpay-payment error', err);
     return res.status(500).json({ success: false, message: 'Unable to confirm payment.' });
+  }
+});
+/**
+ * Razorpay Webhook - Server-side payment confirmation (RELIABLE for UPI/redirect payments)
+ * Configure this URL in Razorpay Dashboard: https://api.ammawears.com/api/razorpay-webhook
+ */
+app.post('/api/razorpay-webhook', async (req, res) => {
+  // Guard against invalid response object
+  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
+    console.error('Invalid response object in razorpay-webhook');
+    return;
+  }
+
+  if (!razorpayKeySecret) {
+    console.error('Razorpay webhook: Razorpay not configured');
+    return res.status(500).json({ success: false, message: 'Razorpay is not configured.' });
+  }
+
+  // Verify webhook signature
+  const webhookSignature = req.headers['x-razorpay-signature'] as string;
+  if (!webhookSignature) {
+    console.error('Razorpay webhook: Missing signature header');
+    return res.status(400).json({ success: false, message: 'Missing webhook signature.' });
+  }
+
+  const crypto = require('crypto');
+  const expectedSignature = crypto
+    .createHmac('sha256', razorpayKeySecret)
+    .update(JSON.stringify(req.body))
+    .digest('hex');
+
+  if (expectedSignature !== webhookSignature) {
+    console.error('Razorpay webhook: Invalid signature');
+    return res.status(400).json({ success: false, message: 'Invalid webhook signature.' });
+  }
+
+  try {
+    const event = req.body;
+    
+    // Handle payment.captured event (payment successful)
+    if (event.event === 'payment.captured') {
+      const payment = event.payload.payment.entity;
+      const orderId = payment.order_id;
+      const paymentId = payment.id;
+      const amount = payment.amount / 100; // Convert from paise
+      const currency = payment.currency;
+      
+      // Get order reference from notes
+      const orderReference = payment.notes?.orderReference;
+      const email = payment.notes?.email;
+      const name = payment.notes?.name;
+
+      if (!orderReference) {
+        console.error('Razorpay webhook: No orderReference in payment notes');
+        return res.status(400).json({ success: false, message: 'Missing order reference.' });
+      }
+
+      const ordersCollection = await getOrdersCollection();
+      
+      // Check if already processed (idempotency)
+      const existingOrder = await ordersCollection.findOne<OrderDocument>({ orderReference });
+      if (existingOrder && existingOrder.status === 'paid') {
+        console.log(`Razorpay webhook: Order ${orderReference} already processed`);
+        return res.status(200).json({ success: true, message: 'Already processed' });
+      }
+
+      // Update order status to paid
+      await ordersCollection.updateOne(
+        { orderReference },
+        { 
+          $set: { 
+            status: 'paid', 
+            razorpayPaymentId: paymentId, 
+            razorpayOrderId: orderId,
+            amount,
+            currency,
+            updatedAt: new Date() 
+          } 
+        },
+        { upsert: true }
+      );
+
+      // Send confirmation email
+      if (email && name) {
+        const order = await ordersCollection.findOne<OrderDocument>({ orderReference });
+        if (order) {
+          const mail = buildOrderConfirmationMessage({ 
+            name: order.name, 
+            email: order.email, 
+            items: order.items, 
+            total: order.total, 
+            orderReference,
+            paymentMethod: 'Razorpay'
+          });
+          await trySendEmail({
+            to: order.email,
+            subject: mail.subject,
+            text: mail.text,
+            html: mail.html,
+          });
+        }
+      }
+
+      console.log(`Razorpay webhook: Order ${orderReference} confirmed via webhook`);
+    }
+
+    // Always return 200 to acknowledge receipt
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('Razorpay webhook error', err);
+    return res.status(500).json({ success: false, message: 'Webhook processing failed.' });
   }
 });
 
