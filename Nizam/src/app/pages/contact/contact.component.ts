@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-contact',
@@ -26,7 +27,7 @@ export class ContactComponent {
     this.status = '';
 
     try {
-      const response = await fetch('/api/contact', {
+      const response = await fetch(`${environment.apiUrl}/api/contact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: this.name, email: this.email, message: this.message }),

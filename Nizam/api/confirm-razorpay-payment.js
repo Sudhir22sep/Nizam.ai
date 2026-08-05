@@ -13,7 +13,7 @@ module.exports = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Payment verification parameters are required.' });
   }
 
-  const keySecret = process.env.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_TEST_KEY_SECRET;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET_LIVE || process.env.RAZORPAY_KEY_SECRET_TEST;
   if (!keySecret) {
     return res.status(500).json({ success: false, message: 'Razorpay is not configured.' });
   }

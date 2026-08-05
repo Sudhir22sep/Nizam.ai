@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-checkout-success',
@@ -27,7 +28,7 @@ export class CheckoutSuccessComponent implements OnInit {
 
   async confirmPayment(sessionId: string) {
     try {
-      const res = await fetch('/api/confirm-payment', {
+      const res = await fetch(`${environment.apiUrl}/api/confirm-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId }),

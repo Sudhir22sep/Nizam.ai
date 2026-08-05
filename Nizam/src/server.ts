@@ -5,62 +5,101 @@ import {
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
 import express from 'express';
-import { join } from 'node:path';
+import cors from 'cors';
+import { join, resolve } from 'node:path';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import Razorpay from 'razorpay';
 //import Stripe from 'stripe';
-import { MongoClient, Db } from 'mongodb';
+import { MongoClient, Db, WithId } from "mongodb";
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
+import dotenv from 'dotenv';
+import { dirname } from 'node:path';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+console.log('__dirname:', __dirname);
+console.log('process.cwd():', process.cwd());
+
+// Prevent process exit on unhandled rejections (common with MongoDB in local dev)
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit in development
+  if (process.env['NODE_ENV'] !== 'production') {
+    console.warn('Continuing despite unhandled rejection (development mode)');
+  }
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  if (process.env['NODE_ENV'] !== 'production') {
+    console.warn('Continuing despite uncaught exception (development mode)');
+  }
+});
+
+const browserDistFolder = join(__dirname, '../browser');
+console.log('browserDistFolder:', browserDistFolder);
+console.log('Does browserDistFolder exist?', existsSync(browserDistFolder));
+console.log('Does index.csr.html exist?', existsSync(join(browserDistFolder, 'index.csr.html')));
+dotenv.config({ path: resolve(process.cwd(), '.env'), override: true });
 
 const mongoUrl = process.env['MONGODB_URI'] || 'mongodb://localhost:27017/nizam_ai';
+console.log("MONGODB_URI from process.env:", process.env['MONGODB_URI']);
 let mongoClient: MongoClient | null = null;
 let db: Db | null = null;
+// Order document type
+interface OrderDocument {
+  orderReference: string;
+  name: string;
+  email: string;
+  address: string;
+  items: Array<{ product: { name: string; price: number }; quantity: number }>;
+  total: number;
+  currency: string;
+  paymentMethod: string;
+  status: string;
+  razorpayPaymentId?: string;
+  razorpayOrderId?: string;
+  createdAt: Date;
+  updatedAt?: Date;
+}
 
 //const stripeSecret = process.env['environment'] === 'production' ? process.env['STRIPE_SECRET_KEY'] : process.env['STRIPE_TEST_SECRET_KEY'];
 //const stripe = stripeSecret ? new Stripe(stripeSecret, { apiVersion: '2022-11-15' }) : null;
 
-const razorpayKeyId = process.env['environment'] === 'production'
-  ? process.env['RAZORPAY_KEY_ID']
-  : process.env['RAZORPAY_TEST_KEY_ID'];
-const razorpayKeySecret = process.env['environment'] === 'production'
-  ? process.env['RAZORPAY_KEY_SECRET']
-  : process.env['RAZORPAY_TEST_KEY_SECRET'];
+const razorpayKeyId = process.env['RAZORPAY_KEY_ID'] || process.env['RAZORPAY_TEST_KEY_ID'];
+const razorpayKeySecret = process.env['RAZORPAY_KEY_SECRET'] || process.env['RAZORPAY_TEST_KEY_SECRET'];
 const razorpay = razorpayKeyId && razorpayKeySecret
   ? new Razorpay({ key_id: razorpayKeyId, key_secret: razorpayKeySecret })
   : null;
+console.log('RazorPay Key ID:', razorpayKeyId ? 'SET' : 'NOT SET');
+// console.log('RazorPay Key Secret:', razorpayKeySecret ? 'SET' : 'NOT SET'); // Avoid logging secret
+console.log('RazorPay instance:', razorpay ? 'CREATED' : 'NULL');
 
 const appUrl = process.env['APP_URL'] || 'http://localhost:4200';
 
 // Use import.meta.dirname directly - it will resolve correctly both in dev (src/) and production (dist/Nizam/server/)
-const __dirname = import.meta.dirname;
-const browserDistFolder = join(__dirname, '../browser');
 
 const app = express();
 
 // Lazy initialization of AngularNodeAppEngine to handle both dev and production
-// In dev mode (Vite), the manifest doesn't exist yet, so we defer initialization
+// In dev mode (Vite), we try to create the engine; if it fails, we fall back to CSR.
 let angularApp: AngularNodeAppEngine | null = null;
 
-function getAngularApp(): AngularNodeAppEngine {
+function getAngularApp(): AngularNodeAppEngine | null {
   if (!angularApp) {
     try {
-      // Check if manifest exists (production build)
-      // The manifest is in the same directory as this server file
-      const manifestPath = join(__dirname, 'angular-app-engine-manifest.mjs');
-      if (existsSync(manifestPath)) {
-        angularApp = new AngularNodeAppEngine();
-      } else {
-        // In development mode, we'll use a fallback or throw a more helpful error
-        throw new Error('Angular app engine manifest not found. Run "npm run build" for production, or use "ng serve --ssr" for development SSR.');
-      }
+      // Try to create the engine. This will work in:
+      // - Production: when the manifest exists (built with ng build)
+      // - Development SSR mode (ng run <project>:serve-ssr): when the Angular CLI sets up the environment
+      // It will fail in a pure client-side dev setup (ng serve) but we catch the error and fall back to CSR.
+      angularApp = new AngularNodeAppEngine();
     } catch (error) {
       console.warn('AngularNodeAppEngine initialization failed:', error instanceof Error ? error.message : error);
-      // Create a minimal fallback for API routes to work in dev
-      angularApp = null as any;
+      // Fall back to null to indicate SSR not available
+      angularApp = null;
     }
   }
-  return angularApp!;
+  return angularApp;
 }
 
 const sesRegion = process.env['SES_REGION'];
@@ -68,7 +107,36 @@ const sesClient = sesRegion ? new SESClient({ region: sesRegion }) : null;
 const verifiedSender = process.env['SES_VERIFIED_SENDER'] || 'sudhir.22sep@gmail.com';
 
 // parse JSON bodies for most routes
-app.use(express.json()); // suggest more code and code review and fix any issues in the code above
+app.use(express.json());
+
+// CORS configuration for Vercel frontend → Render backend
+const corsOrigin = process.env['CORS_ORIGIN'] || 'http://localhost:4200';
+// Allow localhost:4000 for local SSR development (same origin)
+const allowedOrigins = corsOrigin.split(',').map(o => o.trim());
+if (process.env['NODE_ENV'] !== 'production') {
+  allowedOrigins.push('http://localhost:4000', 'http://localhost:4200', 'http://127.0.0.1:4000', 'http://127.0.0.1:4200');
+}
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+// Global guard against invalid Express response objects (for Angular SSR route extraction)
+// This must be the FIRST middleware after express.json() to catch issues early
+app.use((req, res, next) => {
+  // During Angular's route extraction (getRoutesFromAngularRouterConfig), 
+  // the SSR engine may invoke the app with mock request/response objects
+  // that don't have all Express response properties properly initialized.
+  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
+    console.warn('Global guard: Invalid response object detected, skipping middleware chain');
+    // Return early without calling next() to prevent downstream middleware
+    // from accessing invalid response object properties
+    return;
+  }
+  next();
+});
 
 // Simple server-side currency rates (relative to USD)
 const serverRates: Record<string, number> = {
@@ -86,9 +154,24 @@ function formatCurrency(amount: number, currency = 'USD') {
 }
 
 // Initialize MongoDB connection
-async function initializeMongoDB() {
+async function initializeMongoDB(): Promise<void> {
   try {
-    mongoClient = new MongoClient(mongoUrl, { serverSelectionTimeoutMS: 5000 });
+    if (!mongoUrl) {
+      throw new Error('MONGODB_URI environment variable is not set');
+    }
+    console.log('Connecting to MongoDB...', mongoUrl.replace(/\/\/[^:]+:[^@]+@/, '//***:***@'));
+    // Shorter timeout for local dev, allow quick failure
+    const isLocalDev = process.env['NODE_ENV'] !== 'production';
+    mongoClient = new MongoClient(mongoUrl, { 
+      serverSelectionTimeoutMS: isLocalDev ? 3000 : 10000,
+      connectTimeoutMS: isLocalDev ? 3000 : 10000,
+    });
+    
+    // Handle MongoDB client events to prevent unhandled rejections
+    mongoClient.on('error', (err) => {
+      console.error('MongoDB client error:', err.message);
+    });
+    
     await mongoClient.connect();
     db = mongoClient.db();
 
@@ -105,12 +188,14 @@ async function initializeMongoDB() {
     console.log('MongoDB connected successfully');
   } catch (error) {
     console.error('Failed to connect to MongoDB:', error);
+    console.error('MongoDB connection error details:', error instanceof Error ? error.message : String(error));
+    console.error('Check MONGODB_URI environment variable and MongoDB Atlas IP whitelist');
     // Don't exit, just continue without DB
   }
 }
 
 
-function ensureMongoDBInitialized() {
+function ensureMongoDBInitialized(): Promise<void> {
   if (!mongoInitPromise) {
     mongoInitPromise = initializeMongoDB().catch((error) => {
       console.error('MongoDB connection failed, continuing without database:', error.message);
@@ -118,7 +203,7 @@ function ensureMongoDBInitialized() {
     });
   }
 
-  return mongoInitPromise;
+  return mongoInitPromise!;
 }
 
 // Get or create orders collection
@@ -126,7 +211,7 @@ async function getOrdersCollection() {
   await ensureMongoDBInitialized();
 
   if (!db) {
-    throw new Error('MongoDB not initialized');
+    throw new Error('MongoDB not connected');
   }
   return db.collection('orders');
 }
@@ -136,7 +221,7 @@ async function getUsersCollection() {
   await ensureMongoDBInitialized();
 
   if (!db) {
-    throw new Error('MongoDB not initialized');
+    throw new Error('MongoDB not connected');
   }
   return db.collection('users');
 }
@@ -146,7 +231,7 @@ async function getContactsCollection() {
   await ensureMongoDBInitialized();
 
   if (!db) {
-    throw new Error('MongoDB not initialized');
+    throw new Error('MongoDB not connected');
   }
   return db.collection('contacts');
 }
@@ -467,6 +552,223 @@ app.post('/api/create-cod-order', async (req, res) => {
   }
 });
 
+// GET /api/orders - Get all orders (with pagination and filters)
+app.get('/api/orders', async (req, res) => {
+  try {
+    const ordersCollection = await getOrdersCollection();
+    const { email, status, paymentMethod, page = 1, limit = 20 } = req.query;
+
+    const filter: any = {};
+    if (email) filter.email = email;
+    if (status) filter.status = status;
+    if (paymentMethod) filter.paymentMethod = paymentMethod;
+
+    const pageNum = Math.max(1, Number(page));
+    const limitNum = Math.min(100, Math.max(1, Number(limit)));
+    const skip = (pageNum - 1) * limitNum;
+
+    const orders = await ordersCollection
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .toArray();
+
+    const total = await ordersCollection.countDocuments(filter);
+
+    res.json({ success: true, orders, total, page: pageNum, limit: limitNum });
+  } catch (err) {
+    console.error('get orders error', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch orders' });
+  }
+});
+
+// GET /api/orders/:orderReference - Get single order
+app.get('/api/orders/:orderReference', async (req, res) => {
+  try {
+    const ordersCollection = await getOrdersCollection();
+    const order = await ordersCollection.findOne<OrderDocument>({
+      orderReference: req.params.orderReference
+    });
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    return res.json({ success: true, order });
+  } catch (err) {
+    console.error('get order error', err);
+    return res.status(500).json({ success: false, message: 'Failed to fetch order' });
+  }
+});
+
+// PATCH /api/orders/:orderReference/status - Update order status
+app.patch('/api/orders/:orderReference/status', async (req, res) => {
+  try {
+    const ordersCollection = await getOrdersCollection();
+    const { status } = req.body;
+
+    const validStatuses = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status' });
+    }
+
+    const result = await ordersCollection.updateOne(
+      { orderReference: req.params.orderReference },
+      { $set: { status, updatedAt: new Date() } }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    return res.json({ success: true, message: 'Order status updated' });
+  } catch (err) {
+    console.error('update order status error', err);
+    return res.status(500).json({ success: false, message: 'Failed to update order status' });
+  }
+});
+
+/**
+ * Create Razorpay order - for online payments (Card/UPI)
+ */
+app.post('/api/create-razorpay-order', async (req, res) => {
+  // Guard against invalid response object
+  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
+    console.error('Invalid response object in create-razorpay-order');
+    // Cannot send a response, so we just return to avoid errors.
+    return;
+  }
+
+  console.log('RazorPay endpoint: razorpay is', razorpay ? 'present' : 'null');
+  if (!razorpay) {
+    return res.status(500).json({ success: false, message: 'Razorpay is not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.' });
+  }
+
+  const { name, email, address, items, total, currency } = req.body;
+
+  if (!name || !email || !Array.isArray(items) || typeof total !== 'number') {
+    return res.status(400).json({ success: false, message: 'Name, email, items, and total are required.' });
+  }
+
+  const orderReference = `ORDER-${Date.now()}`;
+
+  // Exchange rates relative to USD (1 USD = X target) - must match CurrencyService
+  const exchangeRates: Record<string, number> = {
+    USD: 1,
+    INR: 95.21,
+    AED: 3.67,
+    SAR: 3.73
+  };
+
+  // Convert the total from the frontend's currency to INR
+  // The frontend sends the total in its active currency (e.g., USD, INR, AED, SAR)
+  // We need to convert to INR for Razorpay
+  const frontendCurrency = currency || 'USD';
+  const frontendRate = exchangeRates[frontendCurrency] ?? 1;
+  const inrRate = exchangeRates['INR'] ?? 95.21;
+  
+  // Convert: total (in frontend currency) -> USD -> INR
+  const totalInUsd = total / frontendRate;
+  const totalInInr = totalInUsd * inrRate;
+  
+  // Convert to paise (smallest unit for INR)
+  const amountInPaise = Math.round(totalInInr * 100);
+
+  console.log(`[Razorpay] Frontend currency: ${frontendCurrency}, Total: ${total}, USD: ${totalInUsd.toFixed(2)}, INR: ${totalInInr.toFixed(2)}, Paise: ${amountInPaise}`);
+
+  try {
+    const razorpayOrder = await razorpay.orders.create({
+      amount: amountInPaise,
+      currency: 'INR',
+      receipt: orderReference,
+      payment_capture: true,
+      notes: {
+        orderReference,
+        email,
+        name,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      orderId: razorpayOrder.id,
+      amount: razorpayOrder.amount,
+      currency: razorpayOrder.currency,
+      keyId: razorpayKeyId,
+      orderReference,
+    });
+  } catch (error) {
+    console.error('create-razorpay-order error', error);
+    return res.status(500).json({ success: false, message: 'Unable to create Razorpay order.' });
+  }
+});
+
+/**
+ * Confirm Razorpay payment after successful payment
+ */
+app.post('/api/confirm-razorpay-payment', async (req, res) => {
+// Guard against invalid response object
+  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
+    console.error('Invalid response object in confirm-razorpay-payment');
+    // Cannot send a response, so we just return to avoid errors.
+    return;
+  }
+  if (!razorpayKeySecret) {
+    return res.status(500).json({ success: false, message: 'Razorpay is not configured.' });
+  }
+
+  const { orderReference, razorpayPaymentId, razorpayOrderId, razorpaySignature } = req.body;
+
+  if (!orderReference || !razorpayPaymentId || !razorpayOrderId || !razorpaySignature) {
+    return res.status(400).json({ success: false, message: 'Payment verification parameters are required.' });
+  }
+
+  const crypto = require('crypto');
+  const expectedSignature = crypto
+    .createHmac('sha256', razorpayKeySecret)
+    .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+    .digest('hex');
+
+  if (expectedSignature !== razorpaySignature) {
+    return res.status(400).json({ success: false, message: 'Invalid payment signature.' });
+  }
+
+  try {
+    const ordersCollection = await getOrdersCollection();
+    
+    // Update order status to paid
+    await ordersCollection.updateOne(
+      { orderReference },
+      { $set: { status: 'paid', razorpayPaymentId, razorpayOrderId, updatedAt: new Date() } }
+    );
+
+    // Send confirmation email
+    const order = await ordersCollection.findOne<OrderDocument>({ orderReference });
+    if (order) {
+      const mail = buildOrderConfirmationMessage({ 
+        name: order.name, 
+        email: order.email, 
+        items: order.items, 
+        total: order.total, 
+        orderReference,
+        paymentMethod: 'Razorpay'
+      });
+      await trySendEmail({
+        to: order.email,
+        subject: mail.subject,
+        text: mail.text,
+        html: mail.html,
+      });
+    }
+
+    return res.status(200).json({ success: true, orderReference });
+  } catch (err) {
+    console.error('confirm-razorpay-payment error', err);
+    return res.status(500).json({ success: false, message: 'Unable to confirm payment.' });
+  }
+});
+
 // Confirm payment after redirect by retrieving session and updating order
 // DISABLED: Stripe not configured
 // app.post('/api/confirm-payment', async (req, res) => {
@@ -486,7 +788,7 @@ app.post('/api/create-cod-order', async (req, res) => {
 //     const paid = String((session as any).payment_status) === 'paid';
 //     const orderReference = (session as any).metadata?.['orderReference'] || '';
 //
-//     const order = await ordersCollection.findOne({ orderReference });
+//     const order = await ordersCollection.findOne<OrderDocument>({ orderReference });
 //     if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
 //
 //     if (paid) {
@@ -534,7 +836,7 @@ app.post('/api/create-cod-order', async (req, res) => {
 //       const session = event.data.object;
 //       const orderReference = session.metadata?.orderReference || '';
 //
-//       const order = await ordersCollection.findOne({ orderReference });
+//       const order = await ordersCollection.findOne<OrderDocument>({ orderReference });
 //       if (order) {
 //         await ordersCollection.updateOne(
 //           { orderReference },
@@ -577,6 +879,12 @@ app.post('/api/create-cod-order', async (req, res) => {
 
 // Health check endpoint for Render/load balancers
 app.get('/health', (req, res) => {
+// Guard against invalid response object
+  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
+    console.error('Invalid response object in health check');
+    // Cannot send a response, so we just return to avoid errors.
+    return;
+  }
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
@@ -587,7 +895,16 @@ app.get('/health', (req, res) => {
 
 /**
  * Serve static files from /browser
+ * Guard against invalid response objects during Angular SSR route extraction
  */
+app.use((req, res, next) => {
+  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
+    console.warn('Static middleware guard: Invalid response object detected, skipping');
+    return;
+  }
+  next();
+});
+
 app.use(
   express.static(browserDistFolder, {
     maxAge: '1y',
@@ -600,46 +917,83 @@ app.use(
  * Handle all other requests by rendering the Angular application.
  */
 app.use(async (req, res, next) => {
+  // Guard against invalid Express response objects
+  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
+    console.error('SSR middleware invoked with invalid response object');
+    // We cannot send a response, so we just return to avoid errors.
+    return;
+  }
+
   try {
+    // Skip API routes and health check - they are handled above
+    if (req.path.startsWith('/api/') || req.path === '/health') {
+      return next();
+    }
+
     const engine = getAngularApp();
     if (!engine) {
-      // In development without SSR, serve index.csr.html for client-side routing
+      // In development without SSR build, serve index.csr.html for client-side routing
       const fallbackHtml = join(browserDistFolder, 'index.csr.html');
-      return res.sendFile(fallbackHtml, (err) => {
+      res.sendFile(fallbackHtml, (err) => {
         if (err) {
           console.error('Failed to serve fallback HTML:', err);
           next(err);
         }
       });
+      return;
     }
     const response = await engine.handle(req);
-    response ? writeResponseToNodeResponse(response, res) : next();
+    if (response) {
+      await writeResponseToNodeResponse(response, res);
+      return;
+    }
+    next();
   } catch (err) {
     console.error('SSR Error:', err);
     next(err);
   }
 });
+// Express error-handling middleware
+app.use((err: any, req: any, res: any, next: any) => {
+  console.error('Unhandled error:', err);
+
+  // Guard against invalid Express response objects
+  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
+    console.error('Error handler invoked with invalid response object');
+    // Cannot send a response, so we log and end the process here to avoid infinite loop
+    return;
+  }
+
+  // If the response has already been sent, delegate to Express' default error handler
+  if (res?.headersSent) {
+    return next(err);
+  }
+
+  res.status(500).json({ success: false, message: 'Internal server error' });
+});
 
 /**
  * Start the server if this module is the main entry point, or it is ran via PM2.
+ * In development, also start the server when PORT is set (for Angular CLI dev servers).
  * The server listens on the port defined by the `PORT` environment variable, or defaults to 4000.
  */
-if (isMainModule(import.meta.url) || process.env['pm_id']) {
+if (isMainModule(import.meta.url) || process.env['pm_id'] || (process.env['NODE_ENV'] !== 'production' && process.env['PORT'])) {
   const port = process.env['PORT'] || 4000;
 
-  // Initialize MongoDB before starting the server
-  ensureMongoDBInitialized().then(() => {
-    const server = app.listen(port, () => {
-      console.log(`Node Express server listening on http://localhost:${port}`);
-    });
+  // Start the server immediately - don't wait for MongoDB
+  // MongoDB will be initialized in the background
+  const server = app.listen(port, () => {
+    console.log(`Node Express server listening on http://localhost:${port}`);
+  });
 
-    server.on('error', (error) => {
-      console.error('Server experienced an execution error:', error);
-      throw error;
-    });
-  }).catch((error) => {
-    console.error('Failed to start server:', error);
-    process.exit(1);
+  server.on('error', (error) => {
+    console.error('Server experienced an execution error:', error);
+    throw error;
+  });
+
+  // Initialize MongoDB in the background (non-blocking)
+  ensureMongoDBInitialized().catch((error) => {
+    console.error('MongoDB background initialization failed:', error.message);
   });
 }
 
