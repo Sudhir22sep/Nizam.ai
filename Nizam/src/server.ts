@@ -5,6 +5,7 @@ import {
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
 import express from 'express';
+import cors from 'cors';
 import { join, resolve } from 'node:path';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import Razorpay from 'razorpay';
@@ -19,6 +20,22 @@ const __dirname = dirname(__filename);
 console.log('__dirname:', __dirname);
 console.log('process.cwd():', process.cwd());
 
+// Prevent process exit on unhandled rejections (common with MongoDB in local dev)
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit in development
+  if (process.env['NODE_ENV'] !== 'production') {
+    console.warn('Continuing despite unhandled rejection (development mode)');
+  }
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  if (process.env['NODE_ENV'] !== 'production') {
+    console.warn('Continuing despite uncaught exception (development mode)');
+  }
+});
+
 const browserDistFolder = join(__dirname, '../browser');
 console.log('browserDistFolder:', browserDistFolder);
 console.log('Does browserDistFolder exist?', existsSync(browserDistFolder));
@@ -26,6 +43,7 @@ console.log('Does index.csr.html exist?', existsSync(join(browserDistFolder, 'in
 dotenv.config({ path: resolve(process.cwd(), '.env'), override: true });
 
 const mongoUrl = process.env['MONGODB_URI'] || 'mongodb://localhost:27017/nizam_ai';
+console.log("MONGODB_URI from process.env:", process.env['MONGODB_URI']);
 let mongoClient: MongoClient | null = null;
 let db: Db | null = null;
 // Order document type
@@ -89,7 +107,21 @@ const sesClient = sesRegion ? new SESClient({ region: sesRegion }) : null;
 const verifiedSender = process.env['SES_VERIFIED_SENDER'] || 'sudhir.22sep@gmail.com';
 
 // parse JSON bodies for most routes
-app.use(express.json()); // suggest more code and code review and fix any issues in the code above
+app.use(express.json());
+
+// CORS configuration for Vercel frontend → Render backend
+const corsOrigin = process.env['CORS_ORIGIN'] || 'http://localhost:4200';
+// Allow localhost:4000 for local SSR development (same origin)
+const allowedOrigins = corsOrigin.split(',').map(o => o.trim());
+if (process.env['NODE_ENV'] !== 'production') {
+  allowedOrigins.push('http://localhost:4000', 'http://localhost:4200', 'http://127.0.0.1:4000', 'http://127.0.0.1:4200');
+}
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 // Global guard against invalid Express response objects (for Angular SSR route extraction)
 // This must be the FIRST middleware after express.json() to catch issues early
@@ -122,13 +154,24 @@ function formatCurrency(amount: number, currency = 'USD') {
 }
 
 // Initialize MongoDB connection
-async function initializeMongoDB() {
+async function initializeMongoDB(): Promise<void> {
   try {
     if (!mongoUrl) {
       throw new Error('MONGODB_URI environment variable is not set');
     }
     console.log('Connecting to MongoDB...', mongoUrl.replace(/\/\/[^:]+:[^@]+@/, '//***:***@'));
-    mongoClient = new MongoClient(mongoUrl, { serverSelectionTimeoutMS: 10000 });
+    // Shorter timeout for local dev, allow quick failure
+    const isLocalDev = process.env['NODE_ENV'] !== 'production';
+    mongoClient = new MongoClient(mongoUrl, { 
+      serverSelectionTimeoutMS: isLocalDev ? 3000 : 10000,
+      connectTimeoutMS: isLocalDev ? 3000 : 10000,
+    });
+    
+    // Handle MongoDB client events to prevent unhandled rejections
+    mongoClient.on('error', (err) => {
+      console.error('MongoDB client error:', err.message);
+    });
+    
     await mongoClient.connect();
     db = mongoClient.db();
 
@@ -152,7 +195,7 @@ async function initializeMongoDB() {
 }
 
 
-function ensureMongoDBInitialized() {
+function ensureMongoDBInitialized(): Promise<void> {
   if (!mongoInitPromise) {
     mongoInitPromise = initializeMongoDB().catch((error) => {
       console.error('MongoDB connection failed, continuing without database:', error.message);
@@ -160,7 +203,7 @@ function ensureMongoDBInitialized() {
     });
   }
 
-  return mongoInitPromise;
+  return mongoInitPromise!;
 }
 
 // Get or create orders collection
@@ -922,7 +965,7 @@ app.use((err: any, req: any, res: any, next: any) => {
   }
 
   // If the response has already been sent, delegate to Express' default error handler
-  if (res.headersSent) {
+  if (res?.headersSent) {
     return next(err);
   }
 
@@ -931,24 +974,26 @@ app.use((err: any, req: any, res: any, next: any) => {
 
 /**
  * Start the server if this module is the main entry point, or it is ran via PM2.
+ * In development, also start the server when PORT is set (for Angular CLI dev servers).
  * The server listens on the port defined by the `PORT` environment variable, or defaults to 4000.
  */
-if (isMainModule(import.meta.url) || process.env['pm_id']) {
+if (isMainModule(import.meta.url) || process.env['pm_id'] || (process.env['NODE_ENV'] !== 'production' && process.env['PORT'])) {
   const port = process.env['PORT'] || 4000;
 
-  // Initialize MongoDB before starting the server
-  ensureMongoDBInitialized().then(() => {
-    const server = app.listen(port, () => {
-      console.log(`Node Express server listening on http://localhost:${port}`);
-    });
+  // Start the server immediately - don't wait for MongoDB
+  // MongoDB will be initialized in the background
+  const server = app.listen(port, () => {
+    console.log(`Node Express server listening on http://localhost:${port}`);
+  });
 
-    server.on('error', (error) => {
-      console.error('Server experienced an execution error:', error);
-      throw error;
-    });
-  }).catch((error) => {
-    console.error('Failed to start server:', error);
-    process.exit(1);
+  server.on('error', (error) => {
+    console.error('Server experienced an execution error:', error);
+    throw error;
+  });
+
+  // Initialize MongoDB in the background (non-blocking)
+  ensureMongoDBInitialized().catch((error) => {
+    console.error('MongoDB background initialization failed:', error.message);
   });
 }
 

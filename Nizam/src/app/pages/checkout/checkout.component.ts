@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { PricePipe } from '../../pipes/price.pipe';
 import { CurrencyService } from '../../services/currency.service';
 import { CartService } from '../../services/cart.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-checkout',
@@ -58,8 +59,8 @@ export class CheckoutComponent {
 
     try {
       const endpoint = this.paymentMethod === 'cod'
-        ? '/api/create-cod-order'
-        : '/api/create-razorpay-order';
+        ? `${environment.apiUrl || ''}/api/create-cod-order`
+        : `${environment.apiUrl || ''}/api/create-razorpay-order`;
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -138,7 +139,7 @@ export class CheckoutComponent {
 
   async confirmRazorpayPayment(response: any, orderReference: string) {
     try {
-      const res = await fetch('/api/confirm-razorpay-payment', {
+      const res = await fetch(`${environment.apiUrl || ''}/api/confirm-razorpay-payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
