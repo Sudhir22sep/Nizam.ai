@@ -4,7 +4,7 @@ services:
     runtime: node
     region: oregon  # or frankfurt, singapore, etc.
     plan: free  # or starter, standard, etc.
-    workingDirectory: .
+    workingDirectory: ./Nizam
     buildCommand: npm install && npm run build
     startCommand: node dist/Nizam/server/main.server.mjs
     envVars:
@@ -27,9 +27,7 @@ services:
       - key: RAZORPAY_TEST_KEY_SECRET
         sync: false
       - key: APP_URL
-        value: "https://ammawears.com"
-      - key: CORS_ORIGIN
-        value: "https://ammawears.com"
+        value: "https://nizam-ai.onrender.com"  # Update with your actual URL
       - key: environment
         value: "production"
     healthCheckPath: /health

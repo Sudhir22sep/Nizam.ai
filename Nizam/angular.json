@@ -33,6 +33,12 @@
             "prerender": false,
             "server": "src/server.ts" 
           },
+          "fileReplacements": [
+            {
+              "replace": "src/environments/environment.ts",
+              "with": "src/environments/environment.prod.ts"
+            }
+          ],
           "configurations": {
             "production": {
               "budgets": [
@@ -53,7 +59,7 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true,
-              "ssr": false
+              "ssr": true
             }
           },
           "defaultConfiguration": "production"
@@ -68,7 +74,10 @@
               "buildTarget": "Nizam:build:development"
             }
           },
-          "defaultConfiguration": "development"
+          "defaultConfiguration": "development",
+          "options": {
+            "proxyConfig": "proxy.conf.json"
+          }
         },
         "test": {
           "builder": "@angular/build:unit-test"
