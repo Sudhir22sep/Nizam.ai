@@ -5,12 +5,15 @@ import {
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
 import express from 'express';
+import { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { join, resolve } from 'node:path';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import Razorpay from 'razorpay';
 //import Stripe from 'stripe';
 import { MongoClient, Db, WithId } from "mongodb";
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import dotenv from 'dotenv';
@@ -77,6 +80,34 @@ console.log('RazorPay instance:', razorpay ? 'CREATED' : 'NULL');
 
 const appUrl = process.env['APP_URL'] || 'http://localhost:4200';
 
+// JWT Configuration
+const jwtSecret = process.env['JWT_SECRET'] || '10193d8ce7571d25550376f46ddae5e828daaf826d262a2f0def0ad109719addf600879a000771cf5c432cc7e3267a08e789377e682bd918c27c970333bc05d1';
+const jwtExpiresIn = '7d';
+
+// User document type
+interface UserDocument {
+  _id: any;
+  email: string;
+  passwordHash: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  addresses: Array<{
+    type: 'billing' | 'shipping';
+    line1: string;
+    line2?: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+    isDefault: boolean;
+  }>;
+  createdAt: Date;
+  lastLogin?: Date;
+  isActive: boolean;
+  role: 'user' | 'admin';
+}
+
 // Use import.meta.dirname directly - it will resolve correctly both in dev (src/) and production (dist/Nizam/server/)
 
 const app = express();
@@ -107,6 +138,9 @@ const sesClient = sesRegion ? new SESClient({ region: sesRegion }) : null;
 const verifiedSender = process.env['SES_VERIFIED_SENDER'] || 'sudhir.22sep@gmail.com';
 
 // parse JSON bodies for most routes
+// IMPORTANT: Razorpay webhook needs raw body for signature verification
+// Register raw body parser for webhook BEFORE express.json()
+app.use('/api/razorpay-webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
 // CORS configuration for Vercel frontend → Render backend
@@ -407,6 +441,468 @@ app.post('/api/save-user', async (req, res) => {
   }
 });
 
+// ============================================
+// AUTHENTICATION ENDPOINTS
+// ============================================
+
+/**
+ * Register a new user
+ */
+app.post('/api/auth/register', async (req, res) => {
+  const { email, password, firstName, lastName, phone } = req.body;
+
+  if (!email || !password || !firstName || !lastName) {
+    return res.status(400).json({ success: false, message: 'Email, password, first name, and last name are required.' });
+  }
+
+  if (password.length < 8) {
+    return res.status(400).json({ success: false, message: 'Password must be at least 8 characters.' });
+  }
+
+  try {
+    const usersCollection = await getUsersCollection();
+
+    // Check if user already exists
+    const existingUser = await usersCollection.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({ success: false, message: 'An account with this email already exists.' });
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    // Create user
+    const user: UserDocument = {
+      _id: new (require('mongodb')).ObjectId(),
+      email: email.toLowerCase().trim(),
+      passwordHash,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      phone: phone?.trim() || '',
+      addresses: [],
+      createdAt: new Date(),
+      isActive: true,
+      role: 'user',
+    };
+
+    const result = await usersCollection.insertOne(user);
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: result.insertedId.toString(), email: user.email, role: user.role },
+      jwtSecret,
+      { expiresIn: jwtExpiresIn }
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: 'Account created successfully.',
+      token,
+      user: {
+        id: result.insertedId.toString(),
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to create account at this time.' });
+  }
+});
+
+/**
+ * Login user
+ */
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ success: false, message: 'Email and password are required.' });
+  }
+
+  try {
+    const usersCollection = await getUsersCollection();
+
+    // Find user by email
+    const user = await usersCollection.findOne({ email: email.toLowerCase().trim() }) as UserDocument | null;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Invalid email or password.' });
+    }
+
+    // Check if user is active
+    if (!user.isActive) {
+      return res.status(403).json({ success: false, message: 'This account has been deactivated.' });
+    }
+
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+    if (!isValidPassword) {
+      return res.status(401).json({ success: false, message: 'Invalid email or password.' });
+    }
+
+    // Update last login
+    await usersCollection.updateOne(
+      { _id: user._id },
+      { $set: { lastLogin: new Date() } }
+    );
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id.toString(), email: user.email, role: user.role },
+      jwtSecret,
+      { expiresIn: jwtExpiresIn }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Login successful.',
+      token,
+      user: {
+        id: user._id.toString(),
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        addresses: user.addresses,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to login at this time.' });
+  }
+});
+
+/**
+ * Get current user profile (requires auth)
+ */
+app.get('/api/auth/me', async (req, res) => {
+  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
+    console.error('Invalid response object in auth/me');
+    return;
+  }
+
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, message: 'Authentication required.' });
+    }
+
+    const token = authHeader.substring(7);
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, jwtSecret);
+    } catch (err) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired token.' });
+    }
+
+    const usersCollection = await getUsersCollection();
+    const user = await usersCollection.findOne({ _id: new (require('mongodb')).ObjectId(decoded.userId) }) as UserDocument | null;
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ success: false, message: 'This account has been deactivated.' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user: {
+        id: user._id.toString(),
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        addresses: user.addresses,
+        role: user.role,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error('Get profile error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to fetch profile.' });
+  }
+});
+
+/**
+ * Update user profile (requires auth)
+ */
+app.put('/api/auth/profile', async (req, res) => {
+  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
+    console.error('Invalid response object in auth/profile');
+    return;
+  }
+
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, message: 'Authentication required.' });
+    }
+
+    const token = authHeader.substring(7);
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, jwtSecret);
+    } catch (err) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired token.' });
+    }
+
+    const usersCollection = await getUsersCollection();
+    const { firstName, lastName, phone } = req.body;
+
+    const updates: any = {};
+    if (firstName) updates.firstName = firstName.trim();
+    if (lastName) updates.lastName = lastName.trim();
+    if (phone !== undefined) updates.phone = phone.trim();
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ success: false, message: 'No fields to update.' });
+    }
+
+    updates.updatedAt = new Date();
+
+    const result = await usersCollection.findOneAndUpdate(
+      { _id: new (require('mongodb')).ObjectId(decoded.userId) },
+      { $set: updates },
+      { returnDocument: 'after' }
+    ) as UserDocument | null;
+
+    if (!result) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully.',
+      user: {
+        id: result._id.toString(),
+        email: result.email,
+        firstName: result.firstName,
+        lastName: result.lastName,
+        phone: result.phone,
+        addresses: result.addresses,
+        role: result.role,
+      },
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to update profile.' });
+  }
+});
+
+/**
+ * Add/update user address (requires auth)
+ */
+app.post('/api/auth/addresses', async (req, res) => {
+  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
+    console.error('Invalid response object in auth/addresses');
+    return;
+  }
+
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, message: 'Authentication required.' });
+    }
+
+    const token = authHeader.substring(7);
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, jwtSecret);
+    } catch (err) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired token.' });
+    }
+
+    const { type, line1, line2, city, state, postalCode, country, isDefault } = req.body;
+
+    if (!type || !line1 || !city || !state || !postalCode || !country) {
+      return res.status(400).json({ success: false, message: 'All address fields are required.' });
+    }
+
+    const usersCollection = await getUsersCollection();
+    const userId = new (require('mongodb')).ObjectId(decoded.userId);
+
+    // If this is set as default, unset other defaults of same type
+    if (isDefault) {
+      await usersCollection.updateOne(
+        { _id: userId, 'addresses.type': type, 'addresses.isDefault': true },
+        { $set: { 'addresses.$.isDefault': false } }
+      );
+    }
+
+    const newAddress: UserDocument['addresses'][0] = {
+      type,
+      line1: line1.trim(),
+      line2: line2?.trim() || '',
+      city: city.trim(),
+      state: state.trim(),
+      postalCode: postalCode.trim(),
+      country: country.trim(),
+      isDefault: !!isDefault,
+    };
+
+    await usersCollection.updateOne(
+      { _id: userId },
+      { $push: { addresses: newAddress } } as any
+    );
+
+    const updatedUser = await usersCollection.findOne({ _id: userId }) as UserDocument | null;
+
+    return res.status(200).json({
+      success: true,
+      message: 'Address added successfully.',
+      addresses: updatedUser?.addresses || [],
+    });
+  } catch (error) {
+    console.error('Add address error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to add address.' });
+  }
+});
+
+/**
+ * Delete user address (requires auth)
+ */
+app.delete('/api/auth/addresses/:index', async (req, res) => {
+  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
+    console.error('Invalid response object in auth/addresses delete');
+    return;
+  }
+
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, message: 'Authentication required.' });
+    }
+
+    const token = authHeader.substring(7);
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, jwtSecret);
+    } catch (err) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired token.' });
+    }
+
+    const index = parseInt(req.params.index, 10);
+    if (isNaN(index) || index < 0) {
+      return res.status(400).json({ success: false, message: 'Invalid address index.' });
+    }
+
+    const usersCollection = await getUsersCollection();
+    const userId = new (require('mongodb')).ObjectId(decoded.userId);
+
+    const user = await usersCollection.findOne({ _id: userId }) as UserDocument | null;
+    if (!user || !user.addresses || index >= user.addresses.length) {
+      return res.status(404).json({ success: false, message: 'Address not found.' });
+    }
+
+    // Remove address at index
+    user.addresses.splice(index, 1);
+
+    await usersCollection.updateOne(
+      { _id: userId },
+      { $set: { addresses: user.addresses } }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Address deleted successfully.',
+      addresses: user.addresses,
+    });
+  } catch (error) {
+    console.error('Delete address error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to delete address.' });
+  }
+});
+
+/**
+ * Logout (client-side only, but endpoint for consistency)
+ */
+// JWT authentication middleware
+async function authenticateJwt(req: Request & { user?: any }, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).json({ success: false, message: 'Authorization header required' });
+  }
+  const token = authHeader.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ success: false, message: 'Token not provided' });
+  }
+  try {
+    const decoded = jwt.verify(token, jwtSecret);
+    req.user = decoded;
+    next();
+    return;
+  } catch (error) {
+    console.error('JWT verification error:', error);
+    return res.status(401).json({ success: false, message: 'Invalid or expired token' });
+  }
+}
+app.post('/api/auth/logout', (req, res) => {
+  // JWT is stateless - logout is handled client-side by deleting the token
+  // This endpoint exists for API consistency and potential future token blacklisting
+  return res.status(200).json({ success: true, message: 'Logged out successfully.' });
+});
+app.post('/api/register', async (req, res) => {
+  const { firstName, lastName, email, phone, password, addresses } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ success: false, message: 'Email and password required' });
+  }
+  try {
+    const usersCollection = await getUsersCollection();
+    const existingUser = await usersCollection.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({ success: false, message: 'User already exists' });
+    }
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+    const user = {
+      firstName: firstName || '',
+      lastName: lastName || '',
+      email,
+      phone: phone || '',
+      passwordHash,
+      addresses: addresses || [],
+      createdAt: new Date(),
+      lastLogin: new Date(),
+      isActive: true,
+      role: 'user'
+    };
+    const result = await usersCollection.insertOne(user);
+    const token = jwt.sign({ email, role: user.role }, jwtSecret, { expiresIn: jwtExpiresIn });
+    return res.status(201).json({ success: true, token });
+  } catch (error) {
+    console.error('Registration error:', error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+app.post('/api/login', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ success: false, message: 'Email and password required' });
+  }
+  try {
+    const usersCollection = await getUsersCollection();
+    const user = await usersCollection.findOne({ email }) as UserDocument | null;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+    const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordMatches) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+    const token = jwt.sign({ email, role: user.role }, jwtSecret, { expiresIn: jwtExpiresIn });
+    return res.json({ success: true, token });
+  } catch (error) {
+    console.error('Login error:', error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 app.post('/api/order-confirmation', async (req, res) => {
   const { name, email, items, total, paymentMethod } = req.body;
 
@@ -553,7 +1049,7 @@ app.post('/api/create-cod-order', async (req, res) => {
 });
 
 // GET /api/orders - Get all orders (with pagination and filters)
-app.get('/api/orders', async (req, res) => {
+app.get('/api/orders', authenticateJwt, async (req, res) => {
   try {
     const ordersCollection = await getOrdersCollection();
     const { email, status, paymentMethod, page = 1, limit = 20 } = req.query;
@@ -584,11 +1080,11 @@ app.get('/api/orders', async (req, res) => {
 });
 
 // GET /api/orders/:orderReference - Get single order
-app.get('/api/orders/:orderReference', async (req, res) => {
+app.get('/api/orders/:orderReference', authenticateJwt, async (req, res) => {
   try {
     const ordersCollection = await getOrdersCollection();
     const order = await ordersCollection.findOne<OrderDocument>({
-      orderReference: req.params.orderReference
+      orderReference: req.params['orderReference']
     });
 
     if (!order) {
@@ -792,10 +1288,15 @@ app.post('/api/razorpay-webhook', async (req, res) => {
   }
 
   const crypto = require('crypto');
+  // req.body is now a Buffer (raw body) due to express.raw() middleware
+  const rawBody = req.body instanceof Buffer ? req.body.toString('utf8') : JSON.stringify(req.body);
+  console.log('Razorpay webhook: Raw body received:', rawBody);
+  console.log('Razorpay webhook: Signature header:', webhookSignature);
   const expectedSignature = crypto
     .createHmac('sha256', razorpayKeySecret)
-    .update(JSON.stringify(req.body))
+    .update(rawBody)
     .digest('hex');
+  console.log('Razorpay webhook: Expected signature:', expectedSignature);
 
   if (expectedSignature !== webhookSignature) {
     console.error('Razorpay webhook: Invalid signature');
@@ -803,7 +1304,7 @@ app.post('/api/razorpay-webhook', async (req, res) => {
   }
 
   try {
-    const event = req.body;
+    const event = JSON.parse(rawBody);
     
     // Handle payment.captured event (payment successful)
     if (event.event === 'payment.captured') {
