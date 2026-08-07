@@ -1,0 +1,104 @@
+<div class="wishlist-container">
+  <div class="wishlist-header">
+    <h2>My Wishlists</h2>
+    <button class="btn btn-primary" (click)="openCreateWishlistModal()">
+      + Create New Wishlist
+    </button>
+  </div>
+
+  <!-- Create Wishlist Modal -->
+  <div class="modal-backdrop" *ngIf="showCreateModal" (click)="closeCreateWishlistModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Create Wishlist</h3>
+        <button class="btn-close" (click)="closeCreateWishlistModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form [formGroup]="createWishlistForm" (ngSubmit)="onCreateWishlistSubmit()">
+          <div class="form-group">
+            <label for="wishlistName">Wishlist Name</label>
+            <input type="text" id="wishlistName" formControlName="name" 
+                   [class.is-invalid]="createWishlistForm.get('name')?.invalid && createWishlistForm.get('name')?.touched">
+            <div class="invalid-feedback" *ngIf="createWishlistForm.get('name')?.invalid && createWishlistForm.get('name')?.touched">
+              <div *ngIf="createWishlistForm.get('name')?.errors?.['required']">
+                Wishlist name is required
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" formControlName="isPublic">
+              Make this wishlist public (others can view it)
+            </label>
+          </div>
+          
+          <div class="form-group">
+            <button type="submit" class="btn btn-primary" 
+                    [disabled]="createWishlistForm.invalid || isCreating">
+              <span *ngIf="isCreating">Creating...</span>
+              <span *ngIf="!isCreating">Create Wishlist</span>
+            </button>
+            <button type="button" class="btn btn-outline" (click)="closeCreateWishlistModal()">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Wishlists List -->
+  <div class="wishlists-grid">
+   <div class="wishlists-grid">
+     <div *ngIf="wishlists.length === 0 && !isLoading" class="empty-state">
+       <p>You haven't created any wishlists yet.</p>
+       <button class="btn btn-primary" (click)="openCreateWishlistModal()">
+         Create Your First Wishlist
+       </button>
+     </div>
+     <div *ngIf="isLoading" class="loading-indicator">
+       <div class="spinner"></div>
+       <p>Loading wishlists...</p>
+     </div>
+     <div *ngIf="wishlists.length > 0 && !isLoading">
+       <div *ngFor="let wishlist of wishlists" class="wishlist-card">
+         <div class="wishlist-header">
+           <h3>{{ wishlist.name }}</h3>
+           <div class="wishlist-meta">
+             <span *ngIf="wishlist.isPublic" class="badge badge-public">Public</span>
+             <span class="wishlist-count">{{ wishlist.items?.length || 0 }} items</span>
+           </div>
+         </div>
+
+         <div class="wishlist-items" *ngIf="wishlist.items && wishlist.items.length > 0">
+           <div class="wishlist-item" *ngFor="let item of wishlist.items; let i = index">
+             <div class="item-info">
+               <h4>{{ item.productName || 'Product #' + i }}</h4>
+               <p *ngIf="item.notes" class="item-notes">{{ item.notes }}</p>
+             </div>
+             <div class="item-actions">
+               <button class="btn btn-outline btn-sm" (click)="removeItemFromWishlist(wishlist._id, item.productId, item.variantId?.toString())">
+                 Remove
+               </button>
+             </div>
+           </div>
+         </div>
+
+         <div class="wishlist-items empty" *ngIf="!wishlist.items || wishlist.items.length === 0">
+           <p>No items in this wishlist yet.</p>
+         </div>
+
+         <div class="wishlist-actions">
+           <button class="btn btn-outline" (click)="viewWishlistItems(wishlist._id)">
+             View Items
+           </button>
+           <button class="btn btn-danger" (click)="deleteWishlist(wishlist._id)">
+             Delete Wishlist
+           </button>
+         </div>
+       </div>
+     </div>
+   </div>
+  </div>
+</div>

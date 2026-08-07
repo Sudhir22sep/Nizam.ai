@@ -1,3 +1,5 @@
+const crypto = require('crypto');
+
 const confirmRazorpayPayment = require('../confirm-razorpay-payment');
 
 describe('confirm-razorpay-payment', () => {
@@ -21,13 +23,10 @@ describe('confirm-razorpay-payment', () => {
   };
 
   beforeEach(() => {
-    // Reset process.env
-    process.env.RAZORPAY_KEY_SECRET_TEST = 'test_secret';
+    // Reset process.env - must match the variable names in confirm-razorpay-payment.js
+    process.env.RAZORPAY_KEY_SECRET = 'test_secret';
+    process.env.RAZORPAY_TEST_KEY_SECRET = undefined;
     process.env.RAZORPAY_KEY_SECRET_LIVE = undefined;
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
   });
 
   it('should return 405 if method is not POST', async () => {
@@ -102,9 +101,10 @@ describe('confirm-razorpay-payment', () => {
     expect(res.data.message).toBe('Payment verification parameters are required.');
   });
 
-  it('should return 400 if Razorpay is not configured', async () => {
-    process.env.RAZORPAY_KEY_SECRET_TEST = undefined;
-    process.env.RAZORPAY_KEY_SECRET_LIVE = undefined;
+  it('should return 500 if Razorpay is not configured', async () => {
+    delete process.env.RAZORPAY_KEY_SECRET;
+    delete process.env.RAZORPAY_TEST_KEY_SECRET;
+    delete process.env.RAZORPAY_KEY_SECRET_LIVE;
 
     const req = mockReq({
       orderReference: 'order_ref_123',
@@ -141,7 +141,6 @@ describe('confirm-razorpay-payment', () => {
     const keySecret = 'test_secret';
     const orderId = 'order_123';
     const paymentId = 'pay_123';
-    const crypto = require('crypto');
     const signature = crypto
       .createHmac('sha256', keySecret)
       .update(`${orderId}|${paymentId}`)
