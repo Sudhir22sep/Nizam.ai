@@ -3,7 +3,7 @@
 
   <div class="product-detail">
     <div class="product-image">
-      <img [src]="product.image" [alt]="product.name" appImageFallback>
+      <img [src]="product.images[0] || '/assets/images/placeholder.jpg'" [alt]="product.name" appImageFallback>
     </div>
 
     <div class="product-details">
@@ -18,7 +18,7 @@
       <p class="description">{{ product.description }}</p>
 
       <div class="price-section">
-        <span class="price">{{ product.price | price }}</span>
+        <span class="price">{{ product.basePrice | price }}</span>
         <span class="availability">✓ In Stock</span>
       </div>
 
@@ -68,7 +68,7 @@
         <button routerLink="/checkout" class="btn-checkout">
           💳 Checkout Now
         </button>
-        <button class="btn-wishlist">
+        <button class="btn-wishlist" (click)="addToWishlist()">
           ❤️ Add to Wishlist
         </button>
       </div>
@@ -92,9 +92,9 @@
         *ngFor="let product of relatedProducts; trackBy: trackByProductId" 
         [routerLink]="['/product', product.id]"
         class="related-card">
-        <img [src]="product.image" [alt]="product.name" appImageFallback>
+        <img [src]="product.images[0] || '/assets/images/placeholder.jpg'" [alt]="product.name" appImageFallback>
         <h4>{{ product.name }}</h4>
-        <p class="price">{{ product.price | price }}</p>
+        <p class="price">{{ product.basePrice | price }}</p>
       </a>
     </div>
   </section>

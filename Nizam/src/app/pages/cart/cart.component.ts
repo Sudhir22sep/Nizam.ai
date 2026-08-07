@@ -23,11 +23,11 @@ export class CartComponent {
     return this.cartService.getTotalAmount();
   }
 
-  removeItem(productId: number) {
+  removeItem(productId: string) {
     this.cartService.removeFromCart(productId);
   }
 
-  trackByCartItem(_: number, item: { product: { id: number } }) {
+  trackByCartItem(_: number, item: { product: { id: string } }) {
     return item.product.id;
   }
 

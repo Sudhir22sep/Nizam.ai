@@ -1,0 +1,146 @@
+.register-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(255, 107, 129, 0.08), rgba(72, 90, 240, 0.08));
+  padding: 20px;
+}
+
+.register-box {
+  background: white;
+  border-radius: 28px;
+  box-shadow: var(--brand-shadow);
+  width: 100%;
+  max-width: 450px;
+  padding: 40px;
+}
+
+.register-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.register-header h2 {
+  color: var(--brand-dark);
+  margin-bottom: 10px;
+}
+
+.register-header p {
+  color: #6b6586;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.form-row .form-group {
+  flex: 1;
+}
+
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--brand-dark);
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+}
+
+.form-group input.is-invalid {
+  border-color: #ff6b6b;
+}
+
+.form-text {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: #6b6586;
+}
+
+.invalid-feedback {
+  color: #ff6b6b;
+  font-size: 0.875rem;
+  margin-top: 4px;
+}
+
+.btn {
+  width: 100%;
+  padding: 14px 28px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+  color: white;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(72, 90, 240, 0.3);
+}
+
+.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
+}
+
+.register-footer {
+  text-align: center;
+  margin-top: 24px;
+  color: #6b6586;
+  font-size: 0.9rem;
+}
+
+.register-footer a {
+  color: var(--brand-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.register-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .register-box {
+    padding: 24px;
+  }
+  
+  .form-row {
+    flex-direction: column;
+  }
+  
+  .register-header h2 {
+    font-size: 1.8rem;
+  }
+}

@@ -16,10 +16,10 @@
           <div *ngFor="let item of items" class="cart-item">
             <div>
               <h3>{{ item.product.name }}</h3>
-              <p>{{ item.quantity }} × {{ item.product.price | price }}</p>
+               <p>{{ item.quantity }} × {{ item.product.basePrice | price }}</p>
             </div>
             <div class="item-total">
-              {{ item.product.price * item.quantity | price }}
+               {{ item.product.basePrice * item.quantity | price }}
             </div>
           </div>
 
