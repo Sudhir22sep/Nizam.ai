@@ -80,7 +80,12 @@
           }
         },
         "test": {
-          "builder": "@angular/build:unit-test"
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "runner": "vitest",
+            "buildTarget": "Nizam:build:development",
+            "tsConfig": "tsconfig.spec.json"
+          }
         }
       }
     }

@@ -14,12 +14,18 @@ describe('CartService', () => {
     
     // Create a test product
     testProduct = {
-      id: 1,
+      id: '1',
       name: 'Test Product',
       description: 'Test Description',
-      price: 100,
-      image: 'test.jpg',
-      category: 'Test Category'
+      basePrice: 100,
+      currency: 'USD',
+      category: 'Test Category',
+      images: ['test.jpg'],
+      variants: [],
+      tags: [],
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
   });
 
@@ -60,12 +66,18 @@ describe('CartService', () => {
 
     it('should handle adding different products', () => {
       const product2: Product = {
-        id: 2,
+        id: '2',
         name: 'Test Product 2',
         description: 'Test Description 2',
-        price: 50,
-        image: 'test2.jpg',
-        category: 'Test Category'
+        basePrice: 50,
+        currency: 'USD',
+        category: 'Test Category',
+        images: ['test2.jpg'],
+        variants: [],
+        tags: [],
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
       
       service.addToCart(testProduct, 2);
@@ -93,7 +105,7 @@ describe('CartService', () => {
     });
 
     it('should do nothing when removing non-existent product', () => {
-      service.removeFromCart(999); // Non-existent ID
+      service.removeFromCart('999'); // Non-existent ID
       
       const items = service.getItems();
       expect(items.length).toBe(1);
