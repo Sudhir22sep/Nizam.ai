@@ -1,31 +1,50 @@
 import { TestBed } from '@angular/core/testing';
 import { ProductService } from './product.service';
+import { Product } from './product.service';
 
 // Mock product data for testing
-const mockProducts = [
+const mockProducts: Product[] = [
   {
-    id: 1,
+    id: '1',
     name: 'Test Product 1',
     description: 'Test Description 1',
-    price: 100,
-    image: 'test1.jpg',
-    category: 'Test Category'
+    basePrice: 100,
+    currency: 'USD',
+    category: 'Test Category',
+    images: ['test1.jpg'],
+    variants: [],
+    tags: [],
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
   },
   {
-    id: 2,
+    id: '2',
     name: 'Test Product 2',
     description: 'Test Description 2',
-    price: 200,
-    image: 'test2.jpg',
-    category: 'Test Category'
+    basePrice: 200,
+    currency: 'USD',
+    category: 'Test Category',
+    images: ['test2.jpg'],
+    variants: [],
+    tags: [],
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
   },
   {
-    id: 3,
+    id: '3',
     name: 'Test Product 3',
     description: 'Test Description 3',
-    price: 150,
-    image: 'test3.jpg',
-    category: 'Another Category'
+    basePrice: 150,
+    currency: 'USD',
+    category: 'Another Category',
+    images: ['test3.jpg'],
+    variants: [],
+    tags: [],
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
   }
 ];
 
@@ -54,7 +73,7 @@ describe('ProductService', () => {
 
   describe('getProductById()', () => {
     it('should return undefined for non-existent product when no products loaded', () => {
-      const product = service.getProductById(999);
+      const product = service.getProductById('999');
       expect(product).toBeUndefined();
     });
 
@@ -62,9 +81,9 @@ describe('ProductService', () => {
       // Manually set products for testing
       (service as any).productsSignal.set(mockProducts);
       
-      const product = service.getProductById(2);
+      const product = service.getProductById('2');
       expect(product).toBeDefined();
-      expect(product?.id).toBe(2);
+      expect(product?.id).toBe('2');
       expect(product?.name).toBe('Test Product 2');
     });
 
@@ -72,7 +91,7 @@ describe('ProductService', () => {
       // Manually set products for testing
       (service as any).productsSignal.set(mockProducts);
       
-      const product = service.getProductById(999);
+      const product = service.getProductById('999');
       expect(product).toBeUndefined();
     });
   });

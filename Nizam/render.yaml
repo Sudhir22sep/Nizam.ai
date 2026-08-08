@@ -12,8 +12,8 @@ services:
         value: production
       - key: PORT
         value: "4000"
-      - key: MONGODB_URI
-        sync: false  # Set in Render dashboard
+                  - key: MONGODB_URI
+        value: "mongodb+srv://sudhir22sep_db_user:Sudhir0501@amma-wear.vgvwvpo.mongodb.net/ammawears_prod?retryWrites=true&w=majority"
       - key: SES_REGION
         sync: false  # Set in Render dashboard
       - key: SES_VERIFIED_SENDER
