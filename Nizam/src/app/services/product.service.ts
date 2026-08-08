@@ -1,13 +1,20 @@
 import { Injectable, signal, PLATFORM_ID, Inject } from '@angular/core';
 import { isPlatformServer } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 
 export interface Product {
-  id: number;
+  id: string;
   name: string;
   description: string;
-  price: number;
-  image: string;
+  basePrice: number;
+  currency: string;
   category: string;
+  images: string[];
+  variants: any[];
+  tags: string[];
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
   arPreviewAvailable?: boolean;
   arModelUrl?: string;
 }
@@ -18,7 +25,10 @@ export class ProductService {
   private productsLoaded = false;
   private loadingPromise: Promise<void> | null = null;
 
-  constructor(@Inject(PLATFORM_ID) private platformId: Object) {
+  constructor(
+    @Inject(PLATFORM_ID) private platformId: Object,
+    private http: HttpClient
+  ) {
     // Start loading immediately
     this.loadingPromise = this.loadProducts();
   }
@@ -29,54 +39,57 @@ export class ProductService {
     try {
       let data: Product[];
 
-      if (isPlatformServer(this.platformId)) {
-        // SSR: Read file directly from filesystem using require()
-        // to avoid TypeScript static analysis issues in browser builds/tests
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const fs = require('fs') as { readFileSync: (path: string, encoding: string) => string };
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const path = require('path') as { join: (...paths: string[]) => string };
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const url = require('url') as { fileURLToPath: (url: string) => string };
-        
-        const __filename = url.fileURLToPath(import.meta.url);
-        const __dirname = path.join(__filename, '..');
-        const possiblePaths = [
-          // Production build path
-          path.join(__dirname, '../../browser/assets/products.json'),
-          // Alternative production path
-          path.join(__dirname, '../../../browser/assets/products.json'),
-          // Dev path
-          path.join(__dirname, '../../../public/assets/products.json'),
-        ];
-
-        let fileContent: string | null = null;
-        for (const p of possiblePaths) {
-          try {
-            fileContent = fs.readFileSync(p, 'utf-8');
-            break;
-          } catch {
-            // Try next path
-          }
+      // Always try to fetch from API first, fallback to JSON if needed
+      try {
+        const apiUrl = isPlatformServer(this.platformId) ? 'http://localhost:4000' : '';
+        const response = await this.http.get<{ success: boolean; products: Product[] }>(`${apiUrl}/api/products`).toPromise();
+        if (response?.success) {
+          data = response.products.map((p: any) => ({
+            id: p._id.toString(),
+            name: p.name,
+            description: p.description,
+            basePrice: p.basePrice,
+            currency: p.currency,
+            category: p.category,
+            images: p.images || [],
+            variants: p.variants || [],
+            tags: p.tags || [],
+            isActive: p.isActive !== undefined ? p.isActive : true,
+            createdAt: p.createdAt ? new Date(p.createdAt) : new Date(),
+            updatedAt: p.updatedAt ? new Date(p.updatedAt) : new Date()
+          }));
+        } else {
+          throw new Error('API returned unsuccessful response');
         }
-
-        if (!fileContent) {
-          throw new Error('Could not find products.json in any expected location');
-        }
-
-        data = JSON.parse(fileContent) as Product[];
-      } else {
-        // CSR: Fetch from HTTP
+      } catch (apiError) {
+        console.warn('Failed to fetch from API, falling back to JSON:', apiError);
+        // Fallback to static JSON
         const res = await fetch('/assets/products.json');
         if (!res.ok) throw new Error('Failed to load products.json');
-        data = await res.json();
+        const jsonData = await res.json();
+        
+        data = jsonData.map((p: any) => ({
+          id: p.id.toString(),
+          name: p.name,
+          description: p.description,
+          basePrice: p.price,
+          currency: 'USD',
+          category: p.category,
+          images: [p.image],
+          variants: [],
+          tags: [],
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }));
       }
 
       this.productsSignal.set(data);
       this.productsLoaded = true;
     } catch (e) {
-      console.error('Error loading products.json', e);
+      console.error('Error loading products', e);
       this.productsLoaded = true; // Prevent retry loops
+      this.productsSignal.set([]); // Set empty array on error
     }
   }
 
@@ -90,7 +103,7 @@ export class ProductService {
     return this.productsSignal.asReadonly();
   }
 
-  getProductById(id: number): Product | undefined {
+  getProductById(id: string): Product | undefined {
     return this.productsSignal().find(p => p.id === id);
   }
 

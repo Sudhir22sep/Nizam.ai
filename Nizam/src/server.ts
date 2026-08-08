@@ -45,8 +45,36 @@ console.log('Does browserDistFolder exist?', existsSync(browserDistFolder));
 console.log('Does index.csr.html exist?', existsSync(join(browserDistFolder, 'index.csr.html')));
 dotenv.config({ path: resolve(process.cwd(), '.env'), override: true });
 
-const mongoUrl = process.env['MONGODB_URI'] || 'mongodb://localhost:27017/nizam_ai';
-console.log("MONGODB_URI from process.env:", process.env['MONGODB_URI']);
+// Determine environment and default database name
+ const isProduction = process.env['NODE_ENV'] === 'production';
+ const isIntegration = process.env['NODE_ENV'] === 'integration';
+ const defaultDbName = isProduction ? 'ammawears_prod' : isIntegration ? 'ammawears_int' : 'ammawears_dev';
+
+// Resolve MongoDB URI with appropriate database name
+let mongoUrl = process.env['MONGODB_URI'] || `mongodb://localhost:27017/${defaultDbName}`;
+
+// If URI doesn't have a database name in the path, append the environment-specific one
+try {
+  const url = new URL(mongoUrl.replace('mongodb+srv://', 'https://').replace('mongodb://', 'http://'));
+  const pathDbName = url.pathname.slice(1).split('?')[0]; // Get database name from path
+  
+  if (!pathDbName || pathDbName === '') {
+    // No database name in URI - append the default
+    const separator = mongoUrl.includes('?') ? '&' : '?';
+    const dbParam = `retryWrites=true&w=majority`;
+    mongoUrl = `${mongoUrl}${separator}${dbParam}`;
+    // Insert database name before query params
+    mongoUrl = mongoUrl.replace(/\.mongodb\.net\//, `.mongodb.net/${defaultDbName}/`);
+  }
+} catch {
+  // Fallback for malformed URLs
+  if (!mongoUrl.includes('.mongodb.net/') || mongoUrl.endsWith('.mongodb.net/')) {
+    mongoUrl += `${defaultDbName}?retryWrites=true&w=majority`;
+  }
+}
+
+console.log("MONGODB_URI resolved:", mongoUrl.replace(/\/\/[^:]+:[^@]+@/, '//***:***@'));
+console.log("Environment:", isProduction ? 'production' : 'development', "| Database:", defaultDbName);
 let mongoClient: MongoClient | null = null;
 let db: Db | null = null;
 // Order document type
@@ -71,6 +99,7 @@ interface OrderDocument {
 
 const razorpayKeyId = process.env['RAZORPAY_KEY_ID'] || process.env['RAZORPAY_TEST_KEY_ID'];
 const razorpayKeySecret = process.env['RAZORPAY_KEY_SECRET'] || process.env['RAZORPAY_TEST_KEY_SECRET'];
+const razorpayWebhookSecret = process.env['RAZORPAY_WEBHOOK_SECRET'] || razorpayKeySecret;
 const razorpay = razorpayKeyId && razorpayKeySecret
   ? new Razorpay({ key_id: razorpayKeyId, key_secret: razorpayKeySecret })
   : null;
@@ -172,6 +201,26 @@ app.use((req, res, next) => {
   next();
 });
 
+// Health check endpoint for Render (and general health monitoring)
+app.get('/api/health', async (req, res) => {
+  try {
+    if (!db) {
+      return res.status(503).json({ status: 'unhealthy', message: 'Database not initialized' });
+    }
+    // Ping the database to verify connectivity
+    await db.admin().ping();
+    return res.json({ status: 'healthy', message: 'All systems operational' });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Health check failed:', error);
+    return res.status(503).json({ 
+      status: 'unhealthy', 
+      message: 'Service unavailable', 
+      error: message 
+    });
+  }
+});
+
 // Simple server-side currency rates (relative to USD)
 const serverRates: Record<string, number> = {
   USD: 1,
@@ -179,7 +228,6 @@ const serverRates: Record<string, number> = {
   AED: 3.67,
   SAR: 3.75,
 };
-
 let mongoInitPromise: Promise<void> | null = null;
 
 function formatCurrency(amount: number, currency = 'USD') {
@@ -213,11 +261,13 @@ async function initializeMongoDB(): Promise<void> {
     const ordersCollection = db.collection('orders');
     const usersCollection = db.collection('users');
     const contactsCollection = db.collection('contacts');
+    const productsCollection = db.collection('products');
 
     await ordersCollection.createIndex({ orderReference: 1 }, { unique: true });
     await ordersCollection.createIndex({ email: 1 });
     await usersCollection.createIndex({ email: 1 }, { unique: true });
     await contactsCollection.createIndex({ email: 1 });
+    await productsCollection.createIndex({ name: 'text', description: 'text' });
 
     console.log('MongoDB connected successfully');
   } catch (error) {
@@ -230,6 +280,7 @@ async function initializeMongoDB(): Promise<void> {
 
 
 function ensureMongoDBInitialized(): Promise<void> {
+   console.log('ensureMongoDBInitialized called');
   if (!mongoInitPromise) {
     mongoInitPromise = initializeMongoDB().catch((error) => {
       console.error('MongoDB connection failed, continuing without database:', error.message);
@@ -270,6 +321,26 @@ async function getContactsCollection() {
   return db.collection('contacts');
 }
 
+// Get or create products collection
+async function getProductsCollection() {
+  await ensureMongoDBInitialized();
+
+  if (!db) {
+    throw new Error('MongoDB not connected');
+  }
+  return db.collection('products');
+}
+
+// Get or create wishlists collection
+async function getWishlistsCollection() {
+  await ensureMongoDBInitialized();
+
+  if (!db) {
+    throw new Error('MongoDB not connected');
+  }
+  return db.collection('wishlists');
+}
+
 async function sendEmail(params: { to: string | string[]; subject: string; text: string; html: string }) {
   const { to, subject, text, html } = params;
   if (!sesClient) {
@@ -308,23 +379,30 @@ function buildContactMessage(params: { name: string; email: string; message: str
 function buildOrderConfirmationMessage(params: {
   name: string;
   email: string;
-  items: Array<{ product: { name: string; price: number }; quantity: number }>;
+  items: Array<{ product: { name: string; price?: number; basePrice?: number }; quantity: number }>;
   total: number;
   orderReference: string;
   paymentMethod?: string;
 }) {
   const { name, email, items, total, orderReference, paymentMethod } = params;
   const methodLabel = paymentMethod === 'COD' ? 'Cash on Delivery (COD)' : 'Card payment';
-  const itemRows = items.map((item) => `
+  const itemRows = items.map((item) => {
+    const price = item.product.price ?? item.product.basePrice ?? 0;
+    const productName = item.product.name || 'Unnamed Item';
+    return `
     <tr>
-      <td>${item.product.name}</td>
+      <td>${productName}</td>
       <td>${item.quantity}</td>
-      <td>$${item.product.price.toFixed(2)}</td>
-      <td>$${(item.product.price * item.quantity).toFixed(2)}</td>
+      <td>$${price.toFixed(2)}</td>
+      <td>$${(price * item.quantity).toFixed(2)}</td>
     </tr>
-  `).join('');
+  `}).join('');
 
-  const itemText = items.map((item) => `${item.quantity} x ${item.product.name} @ $${item.product.price.toFixed(2)} = $${(item.product.price * item.quantity).toFixed(2)}`).join('\n');
+  const itemText = items.map((item) => {
+    const price = item.product.price ?? item.product.basePrice ?? 0;
+    const productName = item.product.name || 'Unnamed Item';
+    return `${item.quantity} x ${productName} @ $${price.toFixed(2)} = $${(price * item.quantity).toFixed(2)}`;
+  }).join('\n');
 
   return {
     subject: `Order confirmation — ${orderReference}`,
@@ -928,6 +1006,7 @@ app.post('/api/order-confirmation', async (req, res) => {
 
     await ordersCollection.insertOne(order);
 
+
     const mail = buildOrderConfirmationMessage({ name, email, items, total, orderReference, paymentMethod: order.paymentMethod });
     const sent = await trySendEmail({
       to: email,
@@ -1007,15 +1086,83 @@ app.post('/api/order-confirmation', async (req, res) => {
 //   }
 // });
 
-app.post('/api/create-cod-order', async (req, res) => {
-  const { name, email, address, items, total, currency } = req.body;
-  if (!name || !email || !Array.isArray(items) || typeof total !== 'number') {
-    return res.status(400).json({ success: false, message: 'Name, email, items, and total are required.' });
-  }
 
-  const orderReference = `ORDER-${Date.now()}`;
 
+app.post('/api/create-cod-order', async (req: Request, res: Response) => {
   try {
+    const { name, email, address, items, total, currency } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !Array.isArray(items) || typeof total !== 'number') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Name, email, items (array), and total are required.' 
+      });
+    }
+
+    // Validate total is positive
+    if (total <= 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Total must be greater than zero' 
+      });
+    }
+
+    // Validate each item and normalize structure
+    const normalizedItems = [];
+    for (const item of items) {
+      if (!item || typeof item !== 'object') {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Each item must be an object' 
+        });
+      }
+
+      // Extract price from either item.price or item.product.basePrice or item.product.price
+      let price: number | undefined;
+      let productName = '';
+      
+      if (typeof item.price === 'number' && item.price > 0) {
+        price = item.price;
+        productName = item.product?.name || `Item ${normalizedItems.length + 1}`;
+      } else if (item.product && typeof item.product === 'object') {
+        // Support frontend cart item structure: { product: { basePrice: number, name: string, ... }, quantity: number }
+        if (typeof item.product.basePrice === 'number' && item.product.basePrice > 0) {
+          price = item.product.basePrice;
+          productName = item.product.name || `Item ${normalizedItems.length + 1}`;
+        } else if (typeof item.product.price === 'number' && item.product.price > 0) {
+          price = item.product.price;
+          productName = item.product.name || `Item ${normalizedItems.length + 1}`;
+        }
+      }
+      
+      if (price === undefined || price <= 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Each item must have a valid positive price' 
+        });
+      }
+
+      // Validate quantity
+      const quantity = typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1;
+      if (quantity <= 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Each item quantity must be a positive number' 
+        });
+      }
+
+      // Normalize to the expected OrderDocument structure
+      normalizedItems.push({
+        product: {
+          name: productName,
+          price: price
+        },
+        quantity: quantity
+      });
+    }
+
+    const orderReference = `ORDER-${Date.now()}`;
     const ordersCollection = await getOrdersCollection();
 
     const order = {
@@ -1023,7 +1170,7 @@ app.post('/api/create-cod-order', async (req, res) => {
       name,
       email,
       address,
-      items,
+      items: normalizedItems,
       total,
       currency: currency || 'USD',
       paymentMethod: 'COD',
@@ -1033,21 +1180,36 @@ app.post('/api/create-cod-order', async (req, res) => {
 
     await ordersCollection.insertOne(order);
 
-    const mail = buildOrderConfirmationMessage({ name, email, items, total, orderReference, paymentMethod: 'COD' });
+    const mail = buildOrderConfirmationMessage({ 
+      name, email, items: normalizedItems, total, 
+      orderReference, paymentMethod: 'COD' 
+    });
+
     const sent = await trySendEmail({
       to: email,
       subject: mail.subject,
       text: mail.text,
-      html: mail.html,
+      html: mail.html
     });
 
-    return res.status(200).json({ success: true, orderReference, message: sent ? 'Order placed with COD. Confirmation email sent.' : 'Order placed with COD. Email service is not configured.' });
-  } catch (err) {
-    console.error('create-cod-order error', err);
-    return res.status(500).json({ success: false, message: 'Unable to place COD order.' });
+    return res.status(200).json({ 
+      success: true, 
+      orderReference, 
+      message: sent ? 
+        'Order placed with COD. Confirmation email sent.' 
+        : 'Order placed with COD. Email service is not configured.' 
+    });
+
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    console.error('Order creation error:', error.stack);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Unable to place COD order', 
+      error: error.message 
+    });
   }
 });
-
 // GET /api/orders - Get all orders (with pagination and filters)
 app.get('/api/orders', authenticateJwt, async (req, res) => {
   try {
@@ -1186,6 +1348,54 @@ app.post('/api/create-razorpay-order', async (req, res) => {
       },
     });
 
+    // Save order to MongoDB with 'pending' status before returning
+    // This ensures the order exists when payment is confirmed
+    const ordersCollection = await getOrdersCollection();
+    
+    // Normalize items to match OrderDocument structure
+    const normalizedItems = items.map(item => {
+      // Extract price from either item.price or item.product.basePrice or item.product.price
+      let price = 0;
+      let productName = 'Unnamed Item';
+      
+      if (typeof item.price === 'number' && item.price > 0) {
+        price = item.price;
+        productName = item.product?.name || productName;
+      } else if (item.product && typeof item.product === 'object') {
+        if (typeof item.product.basePrice === 'number' && item.product.basePrice > 0) {
+          price = item.product.basePrice;
+          productName = item.product.name || productName;
+        } else if (typeof item.product.price === 'number' && item.product.price > 0) {
+          price = item.product.price;
+          productName = item.product.name || productName;
+        }
+      }
+      
+      const quantity = typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1;
+      
+      return {
+        product: {
+          name: productName,
+          price: price
+        },
+        quantity: quantity
+      };
+    });
+
+    const order: OrderDocument = {
+      orderReference,
+      name,
+      email,
+      address: address || '',
+      items: normalizedItems,
+      total,
+      currency: 'INR', // Razorpay always uses INR
+      paymentMethod: 'Razorpay',
+      status: 'pending',
+      createdAt: new Date()
+    };
+    await ordersCollection.insertOne(order);
+
     return res.status(200).json({
       success: true,
       orderId: razorpayOrder.id,
@@ -1204,7 +1414,7 @@ app.post('/api/create-razorpay-order', async (req, res) => {
  * Confirm Razorpay payment after successful payment (client-side callback)
  */
 app.post('/api/confirm-razorpay-payment', async (req, res) => {
-// Guard against invalid response object
+  // Guard against invalid response object
   if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
     console.error('Invalid response object in confirm-razorpay-payment');
     // Cannot send a response, so we just return to avoid errors.
@@ -1268,7 +1478,7 @@ app.post('/api/confirm-razorpay-payment', async (req, res) => {
  * Razorpay Webhook - Server-side payment confirmation (RELIABLE for UPI/redirect payments)
  * Configure this URL in Razorpay Dashboard: https://api.ammawears.com/api/razorpay-webhook
  */
-app.post('/api/razorpay-webhook', async (req, res) => {
+app.post('/api/razorpay-webhook', async (req: Request, res: Response) => {
   // Guard against invalid response object
   if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
     console.error('Invalid response object in razorpay-webhook');
@@ -1487,10 +1697,371 @@ app.post('/api/razorpay-webhook', async (req, res) => {
  *   // Handle API request
  * });
  * ```
+//
+// Product Catalog API Endpoints
+//
+app.get('/api/products/', async (req, res) => {
+  try {
+    const productsCollection = await getProductsCollection();
+    const { category, minPrice, maxPrice, search, limit = 20, page = 1 } = req.query;
+    
+    const filter: any = {};
+    
+    if (category) {
+      filter.category = category;
+    }
+    
+    if (minPrice !== undefined && maxPrice !== undefined) {
+      filter.basePrice = { $gte: Number(minPrice), $lte: Number(maxPrice) };
+    } else if (minPrice !== undefined) {
+      filter.basePrice = { $gte: Number(minPrice) };
+    } else if (maxPrice !== undefined) {
+      filter.basePrice = { $lte: Number(maxPrice) };
+    }
+    
+    if (search) {
+      filter.$text = { $search: search };
+    }
+    
+    const skip = (Number(page) - 1) * Number(limit);
+    
+    const [products, total] = await Promise.all([
+      productsCollection
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit))
+        .toArray(),
+      productsCollection.countDocuments(filter)
+    ]);
+    
+    res.json({ success: true, products, total, page: Number(page), limit: Number(limit) });
+  } catch (error) {
+    console.error("Get products error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch products" });
+  }
+});
+
+app.get('/api/products/:id/', async (req, res) => {
+  try {
+    const productsCollection = await getProductsCollection();
+    const product = await productsCollection.findOne({ _id: new (require("mongodb")).ObjectId(req.params.id) });
+    
+    if (!product) {
+      return res.status(404).json({ success: false, message: "Product not found" });
+    }
+    
+    res.json({ success: true, product });
+  } catch (error) {
+    console.error("Get product by ID error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch product" });
+  }
+});
+
+app.post('/api/products/', async (req, res) => {
+  try {
+    const productsCollection = await getProductsCollection();
+    const { name, description, basePrice, currency, category, images, variants, tags, isActive } = req.body;
+    
+    if (!name || !description || !basePrice || !currency || !category) {
+      return res.status(400).json({ success: false, message: "Name, description, basePrice, currency, and category are required" });
+    }
+    
+    const product: any = {
+      _id: new (require("mongodb")).ObjectId(),
+      name,
+      description,
+      basePrice: Number(basePrice),
+      currency,
+      category,
+      images: images || [],
+      variants: variants || [],
+      tags: tags || [],
+      isActive: isActive !== undefined ? isActive : true,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    const result = await productsCollection.insertOne(product);
+    product._id = result.insertedId;
+    
+    res.status(201).json({ success: true, message: "Product created successfully", product });
+  } catch (error) {
+    console.error("Create product error:", error);
+    res.status(500).json({ success: false, message: "Failed to create product" });
+  }
+});
+
+app.put('/api/products/:id/', async (req, res) => {
+  try {
+    const productsCollection = await getProductsCollection();
+    const { name, description, basePrice, currency, category, images, variants, tags, isActive } = req.body;
+    
+    const updateData: any = {}
+    
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (basePrice !== undefined) updateData.basePrice = Number(basePrice);
+    if (currency !== undefined) updateData.currency = currency;
+    if (category !== undefined) updateData.category = category;
+    if (images !== undefined) updateData.images = images;
+    if (variants !== undefined) updateData.variants = variants;
+    if (tags !== undefined) updateData.tags = tags;
+    if (isActive !== undefined) updateData.isActive = isActive;
+    
+    updateData.updatedAt = new Date();
+    
+    const result = await productsCollection.updateOne(
+      { _id: new (require("mongodb")).ObjectId(req.params.id) },
+      { $set: updateData }
+    );
+    
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ success: false, message: "Product not found" });
+    }
+    
+    res.json({ success: true, message: "Product updated successfully" });
+  } catch (error) {
+    console.error("Update product error:", error);
+    res.status(500).json({ success: false, message: "Failed to update product" });
+  }
+});
+
+app.delete('/api/products/:id/', async (req, res) => {
+  try {
+    const productsCollection = await getProductsCollection();
+    
+    const result = await productsCollection.deleteOne(
+      { _id: new (require("mongodb")).ObjectId(req.params.id) }
+    );
+    
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ success: false, message: "Product not found" });
+    }
+    
+    res.json({ success: true, message: "Product deleted successfully" });
+  } catch (error) {
+    console.error("Delete product error:", error);
+    res.status(500).json({ success: false, message: "Failed to delete product" });
+  }
+});
+
+// Wishlist API Endpoints
+app.get('/api/wishlist', authenticateJwt, async (req, res) => {
+  try {
+    const wishlistsCollection = await getWishlistsCollection();
+    const userId = req.user.userId;
+    
+    const wishlists = await wishlistsCollection.find({ userId: new (require("mongodb")).ObjectId(userId) }).toArray();
+    
+    // Convert ObjectId to string for frontend
+    const wishlistsWithStringIds = wishlists.map(wishlist => ({
+      ...wishlist,
+      _id: wishlist._id.toString(),
+      userId: wishlist.userId.toString(),
+      items: wishlist.items.map(item => ({
+        ...item,
+        productId: item.productId.toString(),
+        variantId: item.variantId ? item.variantId.toString() : null
+      }))
+    }));
+    
+    res.json({ success: true, wishlists: wishlistsWithStringIds });
+  } catch (error) {
+    console.error("Get wishlists error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch wishlists" });
+  }
+});
+
+app.post('/api/wishlist', authenticateJwt, async (req, res) => {
+  try {
+    const wishlistsCollection = await getWishlistsCollection();
+    const { name, isPublic = false } = req.body;
+    const userId = req.user.userId;
+    
+    if (!name) {
+      return res.status(400).json({ success: false, message: "Wishlist name is required" });
+    }
+    
+    const wishlist = {
+      _id: new (require("mongodb")).ObjectId(),
+      userId: new (require("mongodb")).ObjectId(userId),
+      name,
+      items: [],
+      isPublic: !!isPublic,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    const result = await wishlistsCollection.insertOne(wishlist);
+    wishlist._id = result.insertedId;
+    
+    res.status(201).json({ success: true, message: "Wishlist created successfully", wishlist: {
+      ...wishlist,
+      _id: wishlist._id.toString(),
+      userId: wishlist.userId.toString()
+    }});
+  } catch (error) {
+    console.error("Create wishlist error:", error);
+    res.status(500).json({ success: false, message: "Failed to create wishlist" });
+  }
+});
+
+app.get('/api/wishlist/:id', authenticateJwt, async (req, res) => {
+  try {
+    const wishlistsCollection = await getWishlistsCollection();
+    const wishlistId = req.params.id;
+    const userId = req.user.userId;
+    
+    if (!require("mongodb").ObjectId.isValid(wishlistId)) {
+      return res.status(400).json({ success: false, message: "Invalid wishlist ID" });
+    }
+    
+    const wishlist = await wishlistsCollection.findOne({
+      _id: new (require("mongodb")).ObjectId(wishlistId),
+      userId: new (require("mongodb")).ObjectId(userId)
+    });
+    
+    if (!wishlist) {
+      return res.status(404).json({ success: false, message: "Wishlist not found" });
+    }
+    
+    // Convert ObjectId to string for frontend
+    const wishlistWithStringIds = {
+      ...wishlist,
+      _id: wishlist._id.toString(),
+      userId: wishlist.userId.toString(),
+      items: wishlist.items.map(item => ({
+        ...item,
+        productId: item.productId.toString(),
+        variantId: item.variantId ? item.variantId.toString() : null
+      }))
+    };
+    
+    res.json({ success: true, wishlist: wishlistWithStringIds });
+  } catch (error) {
+    console.error("Get wishlist by ID error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch wishlist" });
+  }
+});
+
+app.post('/api/wishlist/:id/items', authenticateJwt, async (req, res) => {
+  try {
+    const wishlistsCollection = await getWishlistsCollection();
+    const wishlistId = req.params.id;
+    const userId = req.user.userId;
+    const { productId, variantId = null, notes = "" } = req.body;
+    
+    if (!require("mongodb").ObjectId.isValid(wishlistId)) {
+      return res.status(400).json({ success: false, message: "Invalid wishlist ID" });
+    }
+    
+    if (!require("mongodb").ObjectId.isValid(productId)) {
+      return res.status(400).json({ success: false, message: "Invalid product ID" });
+    }
+    
+    if (variantId !== null && !require("mongodb").ObjectId.isValid(variantId)) {
+      return res.status(400).json({ success: false, message: "Invalid variant ID" });
+    }
+    
+    // Check if wishlist exists and belongs to user
+    const wishlist = await wishlistsCollection.findOne({
+      _id: new (require("mongodb")).ObjectId(wishlistId),
+      userId: new (require("mongodb")).ObjectId(userId)
+    });
+    
+    if (!wishlist) {
+      return res.status(404).json({ success: false, message: "Wishlist not found" });
+    }
+    
+    // Check if item already exists in wishlist
+    const itemExists = wishlist.items.some(item => 
+      item.productId.equals(new (require("mongodb")).ObjectId(productId)) &&
+      ((variantId === null && !item.variantId) || (item.variantId && item.variantId.equals(new (require("mongodb")).ObjectId(variantId))))
+    );
+    
+    if (itemExists) {
+      return res.status(409).json({ success: false, message: "Item already exists in wishlist" });
+    }
+    
+    const newItem = {
+      productId: new (require("mongodb")).ObjectId(productId),
+      variantId: variantId ? new (require("mongodb")).ObjectId(variantId) : null,
+      addedAt: new Date(),
+      notes
+    };
+    
+    await wishlistsCollection.updateOne(
+      { _id: new (require("mongodb")).ObjectId(wishlistId) },
+      { $push: { items: newItem }, $set: { updatedAt: new Date() } }
+    );
+    
+    res.json({ success: true, message: "Item added to wishlist successfully" });
+  } catch (error) {
+    console.error("Add item to wishlist error:", error);
+    res.status(500).json({ success: false, message: "Failed to add item to wishlist" });
+  }
+});
+
+app.delete('/api/wishlist/:id/items/:itemId', authenticateJwt, async (req, res) => {
+  try {
+    const wishlistsCollection = await getWishlistsCollection();
+    const wishlistId = req.params.id;
+    const userId = req.user.userId;
+    
+    if (!require("mongodb").ObjectId.isValid(wishlistId)) {
+      return res.status(400).json({ success: false, message: "Invalid wishlist ID" });
+    }
+    
+    // Check if wishlist exists and belongs to user
+    const wishlist = await wishlistsCollection.findOne({
+      _id: new (require("mongodb")).ObjectId(wishlistId),
+      userId: new (require("mongodb")).ObjectId(userId)
+    });
+    
+    if (!wishlist) {
+      return res.status(404).json({ success: false, message: "Wishlist not found" });
+    }
+    
+    // For removal, we'll accept productId and variantId in the body to identify the item
+    const { productId, variantId } = req.body;
+    
+    if (!productId || !require("mongodb").ObjectId.isValid(productId)) {
+      return res.status(400).json({ success: false, message: "Product ID is required" });
+    }
+    
+    const updateData = { $set: { updatedAt: new Date() } };
+    
+    if (variantId && require("mongodb").ObjectId.isValid(variantId)) {
+      updateData.$pull = { items: { productId: new (require("mongodb")).ObjectId(productId), variantId: new (require("mongodb")).ObjectId(variantId) } };
+    } else {
+      updateData.$pull = { items: { productId: new (require("mongodb")).ObjectId(productId) } };
+    }
+    
+    const result = await wishlistsCollection.updateOne(
+      { _id: new (require("mongodb")).ObjectId(wishlistId), userId: new (require("mongodb")).ObjectId(userId) },
+      updateData
+    );
+    
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ success: false, message: "Wishlist not found" });
+    }
+    
+    if (result.modifiedCount === 0) {
+      return res.status(409).json({ success: false, message: "Item not found in wishlist" });
+    }
+    
+    res.json({ success: true, message: "Item removed from wishlist successfully" });
+  } catch (error) {
+    console.error("Remove item from wishlist error:", error);
+    res.status(500).json({ success: false, message: "Failed to remove item from wishlist" });
+  }
+});
+
  */
 
 // Health check endpoint for Render/load balancers
-app.get('/health', (req, res) => {
+app.get('/health', (req: Request, res: Response) => {
 // Guard against invalid response object
   if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
     console.error('Invalid response object in health check');
@@ -1528,7 +2099,7 @@ app.use(
 /**
  * Handle all other requests by rendering the Angular application.
  */
-app.use(async (req, res, next) => {
+app.use(async (req: Request, res: Response, next: NextFunction) => {
   // Guard against invalid Express response objects
   if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
     console.error('SSR middleware invoked with invalid response object');
@@ -1546,7 +2117,7 @@ app.use(async (req, res, next) => {
     if (!engine) {
       // In development without SSR build, serve index.csr.html for client-side routing
       const fallbackHtml = join(browserDistFolder, 'index.csr.html');
-      res.sendFile(fallbackHtml, (err) => {
+      res.sendFile(fallbackHtml, (err: Error | null) => {
         if (err) {
           console.error('Failed to serve fallback HTML:', err);
           next(err);
@@ -1598,7 +2169,7 @@ if (isMainModule(import.meta.url) || process.env['pm_id'] || (process.env['NODE_
     console.log(`Node Express server listening on http://localhost:${port}`);
   });
 
-  server.on('error', (error) => {
+  server.on('error', (error: Error) => {
     console.error('Server experienced an execution error:', error);
     throw error;
   });

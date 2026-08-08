@@ -5,6 +5,7 @@ import { PricePipe } from '../../pipes/price.pipe';
 import { ImageFallbackDirective } from '../../directives/image-fallback.directive';
 import { ProductService, Product } from '../../services/product.service';
 import { CartService } from '../../services/cart.service';
+import { WishlistService } from '../../services/wishlist.service';
 
 @Component({
   selector: 'app-products',
@@ -32,7 +33,8 @@ export class ProductsComponent {
 
   constructor(
     private productService: ProductService,
-    private cartService: CartService
+    private cartService: CartService,
+    private wishlistService: WishlistService
   ) {
     this.products = this.productService.getProducts();
   }
@@ -48,6 +50,45 @@ export class ProductsComponent {
   addToCart(product: Product) {
     this.cartService.addToCart(product, 1);
     alert(`${product.name} has been added to your cart.`);
+  }
+
+  addToWishlist(product: Product) {
+    // For simplicity, we'll add to a default wishlist or prompt to create/select one
+    // In a full implementation, we'd show a modal to select/create wishlist
+    this.wishlistService.getWishlists().subscribe({
+      next: (wishlists) => {
+        const defaultWishlist = wishlists.find(w => w.name === 'My Favorites') || wishlists[0];
+        if (defaultWishlist) {
+          this.wishlistService.addItemToWishlist(defaultWishlist._id, product.id).subscribe({
+            next: () => {
+              alert(`${product.name} has been added to your wishlist!`);
+            },
+            error: (error) => {
+              console.error('Error adding to wishlist:', error);
+              alert('Failed to add item to wishlist. Please try again.');
+            }
+          });
+        } else {
+          // No wishlists exist, prompt to create one
+          if (confirm('You don\'t have any wishlists yet. Create a new wishlist called "My Favorites" and add this item to it?')) {
+            this.wishlistService.createWishlist('My Favorites', false).subscribe({
+              next: (response) => {
+                if (response.success) {
+                  this.wishlistService.addItemToWishlist(response.wishlist._id, product.id).subscribe({
+                    next: () => {
+                      alert(`${product.name} has been added to your new wishlist!`);
+                    },
+                    error: (error) => {
+                      console.error('Error adding to wishlist:', error);
+                    }
+                  });
+                }
+              }
+            });
+          }
+        }
+      }
+    });
   }
 
   trackByProductId(_: number, product: Product) {
