@@ -6,5 +6,8 @@
   },
   "scripts": {
     "build": "ng build"
+  },
+  "devDependencies": {
+    "@angular/cli": "^21.2.20"
   }
 }
