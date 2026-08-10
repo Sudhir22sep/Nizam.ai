@@ -1,6 +1,7 @@
 {
   "name": "nizam",
   "version": "0.0.1",
+  "type": "commonjs",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { tap } from 'rxjs/operators';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, of } from 'rxjs';
 import { Router } from '@angular/router';
 
 @Injectable({
@@ -107,5 +107,25 @@ export class AuthService {
    */
   getCurrentUserObservable(): Observable<any> {
     return this.currentUser;
+  }
+
+  /**
+   * Validate token and get current user from server
+   */
+  validateToken(): Observable<any> {
+    const token = this.getToken();
+    if (!token) {
+      return of(null);
+    }
+    
+    return this.http.get(`${this.apiUrl}/me`).pipe(
+      tap((response: any) => {
+        if (response.success && response.user) {
+          // Update localStorage with fresh user data
+          localStorage.setItem('currentUser', JSON.stringify(response.user));
+          this.currentUserSubject.next(response.user);
+        }
+      })
+    );
   }
 }
