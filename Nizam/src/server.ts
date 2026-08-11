@@ -180,6 +180,40 @@ interface UserDocument {
 // Use import.meta.dirname directly - it will resolve correctly both in dev (src/) and production (dist/Nizam/server/)
 
 const app = express();
+// parse JSON bodies for most routes
+// IMPORTANT: Razorpay webhook needs raw body for signature verification
+// Register raw body parser for webhook BEFORE express.json()
+app.use('/api/razorpay-webhook', express.raw({ type: 'application/json' }));
+app.use(express.json());
+
+// CORS configuration for Vercel frontend → Render backend
+const corsOrigin = process.env['CORS_ORIGIN'] || 'http://localhost:4200';
+// Allow localhost:4000 for local SSR development (same origin)
+const allowedOrigins = corsOrigin.split(',').map(o => o.trim());
+if (process.env['NODE_ENV'] !== 'production') {
+  allowedOrigins.push('http://localhost:4000', 'http://localhost:4200', 'http://127.0.0.1:4000', 'http://127.0.0.1:4200');
+}
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Global guard against invalid Express response objects (for Angular SSR route extraction)
+// This must be the FIRST middleware after express.json() to catch issues early
+app.use((req, res, next) => {
+  // During Angular's route extraction (getRoutesFromAngularRouterConfig), 
+  // the SSR engine may invoke the app with mock request/response objects
+  // that don't have all Express response properties properly initialized.
+  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
+    console.warn('Global guard: Invalid response object detected, skipping middleware chain');
+    // Return early without calling next() to prevent downstream middleware
+    // from accessing invalid response object properties
+    return;
+  }
+  next();
+});
 
 app.post('/api/create-razorpay-order', async (req, res) => {
   // Guard against invalid response object
@@ -326,40 +360,6 @@ const sesRegion = process.env['SES_REGION'];
 const sesClient = sesRegion ? new SESClient({ region: sesRegion }) : null;
 const verifiedSender = process.env['SES_VERIFIED_SENDER'] || 'sudhir.22sep@gmail.com';
 
-// parse JSON bodies for most routes
-// IMPORTANT: Razorpay webhook needs raw body for signature verification
-// Register raw body parser for webhook BEFORE express.json()
-app.use('/api/razorpay-webhook', express.raw({ type: 'application/json' }));
-app.use(express.json());
-
-// CORS configuration for Vercel frontend → Render backend
-const corsOrigin = process.env['CORS_ORIGIN'] || 'http://localhost:4200';
-// Allow localhost:4000 for local SSR development (same origin)
-const allowedOrigins = corsOrigin.split(',').map(o => o.trim());
-if (process.env['NODE_ENV'] !== 'production') {
-  allowedOrigins.push('http://localhost:4000', 'http://localhost:4200', 'http://127.0.0.1:4000', 'http://127.0.0.1:4200');
-}
-app.use(cors({
-  origin: allowedOrigins,
-  credentials: true,
-  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
-
-// Global guard against invalid Express response objects (for Angular SSR route extraction)
-// This must be the FIRST middleware after express.json() to catch issues early
-app.use((req, res, next) => {
-  // During Angular's route extraction (getRoutesFromAngularRouterConfig), 
-  // the SSR engine may invoke the app with mock request/response objects
-  // that don't have all Express response properties properly initialized.
-  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
-    console.warn('Global guard: Invalid response object detected, skipping middleware chain');
-    // Return early without calling next() to prevent downstream middleware
-    // from accessing invalid response object properties
-    return;
-  }
-  next();
-});
 
 // Health check endpoint for Render (and general health monitoring)
 app.get('/api/health', async (req, res) => {
@@ -499,6 +499,16 @@ async function getWishlistsCollection() {
     throw new Error('MongoDB not connected');
   }
   return db.collection('wishlists');
+}
+
+// Get or create reviews collection
+async function getReviewsCollection() {
+  await ensureMongoDBInitialized();
+
+  if (!db) {
+    throw new Error('MongoDB not connected');
+  }
+  return db.collection('reviews');
 }
 
 async function sendEmail(params: { to: string | string[]; subject: string; text: string; html: string }) {
