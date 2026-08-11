@@ -1,0 +1,44 @@
+__dirname: /workspaces/Nizam.ai/Nizam/dist/Nizam/server
+process.cwd(): /workspaces/Nizam.ai/Nizam
+browserDistFolder: /workspaces/Nizam.ai/Nizam/dist/Nizam/browser
+Does browserDistFolder exist? true
+Does index.csr.html exist? true
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+MONGODB_URI from process.env: mongodb+srv://sudhir22sep_db_user:Sudhir0501@amma-wear.vgvwvpo.mongodb.net/nizam_ai
+RazorPay Key ID: SET
+RazorPay instance: CREATED
+Connecting to MongoDB... mongodb+srv://***:***@amma-wear.vgvwvpo.mongodb.net/nizam_ai
+Server experienced an execution error: Error: listen EADDRINUSE: address already in use :::4000
+    at Server.setupListenHandle [as _listen2] (node:net:1948:16)
+    at listenInCluster (node:net:2005:12)
+    at Server.listen (node:net:2110:7)
+    at ir.listen (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:54:3223)
+    at file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:263:8767
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  code: 'EADDRINUSE',
+  errno: -98,
+  syscall: 'listen',
+  address: '::',
+  port: 4000
+}
+Uncaught Exception: Error: listen EADDRINUSE: address already in use :::4000
+    at Server.setupListenHandle [as _listen2] (node:net:1948:16)
+    at listenInCluster (node:net:2005:12)
+    at Server.listen (node:net:2110:7)
+    at ir.listen (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:54:3223)
+    at file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:263:8767
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  code: 'EADDRINUSE',
+  errno: -98,
+  syscall: 'listen',
+  address: '::',
+  port: 4000
+}
+Continuing despite uncaught exception (development mode)
+MongoDB connected successfully

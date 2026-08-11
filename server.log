@@ -1,0 +1,13 @@
+__dirname: /workspaces/Nizam.ai/Nizam/dist/Nizam/server
+process.cwd(): /workspaces/Nizam.ai
+browserDistFolder: /workspaces/Nizam.ai/Nizam/dist/Nizam/browser
+Does browserDistFolder exist? true
+Does index.csr.html exist? true
+◇ injected env (10) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+MONGODB_URI from process.env: mongodb+srv://sudhir22sep_db_user:Sudhir0501@amma-wear.vgvwvpo.mongodb.net/
+RazorPay Key ID: SET
+RazorPay instance: CREATED
+Connecting to MongoDB... mongodb+srv://***:***@amma-wear.vgvwvpo.mongodb.net/
+Node Express server listening on http://localhost:4000
+MongoDB connected successfully
+AngularNodeAppEngine initialization failed: Angular app engine manifest is not set. Please ensure you are using the '@angular/build:application' builder to build your server application.

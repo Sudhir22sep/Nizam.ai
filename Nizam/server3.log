@@ -1,0 +1,9 @@
+__dirname: /workspaces/Nizam.ai/Nizam/dist/Nizam/server
+process.cwd(): /workspaces/Nizam.ai/Nizam
+browserDistFolder: /workspaces/Nizam.ai/Nizam/dist/Nizam/browser
+Does browserDistFolder exist? true
+Does index.csr.html exist? true
+◇ injected env (10) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+RazorPay Key ID: SET
+RazorPay instance: CREATED
+Connecting to MongoDB... mongodb://localhost:27017/nizam_ai

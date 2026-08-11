@@ -1,0 +1,59 @@
+__dirname: /workspaces/Nizam.ai/Nizam/dist/Nizam/server
+process.cwd(): /workspaces/Nizam.ai/Nizam
+browserDistFolder: /workspaces/Nizam.ai/Nizam/dist/Nizam/browser
+Does browserDistFolder exist? true
+Does index.csr.html exist? true
+◇ injected env (9) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+RazorPay Key ID: SET
+RazorPay instance: CREATED
+Connecting to MongoDB... mongodb+srv://***:***@amma-wear.vgvwvpo.mongodb.net/
+Failed to connect to MongoDB: Ib [MongoServerSelectionError]: 004D0F90A0780000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:../deps/openssl/openssl/ssl/record/rec_layer_s3.c:918:SSL alert number 80
+
+    at t.selectServer (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:101:204303)
+    at async t._connect (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:101:201368)
+    at async t.connect (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:101:200369)
+    at async n (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:101:215398)
+    at async EC._connect (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:101:215585)
+    at async EC.connect (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:101:214186)
+    at async IYe (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:219:23525) {
+  errorLabelSet: Set(0) {},
+  reason: t {
+    type: 'ReplicaSetNoPrimary',
+    servers: Map(3) {
+      'ac-ljqcuzu-shard-00-00.vgvwvpo.mongodb.net:27017' => [L5],
+      'ac-ljqcuzu-shard-00-01.vgvwvpo.mongodb.net:27017' => [L5],
+      'ac-ljqcuzu-shard-00-02.vgvwvpo.mongodb.net:27017' => [L5]
+    },
+    stale: false,
+    compatible: true,
+    heartbeatFrequencyMS: 10000,
+    localThresholdMS: 15,
+    setName: 'atlas-idqp04-shard-0',
+    maxElectionId: null,
+    maxSetVersion: null,
+    commonWireVersion: 0,
+    logicalSessionTimeoutMinutes: null
+  },
+  code: undefined,
+  [cause]: Pc [MongoNetworkError]: 004D0F90A0780000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:../deps/openssl/openssl/ssl/record/rec_layer_s3.c:918:SSL alert number 80
+  
+      at TLSSocket.<anonymous> (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:101:80229)
+      at Object.onceWrapper (node:events:623:26)
+      at TLSSocket.emit (node:events:508:28)
+      at emitErrorNT (node:internal/streams/destroy:170:8)
+      at emitErrorCloseNT (node:internal/streams/destroy:129:3)
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    errorLabelSet: Set(1) { 'ResetPool' },
+    beforeHandshake: false,
+    [cause]: [Error: 004D0F90A0780000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:../deps/openssl/openssl/ssl/record/rec_layer_s3.c:918:SSL alert number 80
+    ] {
+      library: 'SSL routines',
+      reason: 'tlsv1 alert internal error',
+      code: 'ERR_SSL_TLSV1_ALERT_INTERNAL_ERROR'
+    }
+  }
+}
+MongoDB connection error details: 004D0F90A0780000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:../deps/openssl/openssl/ssl/record/rec_layer_s3.c:918:SSL alert number 80
+
+Check MONGODB_URI environment variable and MongoDB Atlas IP whitelist
+Node Express server listening on http://localhost:4000

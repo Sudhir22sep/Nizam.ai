@@ -1,0 +1,117 @@
+__dirname: /workspaces/Nizam.ai/Nizam/dist/Nizam/server
+process.cwd(): /workspaces/Nizam.ai/Nizam
+browserDistFolder: /workspaces/Nizam.ai/Nizam/dist/Nizam/browser
+Does browserDistFolder exist? true
+Does index.csr.html exist? true
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+MONGODB_URI resolved: mongodb+srv://***:***@amma-wear.vgvwvpo.mongodb.net/ammawears_dev?retryWrites=true&w=majority
+Environment: development | Database: ammawears_dev
+RazorPay Key ID: SET
+RazorPay instance: CREATED
+ensureMongoDBInitialized called
+Connecting to MongoDB... mongodb+srv://***:***@amma-wear.vgvwvpo.mongodb.net/ammawears_dev?retryWrites=true&w=majority
+Node Express server listening on http://localhost:4000
+MongoDB connected successfully
+RazorPay endpoint: razorpay is present
+[Razorpay] Frontend currency: USD, Total: 10, USD: 10.00, INR: 952.10, Paise: 95210
+ensureMongoDBInitialized called
+ensureMongoDBInitialized called
+Email not sent: Could not load credentials from any providers
+AngularNodeAppEngine initialization failed: Angular app engine manifest is not set. Please ensure you are using the '@angular/build:application' builder to build your server application.
+JWT verification error: C_ [JsonWebTokenError]: invalid signature
+    at file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:40926
+    at u (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:39726)
+    at LAe.exports [as verify] (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:39744)
+    at rf (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:259:5051)
+    at Th.handle_request (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:4137)
+    at c (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:6235)
+    at Dh.dispatch (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:6034)
+    at Th.handle_request (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:4137)
+    at file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:8958
+    at Yp.process_params (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:9502)
+ensureMongoDBInitialized called
+RazorPay endpoint: razorpay is present
+[Razorpay] Frontend currency: INR, Total: 13138.98, USD: 138.00, INR: 13138.98, Paise: 1313898
+ensureMongoDBInitialized called
+ensureMongoDBInitialized called
+Email not sent: Could not load credentials from any providers
+AngularNodeAppEngine initialization failed: Angular app engine manifest is not set. Please ensure you are using the '@angular/build:application' builder to build your server application.
+AngularNodeAppEngine initialization failed: Angular app engine manifest is not set. Please ensure you are using the '@angular/build:application' builder to build your server application.
+JWT verification error: C_ [JsonWebTokenError]: invalid signature
+    at file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:40926
+    at u (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:39726)
+    at LAe.exports [as verify] (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:39744)
+    at rf (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:259:5051)
+    at Th.handle_request (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:4137)
+    at c (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:6235)
+    at Dh.dispatch (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:6034)
+    at Th.handle_request (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:4137)
+    at file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:8958
+    at Yp.process_params (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:9502)
+JWT verification error: C_ [JsonWebTokenError]: invalid signature
+    at file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:40926
+    at u (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:39726)
+    at LAe.exports [as verify] (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:39744)
+    at rf (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:259:5051)
+    at Th.handle_request (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:4137)
+    at c (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:6235)
+    at Dh.dispatch (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:6034)
+    at Th.handle_request (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:4137)
+    at file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:8958
+    at Yp.process_params (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:9502)
+ensureMongoDBInitialized called
+ensureMongoDBInitialized called
+AngularNodeAppEngine initialization failed: Angular app engine manifest is not set. Please ensure you are using the '@angular/build:application' builder to build your server application.
+JWT verification error: C_ [JsonWebTokenError]: invalid signature
+    at file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:40926
+    at u (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:39726)
+    at LAe.exports [as verify] (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:39744)
+    at rf (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:259:5051)
+    at Th.handle_request (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:4137)
+    at c (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:6235)
+    at Dh.dispatch (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:6034)
+    at Th.handle_request (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:4137)
+    at file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:8958
+    at Yp.process_params (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:9502)
+ensureMongoDBInitialized called
+AngularNodeAppEngine initialization failed: Angular app engine manifest is not set. Please ensure you are using the '@angular/build:application' builder to build your server application.
+AngularNodeAppEngine initialization failed: Angular app engine manifest is not set. Please ensure you are using the '@angular/build:application' builder to build your server application.
+JWT verification error: C_ [JsonWebTokenError]: invalid signature
+    at file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:40926
+    at u (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:39726)
+    at LAe.exports [as verify] (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:39744)
+    at rf (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:259:5051)
+    at Th.handle_request (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:4137)
+    at c (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:6235)
+    at Dh.dispatch (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:6034)
+    at Th.handle_request (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:4137)
+    at file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:8958
+    at Yp.process_params (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:9502)
+ensureMongoDBInitialized called
+AngularNodeAppEngine initialization failed: Angular app engine manifest is not set. Please ensure you are using the '@angular/build:application' builder to build your server application.
+AngularNodeAppEngine initialization failed: Angular app engine manifest is not set. Please ensure you are using the '@angular/build:application' builder to build your server application.
+ensureMongoDBInitialized called
+JWT verification error: C_ [JsonWebTokenError]: invalid signature
+    at file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:40926
+    at u (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:39726)
+    at LAe.exports [as verify] (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:39744)
+    at rf (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:259:5051)
+    at Th.handle_request (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:4137)
+    at c (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:6235)
+    at Dh.dispatch (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:6034)
+    at Th.handle_request (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:4137)
+    at file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:8958
+    at Yp.process_params (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:9502)
+AngularNodeAppEngine initialization failed: Angular app engine manifest is not set. Please ensure you are using the '@angular/build:application' builder to build your server application.
+ensureMongoDBInitialized called
+JWT verification error: C_ [JsonWebTokenError]: invalid signature
+    at file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:40926
+    at u (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:39726)
+    at LAe.exports [as verify] (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:205:39744)
+    at rf (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:259:5051)
+    at Th.handle_request (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:4137)
+    at c (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:6235)
+    at Dh.dispatch (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:6034)
+    at Th.handle_request (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:4137)
+    at file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:8958
+    at Yp.process_params (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:140:9502)

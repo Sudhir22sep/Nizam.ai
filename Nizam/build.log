@@ -1,0 +1,61 @@
+
+> nizam@0.0.0 build
+> ng build
+
+❯ Building...
+✔ Building...
+Browser bundles     
+Initial chunk files  | Names                    |  Raw size | Estimated transfer size
+chunk-2NAQND4E.js    | -                        | 267.82 kB |                73.64 kB
+styles-GAB6HCJB.css  | styles                   |  89.86 kB |                18.26 kB
+main-4BHUFAV6.js     | main                     |  79.65 kB |                17.19 kB
+
+                     | Initial total            | 437.33 kB |               109.09 kB
+
+Lazy chunk files     | Names                    |  Raw size | Estimated transfer size
+chunk-4UIRXKVQ.js    | product-detail-component |  12.82 kB |                 3.40 kB
+
+
+Server bundles      
+Initial chunk files  | Names                    |  Raw size
+main.server.mjs      | main.server              |   2.64 MB |                        
+polyfills.server.mjs | polyfills.server         | 233.25 kB |                        
+chunk-BR7YUR47.mjs   | -                        |  69.55 kB |                        
+chunk-NXYWUKIA.mjs   | -                        |  47.92 kB |                        
+chunk-6YPCQPPH.mjs   | -                        |  31.26 kB |                        
+chunk-AAVPAHZZ.mjs   | -                        |  21.89 kB |                        
+chunk-6UESLOZF.mjs   | -                        |  18.23 kB |                        
+chunk-ZOH5QJGE.mjs   | -                        |   6.62 kB |                        
+chunk-AQNKBPRT.mjs   | -                        |   3.13 kB |                        
+chunk-DGJQU3KY.mjs   | -                        |   1.51 kB |                        
+chunk-UWCDADNC.mjs   | -                        | 820 bytes |                        
+
+Lazy chunk files     | Names                    |  Raw size
+chunk-7ABVZO24.mjs   | bowser                   |  29.60 kB |                        
+chunk-J7YUJE5W.mjs   | index                    |  21.77 kB |                        
+chunk-RLT5SHRW.mjs   | index                    |  17.66 kB |                        
+chunk-XT5WMM6K.mjs   | index                    |  12.84 kB |                        
+chunk-JINOFQP3.mjs   | xhr2                     |  12.07 kB |                        
+chunk-BYYMW6F6.mjs   | index                    |  11.64 kB |                        
+chunk-7UKYYEE5.mjs   | index                    |   9.90 kB |                        
+chunk-U4MMLK2U.mjs   | loadSso                  |   8.62 kB |                        
+chunk-KUECKLDL.mjs   | -                        |   8.52 kB |                        
+chunk-BIWY4CG3.mjs   | index                    |   6.59 kB |                        
+chunk-WMF7N5US.mjs   | index                    |   6.47 kB |                        
+chunk-EL73DGQK.mjs   | -                        |   3.78 kB |                        
+chunk-KYJEMGD7.mjs   | index                    |   3.76 kB |                        
+chunk-6DBJ44HI.mjs   | index                    |   1.72 kB |                        
+chunk-3XNJAD3A.mjs   | index                    |   1.48 kB |                        
+...and 1 more lazy chunks files. Use "--verbose" to show all the files.
+
+Prerendered 0 static routes.
+Application bundle generation complete. [24.879 seconds] - 2026-08-05T17:47:35.525Z
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1msrc/app/pages/home/home.component.css exceeded maximum budget. Budget 4.00 kB was not met by 1.10 kB with a total of 5.10 kB.[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1msrc/app/pages/product-detail/product-detail.component.css exceeded maximum budget. Budget 4.00 kB was not met by 1.60 kB with a total of 5.61 kB.[0m
+
+
+Output location: /workspaces/Nizam.ai/Nizam/dist/Nizam
+

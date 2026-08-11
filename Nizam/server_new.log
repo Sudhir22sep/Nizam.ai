@@ -1,0 +1,37 @@
+__dirname: /workspaces/Nizam.ai/Nizam/dist/Nizam/server
+process.cwd(): /workspaces/Nizam.ai/Nizam
+browserDistFolder: /workspaces/Nizam.ai/Nizam/dist/Nizam/browser
+Does browserDistFolder exist? true
+Does index.csr.html exist? true
+◇ injected env (10) from .env // tip: ⌘ enable debugging { debug: true }
+MONGODB_URI resolved: mongodb+srv://***:***@amma-wear.vgvwvpo.mongodb.net/ammawears_dev?retryWrites=true&w=majority
+Environment: development | Database: ammawears_dev
+RazorPay Key ID: SET
+RazorPay instance: CREATED
+ensureMongoDBInitialized called
+Connecting to MongoDB... mongodb+srv://***:***@amma-wear.vgvwvpo.mongodb.net/ammawears_dev?retryWrites=true&w=majority
+Node Express server listening on http://localhost:4000
+MongoDB connected successfully
+ensureMongoDBInitialized called
+Email not sent: Could not load credentials from any providers
+AngularNodeAppEngine initialization failed: Angular app engine manifest is not set. Please ensure you are using the '@angular/build:application' builder to build your server application.
+ensureMongoDBInitialized called
+Email not sent: Could not load credentials from any providers
+ensureMongoDBInitialized called
+confirm-razorpay-payment error TypeError: Cannot read properties of undefined (reading 'toFixed')
+    at file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:230:30
+    at Array.map (<anonymous>)
+    at D4 (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:226:270)
+    at file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:265:15713
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+ensureMongoDBInitialized called
+Email not sent: Could not load credentials from any providers
+AngularNodeAppEngine initialization failed: Angular app engine manifest is not set. Please ensure you are using the '@angular/build:application' builder to build your server application.
+AngularNodeAppEngine initialization failed: Angular app engine manifest is not set. Please ensure you are using the '@angular/build:application' builder to build your server application.
+ensureMongoDBInitialized called
+create-cod-order error TypeError: Cannot read properties of undefined (reading 'toFixed')
+    at file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:230:30
+    at Array.map (<anonymous>)
+    at D4 (file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:226:270)
+    at file:///workspaces/Nizam.ai/Nizam/dist/Nizam/server/main.server.mjs:265:11586
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)

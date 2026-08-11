@@ -1,0 +1,170 @@
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
+import { PricePipe } from '../../pipes/price.pipe';
+import { CurrencyService } from '../../services/currency.service';
+import { CartService } from '../../services/cart.service';
+
+@Component({
+  selector: 'app-checkout',
+  standalone: true,
+  imports: [CommonModule, FormsModule, RouterLink, PricePipe],
+  templateUrl: './checkout.component.html',
+  styleUrl: './checkout.component.css'
+})
+export class CheckoutComponent {
+  name = '';
+  email = '';
+  address = '';
+  paymentMethod: 'stripe' | 'razorpay' | 'cod' = 'stripe';
+  orderConfirmed = false;
+  confirmationReference = '';
+
+  constructor(public cartService: CartService, private currency: CurrencyService) {}
+
+  get items() {
+    return this.cartService.getItems();
+  }
+
+  get totalAmount() {
+    return this.cartService.getTotalAmount();
+  }
+
+  async submitOrder() {
+    if (!this.name || !this.email || !this.address) {
+      alert('Please complete name, email and shipping address.');
+      return;
+    }
+
+    if (this.cartService.getItemCount() === 0) {
+      alert('Your cart is empty. Add items before checking out.');
+      return;
+    }
+
+    const orderPayload = {
+      name: this.name,
+      email: this.email,
+      address: this.address,
+      items: this.items,
+      total: this.totalAmount,
+      currency: this.currency.getCurrency(),
+      paymentMethod: this.paymentMethod,
+    };
+
+    try {
+      const endpoint = this.paymentMethod === 'cod'
+        ? '/api/create-cod-order'
+        : this.paymentMethod === 'razorpay'
+          ? '/api/create-razorpay-order'
+          : '/api/create-checkout-session';
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderPayload),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        alert(result.message || 'Unable to complete order.');
+        return;
+      }
+
+      if (this.paymentMethod === 'cod') {
+        this.orderConfirmed = true;
+        this.confirmationReference = result.orderReference || '';
+        this.cartService.clearCart();
+        return;
+      }
+
+      if (this.paymentMethod === 'razorpay') {
+        if (!result.orderId || !result.keyId) {
+          alert(result.message || 'Unable to start Razorpay payment.');
+          return;
+        }
+
+        await this.openRazorpayCheckout(result);
+        return;
+      }
+
+      if (!result.url) {
+        alert(result.message || 'Unable to create a checkout session.');
+        return;
+      }
+
+      // Redirect to Stripe Checkout
+      window.location.href = result.url;
+    } catch (error) {
+      console.error('Create payment session failed', error);
+      alert('Unable to complete checkout at this time. Please try again later.');
+    }
+  }
+
+  async openRazorpayCheckout(data: { orderId: string; amount: number; currency: string; keyId: string; orderReference: string }) {
+    const RazorpayConstructor = (window as any).Razorpay;
+    if (!RazorpayConstructor) {
+      alert('Razorpay SDK is not loaded. Refresh the page and try again.');
+      return;
+    }
+
+    const options = {
+      key: data.keyId,
+      amount: data.amount,
+      currency: data.currency,
+      name: 'Amma Wears',
+      description: `Order ${data.orderReference}`,
+      order_id: data.orderId,
+      prefill: {
+        name: this.name,
+        email: this.email,
+      },
+      notes: {
+        orderReference: data.orderReference,
+      },
+      handler: async (response: any) => {
+        await this.confirmRazorpayPayment(response, data.orderReference);
+      },
+      modal: {
+        ondismiss: () => {
+          alert('Payment popup was closed. You can retry the payment from checkout.');
+        },
+      },
+    };
+
+    const rzp = new RazorpayConstructor(options);
+    rzp.open();
+  }
+
+  async confirmRazorpayPayment(response: any, orderReference: string) {
+    try {
+      const res = await fetch('/api/confirm-razorpay-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderReference,
+          razorpayPaymentId: response.razorpay_payment_id,
+          razorpayOrderId: response.razorpay_order_id,
+          razorpaySignature: response.razorpay_signature,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        alert(data.message || 'Unable to confirm Razorpay payment.');
+        return;
+      }
+
+      this.orderConfirmed = true;
+      this.confirmationReference = data.orderReference || '';
+      this.cartService.clearCart();
+    } catch (error) {
+      console.error('Razorpay confirmation failed', error);
+      alert('Unable to confirm payment after Razorpay checkout.');
+    }
+  }
+}

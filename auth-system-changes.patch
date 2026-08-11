@@ -1,0 +1,422 @@
+From 9f23ba6e180a87436bda64bf3fe444194eab1eb7 Mon Sep 17 00:00:00 2001
+From: Sudhir Kumar Alwala <sudhir.22sep@gmail.com>
+Date: Sun, 9 Aug 2026 16:55:45 +0000
+Subject: [PATCH] feat: implement authentication system with
+ login/register/logout endpoints and JWT-based auth
+
+---
+ Nizam/.env.backup                          |  27 +++
+ Nizam/package.json                         |   1 +
+ Nizam/src/app/app.config.ts                |   5 +-
+ Nizam/src/app/services/auth.service.ts     |  55 ++++++
+ Nizam/src/app/services/wishlist.service.ts |  48 ++++++
+ Nizam/src/server.ts                        | 191 +++++++++++++++++----
+ 6 files changed, 288 insertions(+), 39 deletions(-)
+ create mode 100644 Nizam/.env.backup
+ create mode 100644 Nizam/src/app/services/auth.service.ts
+ create mode 100644 Nizam/src/app/services/wishlist.service.ts
+
+diff --git a/Nizam/.env.backup b/Nizam/.env.backup
+new file mode 100644
+index 0000000..d62307e
+--- /dev/null
++++ b/Nizam/.env.backup
+@@ -0,0 +1,27 @@
++# MongoDB Configuration
++MONGODB_URI=mongodb+srv://sudhir22sep_db_user:Sudhir0501@amma-wear.vgvwvpo.mongodb.net/nizam_ai
++
++# Razorpay Configuration (Optional)
++# Use LIVE keys for production (RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET)
++# Use TEST keys for development (RAZORPAY_TEST_KEY_ID, RAZORPAY_TEST_KEY_SECRET)
++RAZORPAY_KEY_ID=rzp_live_T8zEOhZpoy5nC1
++RAZORPAY_KEY_SECRET=4atc5Ssut3fCDj5jn2lF3gKQ
++RAZORPAY_TEST_KEY_ID=rzp_test_T5BBMRJMadNJld
++RAZORPAY_TEST_KEY_SECRET=luH7NOEavl53684xdCLI6nnN
++
++# OpenAI Configuration (Optional)
++OPENAI_API_KEY=your_openai_api_key
++
++# AWS SES Configuration (Optional)
++SES_REGION=us-east-1
++SES_VERIFIED_SENDER=your-email@example.com
++
++# JWT Configuration
++JWT_SECRET=your_jwt_secret_key_here_change_in_production
++
++# Application URL
++APP_URL=https://ammawears.com
++CORS_ORIGIN=https://ammawears.com
++
++# Server Port
++PORT=4000
+diff --git a/Nizam/package.json b/Nizam/package.json
+index 22158f9..ab5d599 100644
+--- a/Nizam/package.json
++++ b/Nizam/package.json
+@@ -1,4 +1,5 @@
+ {
++  "type": "commonjs",
+   "name": "nizam",
+   "version": "0.0.0",
+   "scripts": {
+diff --git a/Nizam/src/app/app.config.ts b/Nizam/src/app/app.config.ts
+index 797642e..324b969 100644
+--- a/Nizam/src/app/app.config.ts
++++ b/Nizam/src/app/app.config.ts
+@@ -1,5 +1,6 @@
+ import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+ import { provideRouter } from '@angular/router';
++import { provideHttpClient } from '@angular/common/http';
+ 
+ import { routes } from './app.routes';
+ import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
+@@ -7,6 +8,8 @@ import { provideClientHydration, withEventReplay } from '@angular/platform-brows
+ export const appConfig: ApplicationConfig = {
+   providers: [
+     provideBrowserGlobalErrorListeners(),
+-    provideRouter(routes), provideClientHydration(withEventReplay())
++    provideRouter(routes),
++    provideClientHydration(withEventReplay()),
++    provideHttpClient()
+   ]
+ };
+diff --git a/Nizam/src/app/services/auth.service.ts b/Nizam/src/app/services/auth.service.ts
+new file mode 100644
+index 0000000..9473f11
+--- /dev/null
++++ b/Nizam/src/app/services/auth.service.ts
+@@ -0,0 +1,55 @@
++import { Injectable } from '@angular/core';
++import { HttpClient } from '@angular/common/http';
++import { Router } from '@angular/router';
++
++@Injectable({
++  providedIn: 'root'
++})
++export class AuthService {
++  private apiUrl = '/api';
++
++  constructor(private http: HttpClient, private router: Router) { }
++
++  register(userData: { email: string; password: string; name: string }) {
++    return this.http.post(`${this.apiUrl}/register`, userData);
++  }
++
++  login(credentials: { email: string; password: string }) {
++    return this.http.post(`${this.apiUrl}/login`, credentials);
++  }
++
++  logout() {
++    return this.http.post(`${this.apiUrl}/logout`, {});
++  }
++
++  getCurrentUser() {
++    return this.http.get(`${this.apiUrl}/user/me`);
++  }
++
++  // Helper method to save token
++  saveToken(token: string) {
++    if (typeof localStorage !== 'undefined') {
++      localStorage.setItem('auth_token', token);
++    }
++  }
++
++  // Helper method to get token
++  getToken(): string | null {
++    if (typeof localStorage !== 'undefined') {
++      return localStorage.getItem('auth_token');
++    }
++    return null;
++  }
++
++  // Helper method to clear token
++  clearToken() {
++    if (typeof localStorage !== 'undefined') {
++      localStorage.removeItem('auth_token');
++    }
++  }
++
++  // Check if user is logged in
++  isLoggedIn(): boolean {
++    return this.getToken() !== null;
++  }
++}
+\ No newline at end of file
+diff --git a/Nizam/src/app/services/wishlist.service.ts b/Nizam/src/app/services/wishlist.service.ts
+new file mode 100644
+index 0000000..3995075
+--- /dev/null
++++ b/Nizam/src/app/services/wishlist.service.ts
+@@ -0,0 +1,48 @@
++import { Injectable } from '@angular/core';
++import { HttpClient } from '@angular/common/http';
++import { AuthService } from './auth.service';
++
++@Injectable({
++  providedIn: 'root'
++})
++export class WishlistService {
++  private apiUrl = '/api';
++
++  constructor(private http: HttpClient, private authService: AuthService) { }
++
++  private getAuthHeaders() {
++    const token = this.authService.getToken();
++    return token ? { Authorization: `Bearer ${token}` } : {};
++  }
++
++  getWishlists(userId: string) {
++    return this.http.get(`${this.apiUrl}/wishlist`, { 
++      params: { userId },
++      headers: this.getAuthHeaders()
++    });
++  }
++
++  createWishlist(name: string) {
++    return this.http.post(`${this.apiUrl}/wishlist`, { name }, { 
++      headers: this.getAuthHeaders() 
++    });
++  }
++
++  getWishlist(id: string) {
++    return this.http.get(`${this.apiUrl}/wishlist/${id}`, { 
++      headers: this.getAuthHeaders() 
++    });
++  }
++
++  addItemToWishlist(wishlistId: string, productId: string) {
++    return this.http.post(`${this.apiUrl}/wishlist/${wishlistId}/items`, { productId }, { 
++      headers: this.getAuthHeaders() 
++    });
++  }
++
++  removeItemFromWishlist(wishlistId: string, itemId: string) {
++    return this.http.delete(`${this.apiUrl}/wishlist/${wishlistId}/items/${itemId}`, { 
++      headers: this.getAuthHeaders() 
++    });
++  }
++}
+\ No newline at end of file
+diff --git a/Nizam/src/server.ts b/Nizam/src/server.ts
+index 9c9b350..5cd9ae5 100644
+--- a/Nizam/src/server.ts
++++ b/Nizam/src/server.ts
+@@ -7,15 +7,18 @@ import {
+ import express from 'express';
+ import { join } from 'node:path';
+ import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+-import Stripe from 'stripe';
+-import { MongoClient, Db } from 'mongodb';
++// import Stripe from 'stripe';
++import { MongoClient, Db, ObjectId } from 'mongodb';
++const bcrypt = require('bcrypt');
++const jwt = require('jsonwebtoken');
++const stripe: any = null;
+ 
+ const mongoUrl = process.env['MONGODB_URI'] || 'mongodb://localhost:27017/nizam_ai';
+ let mongoClient: MongoClient | null = null;
+ let db: Db | null = null;
+ 
+-const stripeSecret = process.env['environment'] === 'production' ? process.env['STRIPE_SECRET_KEY'] : process.env['STRIPE_TEST_SECRET_KEY'];
+-const stripe = stripeSecret ? new Stripe(stripeSecret, { apiVersion: '2022-11-15' }) : null;
++// const stripeSecret = process.env['environment'] === 'production' ? process.env['STRIPE_SECRET_KEY'] : process.env['STRIPE_TEST_SECRET_KEY'];
++// const stripe = stripeSecret ? new Stripe(stripeSecret, { apiVersion: '2022-11-15' }) : null;
+ const appUrl = process.env['APP_URL'] || 'http://localhost:4200';
+ 
+ const browserDistFolder = join(import.meta.dirname, '../browser');
+@@ -473,46 +476,158 @@ app.post('/api/confirm-payment', async (req, res) => {
+ });
+ 
+ // Stripe webhook endpoint (optional signature verification)
+-app.post('/webhook/stripe', async (req, res) => {
+-  if (!stripe) {
+-    return res.status(500).send('Stripe not configured');
+-  }
++// app.post('/webhook/stripe', async (req, res) => {
++//   if (!stripe) {
++//     return res.status(500).send('Stripe not configured');
++//   }
++// 
++//   const event = req.body;
++// 
++//   try {
++//     const ordersCollection = await getOrdersCollection();
++//     
++//     if (event.type === 'checkout.session.completed') {
++//       const session = event.data.object;
++//       const orderReference = session.metadata?.orderReference || '';
++// 
++//       const order = await ordersCollection.findOne({ orderReference });
++//       if (order) {
++//         await ordersCollection.updateOne(
++//           { orderReference },
++//           {
++//             $set: {
++//               status: 'paid',
++//               paymentIntent: session.payment_intent || session.payment_intent_id || null,
++//             },
++//           }
++//         );
++// 
++//         // send confirmation email (best-effort)
++//         try {
++//           const mail = buildOrderConfirmationMessage({ name: (order as any).name, email: (order as any).email, items: (order as any).items, total: (order as any).total, orderReference });
++//           await sendEmail({ to: (order as any).email, subject: mail.subject, text: mail.text, html: mail.html });
++//         } catch (e) {
++//           console.error('Failed to send webhook confirmation email', e);
++//         }
++//       }
++//     }
++// 
++//     return res.json({ received: true });
++//   } catch (e) {
++//     console.error('webhook processing error', e);
++//     return res.status(500).send('Webhook processing error');
++//   }
++// });
+ 
+-  const event = req.body;
++/**
++ * Authentication API endpoints
++ */
+ 
++// POST register a new user
++app.post('/api/register', async (req, res) => {
+   try {
+-    const ordersCollection = await getOrdersCollection();
++    const { email, password, name } = req.body;
++    if (!email || !password || !name) {
++      return res.status(400).json({ success: false, message: 'Email, password, and name are required' });
++    }
+     
+-    if (event.type === 'checkout.session.completed') {
+-      const session = event.data.object;
+-      const orderReference = session.metadata?.orderReference || '';
+-
+-      const order = await ordersCollection.findOne({ orderReference });
+-      if (order) {
+-        await ordersCollection.updateOne(
+-          { orderReference },
+-          {
+-            $set: {
+-              status: 'paid',
+-              paymentIntent: session.payment_intent || session.payment_intent_id || null,
+-            },
+-          }
+-        );
+-
+-        // send confirmation email (best-effort)
+-        try {
+-          const mail = buildOrderConfirmationMessage({ name: (order as any).name, email: (order as any).email, items: (order as any).items, total: (order as any).total, orderReference });
+-          await sendEmail({ to: (order as any).email, subject: mail.subject, text: mail.text, html: mail.html });
+-        } catch (e) {
+-          console.error('Failed to send webhook confirmation email', e);
+-        }
+-      }
++    const usersCollection = await getUsersCollection();
++    const existingUser = await usersCollection.findOne({ email });
++    
++    if (existingUser) {
++      return res.status(400).json({ success: false, message: 'User already exists with this email' });
++    }
++    
++    const hashedPassword = await bcrypt.hash(password, 10);
++    const result = await usersCollection.insertOne({
++      email,
++      password: hashedPassword,
++      name,
++      createdAt: new Date(),
++      isActive: true
++    });
++    
++    res.json({ success: true, message: 'User registered successfully', userId: result.insertedId.toString() });
++  } catch (error) {
++    console.error('Register error:', error);
++    res.status(500).json({ success: false, message: 'Internal server error' });
++  }
++});
++
++// POST login user
++app.post('/api/login', async (req, res) => {
++  try {
++    const { email, password } = req.body;
++    if (!email || !password) {
++      return res.status(400).json({ success: false, message: 'Email and password are required' });
++    }
++    
++    const usersCollection = await getUsersCollection();
++    const user = await usersCollection.findOne({ email });
++    
++    if (!user) {
++      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+     }
++    
++    const isPasswordValid = await bcrypt.compare(password, user.password);
++    if (!isPasswordValid) {
++      return res.status(401).json({ success: false, message: 'Invalid email or password' });
++    }
++    
++    const token = jwt.sign(
++      { userId: user._id.toString(), email: user.email },
++      process.env.JWT_SECRET || 'your-secret-key',
++      { expiresIn: '24h' }
++    );
++    
++    // Remove password from user object before sending
++    const { password: _, ...userWithoutPassword } = user;
++    
++    res.json({ success: true, message: 'Login successful', token, user: userWithoutPassword });
++  } catch (error) {
++    console.error('Login error:', error);
++    res.status(500).json({ success: false, message: 'Internal server error' });
++  }
++});
++
++// POST logout user
++app.post('/api/logout', (req, res) => {
++  // In a more sophisticated app, you might invalidate the token here
++  // For now, we'll just return success - client should remove the token
++  res.json({ success: true, message: 'Logout successful' });
++});
+ 
+-    return res.json({ received: true });
+-  } catch (e) {
+-    console.error('webhook processing error', e);
+-    return res.status(500).send('Webhook processing error');
++// GET current user info (protected route)
++app.get('/api/user/me', async (req, res) => {
++  try {
++    const authHeader = req.headers.authorization;
++    if (!authHeader || !authHeader.startsWith('Bearer ')) {
++      return res.status(401).json({ success: false, message: 'Authorization token required' });
++    }
++    
++    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
++    
++    let decoded;
++    try {
++      decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
++    } catch (err) {
++      return res.status(401).json({ success: false, message: 'Invalid or expired token' });
++    }
++    
++    const usersCollection = await getUsersCollection();
++    const user = await usersCollection.findOne({ _id: new ObjectId(decoded.userId) });
++    
++    if (!user) {
++      return res.status(404).json({ success: false, message: 'User not found' });
++    }
++    
++    // Remove password from user object
++    const { password: _, ...userWithoutPassword } = user;
++    
++    res.json({ success: true, user: userWithoutPassword });
++  } catch (error) {
++    console.error('Get user error:', error);
++    res.status(500).json({ success: false, message: 'Internal server error' });
+   }
+ });
+ 
+-- 
+2.53.0
+
