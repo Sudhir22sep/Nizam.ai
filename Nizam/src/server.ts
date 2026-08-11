@@ -1,22 +1,18 @@
-import {
-  AngularNodeAppEngine,
-  createNodeRequestHandler,
-  isMainModule,
-  writeResponseToNodeResponse,
-} from '@angular/ssr/node';
+const { AngularNodeAppEngine, createNodeRequestHandler, isMainModule, writeResponseToNodeResponse } = require('@angular/ssr/node');
 import express from 'express';
 import { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { join, resolve } from 'node:path';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
-import Razorpay from 'razorpay';
+const Razorpay = require('razorpay');
 //import Stripe from 'stripe';
-import { MongoClient, Db, WithId } from "mongodb";
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import { MongoClient, Db, WithId, ObjectId } from "mongodb";
+const bcrypt = require('bcryptjs');
+
+const jwt = require('jsonwebtoken');
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
-import dotenv from 'dotenv';
+const dotenv = require('dotenv');
 import { dirname } from 'node:path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -94,6 +90,50 @@ interface OrderDocument {
   updatedAt?: Date;
 }
 
+interface ProductCreateDto {
+  name: string;
+  description: string;
+  basePrice: number | string;
+  currency: string;
+  category: string;
+  images?: string[];
+  variants?: Array<{ id?: string; name?: string; price?: number }>;
+  tags?: string[];
+  isActive?: boolean;
+}
+
+interface WishlistItem {
+  productId: ObjectId;
+  variantId: ObjectId | null;
+  addedAt: Date;
+  notes: string;
+}
+
+interface WishlistDocument {
+  _id: ObjectId;
+  userId: ObjectId;
+  name: string;
+  items: WishlistItem[];
+  isPublic: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface ProductDocument {
+  _id: ObjectId;
+  name: string;
+  description: string;
+  basePrice: number;
+  currency: string;
+  category: string;
+  images: string[];
+  variants: any[];
+  tags: string[];
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 //const stripeSecret = process.env['environment'] === 'production' ? process.env['STRIPE_SECRET_KEY'] : process.env['STRIPE_TEST_SECRET_KEY'];
 //const stripe = stripeSecret ? new Stripe(stripeSecret, { apiVersion: '2022-11-15' }) : null;
 
@@ -140,6 +180,160 @@ interface UserDocument {
 // Use import.meta.dirname directly - it will resolve correctly both in dev (src/) and production (dist/Nizam/server/)
 
 const app = express();
+// parse JSON bodies for most routes
+// IMPORTANT: Razorpay webhook needs raw body for signature verification
+// Register raw body parser for webhook BEFORE express.json()
+app.use('/api/razorpay-webhook', express.raw({ type: 'application/json' }));
+app.use(express.json());
+
+// CORS configuration for Vercel frontend → Render backend
+const corsOrigin = process.env['CORS_ORIGIN'] || 'http://localhost:4200';
+// Allow localhost:4000 for local SSR development (same origin)
+const allowedOrigins = corsOrigin.split(',').map(o => o.trim());
+if (process.env['NODE_ENV'] !== 'production') {
+  allowedOrigins.push('http://localhost:4000', 'http://localhost:4200', 'http://127.0.0.1:4000', 'http://127.0.0.1:4200');
+}
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Global guard against invalid Express response objects (for Angular SSR route extraction)
+// This must be the FIRST middleware after express.json() to catch issues early
+app.use((req, res, next) => {
+  // During Angular's route extraction (getRoutesFromAngularRouterConfig), 
+  // the SSR engine may invoke the app with mock request/response objects
+  // that don't have all Express response properties properly initialized.
+  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
+    console.warn('Global guard: Invalid response object detected, skipping middleware chain');
+    // Return early without calling next() to prevent downstream middleware
+    // from accessing invalid response object properties
+    return;
+  }
+  next();
+});
+
+app.post('/api/create-razorpay-order', async (req, res) => {
+  // Guard against invalid response object
+  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
+    console.error('Invalid response object in create-razorpay-order');
+    // Cannot send a response, so we just return to avoid errors.
+    return;
+  }
+
+  console.log('RazorPay endpoint: razorpay is', razorpay ? 'present' : 'null');
+  if (!razorpay) {
+    return res.status(500).json({ success: false, message: 'Razorpay is not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.' });
+  }
+
+  const { name, email, address, items, total, currency } = req.body;
+
+  if (!name || !email || !Array.isArray(items) || typeof total !== 'number') {
+    return res.status(400).json({ success: false, message: 'Name, email, items, and total are required.' });
+  }
+
+  const orderReference = `ORDER-${Date.now()}`;
+
+  // Exchange rates relative to USD (1 USD = X target) - must match CurrencyService
+  const exchangeRates: Record<string, number> = {
+    USD: 1,
+    INR: 95.21,
+    AED: 3.67,
+    SAR: 3.73
+  };
+
+  // Convert the total from the frontend's currency to INR
+  // The frontend sends the total in its active currency (e.g., USD, INR, AED, SAR)
+  // We need to convert to INR for Razorpay
+  const frontendCurrency = currency || 'USD';
+  const frontendRate = exchangeRates[frontendCurrency] ?? 1;
+  const inrRate = exchangeRates['INR'] ?? 95.21;
+  
+  // Convert: total (in frontend currency) -> USD -> INR
+  const totalInUsd = total / frontendRate;
+  const totalInInr = totalInUsd * inrRate;
+  
+  // Convert to paise (smallest unit for INR)
+  const amountInPaise = Math.round(totalInInr * 100);
+
+  console.log(`[Razorpay] Frontend currency: ${frontendCurrency}, Total: ${total}, USD: ${totalInUsd.toFixed(2)}, INR: ${totalInInr.toFixed(2)}, Paise: ${amountInPaise}`);
+
+  try {
+    const razorpayOrder = await razorpay.orders.create({
+      amount: amountInPaise,
+      currency: 'INR',
+      receipt: orderReference,
+      payment_capture: true,
+      notes: {
+        orderReference,
+        email,
+        name,
+      },
+    });
+
+    // Save order to MongoDB with 'pending' status before returning
+    // This ensures the order exists when payment is confirmed
+    const ordersCollection = await getOrdersCollection();
+    
+    // Normalize items to match OrderDocument structure
+    const normalizedItems = items.map(item => {
+      // Extract price from either item.price or item.product.basePrice or item.product.price
+      let price = 0;
+      let productName = 'Unnamed Item';
+      
+      if (typeof item.price === 'number' && item.price > 0) {
+        price = item.price;
+        productName = item.product?.name || productName;
+      } else if (item.product && typeof item.product === 'object') {
+        if (typeof item.product.basePrice === 'number' && item.product.basePrice > 0) {
+          price = item.product.basePrice;
+          productName = item.product.name || productName;
+        } else if (typeof item.product.price === 'number' && item.product.price > 0) {
+          price = item.product.price;
+          productName = item.product.name || productName;
+        }
+      }
+      
+      const quantity = typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1;
+      
+      return {
+        product: {
+          name: productName,
+          price: price
+        },
+        quantity: quantity
+      };
+    });
+
+    const order: OrderDocument = {
+      orderReference,
+      name,
+      email,
+      address: address || '',
+      items: normalizedItems,
+      total,
+      currency: 'INR', // Razorpay always uses INR
+      paymentMethod: 'Razorpay',
+      status: 'pending',
+      createdAt: new Date()
+    };
+    await ordersCollection.insertOne(order);
+
+    return res.status(200).json({
+      success: true,
+      orderId: razorpayOrder.id,
+      amount: razorpayOrder.amount,
+      currency: razorpayOrder.currency,
+      keyId: razorpayKeyId,
+      orderReference,
+    });
+  } catch (error) {
+    console.error('create-razorpay-order error', error);
+    return res.status(500).json({ success: false, message: 'Unable to create Razorpay order.' });
+  }
+});
 
 // Lazy initialization of AngularNodeAppEngine to handle both dev and production
 // In dev mode (Vite), we try to create the engine; if it fails, we fall back to CSR.
@@ -166,40 +360,6 @@ const sesRegion = process.env['SES_REGION'];
 const sesClient = sesRegion ? new SESClient({ region: sesRegion }) : null;
 const verifiedSender = process.env['SES_VERIFIED_SENDER'] || 'sudhir.22sep@gmail.com';
 
-// parse JSON bodies for most routes
-// IMPORTANT: Razorpay webhook needs raw body for signature verification
-// Register raw body parser for webhook BEFORE express.json()
-app.use('/api/razorpay-webhook', express.raw({ type: 'application/json' }));
-app.use(express.json());
-
-// CORS configuration for Vercel frontend → Render backend
-const corsOrigin = process.env['CORS_ORIGIN'] || 'http://localhost:4200';
-// Allow localhost:4000 for local SSR development (same origin)
-const allowedOrigins = corsOrigin.split(',').map(o => o.trim());
-if (process.env['NODE_ENV'] !== 'production') {
-  allowedOrigins.push('http://localhost:4000', 'http://localhost:4200', 'http://127.0.0.1:4000', 'http://127.0.0.1:4200');
-}
-app.use(cors({
-  origin: allowedOrigins,
-  credentials: true,
-  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
-
-// Global guard against invalid Express response objects (for Angular SSR route extraction)
-// This must be the FIRST middleware after express.json() to catch issues early
-app.use((req, res, next) => {
-  // During Angular's route extraction (getRoutesFromAngularRouterConfig), 
-  // the SSR engine may invoke the app with mock request/response objects
-  // that don't have all Express response properties properly initialized.
-  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
-    console.warn('Global guard: Invalid response object detected, skipping middleware chain');
-    // Return early without calling next() to prevent downstream middleware
-    // from accessing invalid response object properties
-    return;
-  }
-  next();
-});
 
 // Health check endpoint for Render (and general health monitoring)
 app.get('/api/health', async (req, res) => {
@@ -339,6 +499,16 @@ async function getWishlistsCollection() {
     throw new Error('MongoDB not connected');
   }
   return db.collection('wishlists');
+}
+
+// Get or create reviews collection
+async function getReviewsCollection() {
+  await ensureMongoDBInitialized();
+
+  if (!db) {
+    throw new Error('MongoDB not connected');
+  }
+  return db.collection('reviews');
 }
 
 async function sendEmail(params: { to: string | string[]; subject: string; text: string; html: string }) {
@@ -525,7 +695,8 @@ app.post('/api/save-user', async (req, res) => {
 
 /**
  * Register a new user
- */
+
+*/
 app.post('/api/auth/register', async (req, res) => {
   const { email, password, firstName, lastName, phone } = req.body;
 
@@ -592,7 +763,8 @@ app.post('/api/auth/register', async (req, res) => {
 
 /**
  * Login user
- */
+
+*/
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -655,7 +827,8 @@ app.post('/api/auth/login', async (req, res) => {
 
 /**
  * Get current user profile (requires auth)
- */
+
+*/
 app.get('/api/auth/me', async (req, res) => {
   if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
     console.error('Invalid response object in auth/me');
@@ -708,7 +881,7 @@ app.get('/api/auth/me', async (req, res) => {
 
 /**
  * Update user profile (requires auth)
- */
+
 app.put('/api/auth/profile', async (req, res) => {
   if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
     console.error('Invalid response object in auth/profile');
@@ -774,7 +947,7 @@ app.put('/api/auth/profile', async (req, res) => {
 
 /**
  * Add/update user address (requires auth)
- */
+
 app.post('/api/auth/addresses', async (req, res) => {
   if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
     console.error('Invalid response object in auth/addresses');
@@ -843,7 +1016,7 @@ app.post('/api/auth/addresses', async (req, res) => {
 
 /**
  * Delete user address (requires auth)
- */
+
 app.delete('/api/auth/addresses/:index', async (req, res) => {
   if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
     console.error('Invalid response object in auth/addresses delete');
@@ -898,7 +1071,7 @@ app.delete('/api/auth/addresses/:index', async (req, res) => {
 
 /**
  * Logout (client-side only, but endpoint for consistency)
- */
+*/
 // JWT authentication middleware
 async function authenticateJwt(req: Request & { user?: any }, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
@@ -919,107 +1092,10 @@ async function authenticateJwt(req: Request & { user?: any }, res: Response, nex
     return res.status(401).json({ success: false, message: 'Invalid or expired token' });
   }
 }
-app.post('/api/auth/logout', (req, res) => {
+app.post('/api/auth/logout', (req: Request, res: Response) => {
   // JWT is stateless - logout is handled client-side by deleting the token
   // This endpoint exists for API consistency and potential future token blacklisting
   return res.status(200).json({ success: true, message: 'Logged out successfully.' });
-});
-app.post('/api/register', async (req, res) => {
-  const { firstName, lastName, email, phone, password, addresses } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ success: false, message: 'Email and password required' });
-  }
-  try {
-    const usersCollection = await getUsersCollection();
-    const existingUser = await usersCollection.findOne({ email });
-    if (existingUser) {
-      return res.status(409).json({ success: false, message: 'User already exists' });
-    }
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
-    const user = {
-      firstName: firstName || '',
-      lastName: lastName || '',
-      email,
-      phone: phone || '',
-      passwordHash,
-      addresses: addresses || [],
-      createdAt: new Date(),
-      lastLogin: new Date(),
-      isActive: true,
-      role: 'user'
-    };
-    const result = await usersCollection.insertOne(user);
-    const token = jwt.sign({ email, role: user.role }, jwtSecret, { expiresIn: jwtExpiresIn });
-    return res.status(201).json({ success: true, token });
-  } catch (error) {
-    console.error('Registration error:', error);
-    return res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
-
-app.post('/api/login', async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ success: false, message: 'Email and password required' });
-  }
-  try {
-    const usersCollection = await getUsersCollection();
-    const user = await usersCollection.findOne({ email }) as UserDocument | null;
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-    const passwordMatches = await bcrypt.compare(password, user.passwordHash);
-    if (!passwordMatches) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-    const token = jwt.sign({ email, role: user.role }, jwtSecret, { expiresIn: jwtExpiresIn });
-    return res.json({ success: true, token });
-  } catch (error) {
-    console.error('Login error:', error);
-    return res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
-
-app.post('/api/order-confirmation', async (req, res) => {
-  const { name, email, items, total, paymentMethod } = req.body;
-
-  if (!name || !email || !Array.isArray(items) || typeof total !== 'number') {
-    return res.status(400).json({ success: false, message: 'Name, email, items, and total are required.' });
-  }
-
-  const orderReference = `ORDER-${Date.now()}`;
-
-  try {
-    const ordersCollection = await getOrdersCollection();
-
-    const order = {
-      orderReference,
-      name,
-      email,
-      items,
-      total,
-      paymentMethod: paymentMethod || 'CARD',
-      status: 'created',
-      createdAt: new Date()
-    };
-
-    await ordersCollection.insertOne(order);
-
-
-    const mail = buildOrderConfirmationMessage({ name, email, items, total, orderReference, paymentMethod: order.paymentMethod });
-    const sent = await trySendEmail({
-      to: email,
-      subject: mail.subject,
-      text: mail.text,
-      html: mail.html,
-    });
-
-    return res.status(200).json({ success: true, orderReference, message: sent ? 'Order confirmation sent successfully.' : 'Order recorded successfully. Email service not configured.' });
-  } catch (error) {
-    console.error('Failed to send order confirmation email:', error);
-    return res.status(500).json({ success: false, message: 'Unable to record order at this time.' });
-  }
 });
 
 // Create a Stripe Checkout session and persist the order as pending
@@ -1289,130 +1365,13 @@ app.patch('/api/orders/:orderReference/status', async (req, res) => {
 
 /**
  * Create Razorpay order - for online payments (Card/UPI)
- */
-app.post('/api/create-razorpay-order', async (req, res) => {
-  // Guard against invalid response object
-  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
-    console.error('Invalid response object in create-razorpay-order');
-    // Cannot send a response, so we just return to avoid errors.
-    return;
-  }
 
-  console.log('RazorPay endpoint: razorpay is', razorpay ? 'present' : 'null');
-  if (!razorpay) {
-    return res.status(500).json({ success: false, message: 'Razorpay is not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.' });
-  }
-
-  const { name, email, address, items, total, currency } = req.body;
-
-  if (!name || !email || !Array.isArray(items) || typeof total !== 'number') {
-    return res.status(400).json({ success: false, message: 'Name, email, items, and total are required.' });
-  }
-
-  const orderReference = `ORDER-${Date.now()}`;
-
-  // Exchange rates relative to USD (1 USD = X target) - must match CurrencyService
-  const exchangeRates: Record<string, number> = {
-    USD: 1,
-    INR: 95.21,
-    AED: 3.67,
-    SAR: 3.73
-  };
-
-  // Convert the total from the frontend's currency to INR
-  // The frontend sends the total in its active currency (e.g., USD, INR, AED, SAR)
-  // We need to convert to INR for Razorpay
-  const frontendCurrency = currency || 'USD';
-  const frontendRate = exchangeRates[frontendCurrency] ?? 1;
-  const inrRate = exchangeRates['INR'] ?? 95.21;
-  
-  // Convert: total (in frontend currency) -> USD -> INR
-  const totalInUsd = total / frontendRate;
-  const totalInInr = totalInUsd * inrRate;
-  
-  // Convert to paise (smallest unit for INR)
-  const amountInPaise = Math.round(totalInInr * 100);
-
-  console.log(`[Razorpay] Frontend currency: ${frontendCurrency}, Total: ${total}, USD: ${totalInUsd.toFixed(2)}, INR: ${totalInInr.toFixed(2)}, Paise: ${amountInPaise}`);
-
-  try {
-    const razorpayOrder = await razorpay.orders.create({
-      amount: amountInPaise,
-      currency: 'INR',
-      receipt: orderReference,
-      payment_capture: true,
-      notes: {
-        orderReference,
-        email,
-        name,
-      },
-    });
-
-    // Save order to MongoDB with 'pending' status before returning
-    // This ensures the order exists when payment is confirmed
-    const ordersCollection = await getOrdersCollection();
-    
-    // Normalize items to match OrderDocument structure
-    const normalizedItems = items.map(item => {
-      // Extract price from either item.price or item.product.basePrice or item.product.price
-      let price = 0;
-      let productName = 'Unnamed Item';
-      
-      if (typeof item.price === 'number' && item.price > 0) {
-        price = item.price;
-        productName = item.product?.name || productName;
-      } else if (item.product && typeof item.product === 'object') {
-        if (typeof item.product.basePrice === 'number' && item.product.basePrice > 0) {
-          price = item.product.basePrice;
-          productName = item.product.name || productName;
-        } else if (typeof item.product.price === 'number' && item.product.price > 0) {
-          price = item.product.price;
-          productName = item.product.name || productName;
-        }
-      }
-      
-      const quantity = typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1;
-      
-      return {
-        product: {
-          name: productName,
-          price: price
-        },
-        quantity: quantity
-      };
-    });
-
-    const order: OrderDocument = {
-      orderReference,
-      name,
-      email,
-      address: address || '',
-      items: normalizedItems,
-      total,
-      currency: 'INR', // Razorpay always uses INR
-      paymentMethod: 'Razorpay',
-      status: 'pending',
-      createdAt: new Date()
-    };
-    await ordersCollection.insertOne(order);
-
-    return res.status(200).json({
-      success: true,
-      orderId: razorpayOrder.id,
-      amount: razorpayOrder.amount,
-      currency: razorpayOrder.currency,
-      keyId: razorpayKeyId,
-      orderReference,
-    });
-  } catch (error) {
-    console.error('create-razorpay-order error', error);
-    return res.status(500).json({ success: false, message: 'Unable to create Razorpay order.' });
-  }
-});
+*/
 
 /**
  * Confirm Razorpay payment after successful payment (client-side callback)
- */
+
+*/
 app.post('/api/confirm-razorpay-payment', async (req, res) => {
   // Guard against invalid response object
   if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
@@ -1477,7 +1436,7 @@ app.post('/api/confirm-razorpay-payment', async (req, res) => {
 /**
  * Razorpay Webhook - Server-side payment confirmation (RELIABLE for UPI/redirect payments)
  * Configure this URL in Razorpay Dashboard: https://api.ammawears.com/api/razorpay-webhook
- */
+
 app.post('/api/razorpay-webhook', async (req: Request, res: Response) => {
   // Guard against invalid response object
   if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
@@ -1686,6 +1645,7 @@ app.post('/api/razorpay-webhook', async (req: Request, res: Response) => {
 //     return res.status(500).send('Webhook processing error');
 //   }
 // });
+// POST register a new user
 
 /**
  * Example Express Rest API endpoints can be defined here.
@@ -1697,6 +1657,9 @@ app.post('/api/razorpay-webhook', async (req: Request, res: Response) => {
  *   // Handle API request
  * });
  * ```
+ */ 
+
+
 //
 // Product Catalog API Endpoints
 //
@@ -1725,7 +1688,7 @@ app.get('/api/products/', async (req, res) => {
     
     const skip = (Number(page) - 1) * Number(limit);
     
-    const [products, total] = await Promise.all([
+    const [rawProducts, total] = await Promise.all([
       productsCollection
         .find(filter)
         .sort({ createdAt: -1 })
@@ -1734,7 +1697,19 @@ app.get('/api/products/', async (req, res) => {
         .toArray(),
       productsCollection.countDocuments(filter)
     ]);
-    
+
+    const products = rawProducts.map(p => ({
+      ...p,
+      basePrice: p.basePrice ?? p.price ?? 0,
+      currency: p.currency ?? 'USD',
+      images: Array.isArray(p.images) ? p.images : (p.image ? [p.image] : []),
+      variants: p.variants ?? [],
+      tags: p.tags ?? [],
+      isActive: p.isActive ?? true,
+      createdAt: p.createdAt ? new Date(p.createdAt) : new Date(),
+      updatedAt: p.updatedAt ? new Date(p.updatedAt) : new Date(),
+    }));
+
     res.json({ success: true, products, total, page: Number(page), limit: Number(limit) });
   } catch (error) {
     console.error("Get products error:", error);
@@ -1742,23 +1717,23 @@ app.get('/api/products/', async (req, res) => {
   }
 });
 
-app.get('/api/products/:id/', async (req, res) => {
+app.get('/api/products/:id/', async (req: Request, res: Response) => {
   try {
     const productsCollection = await getProductsCollection();
-    const product = await productsCollection.findOne({ _id: new (require("mongodb")).ObjectId(req.params.id) });
+    const product = await productsCollection.findOne({ _id: new ObjectId(req.params.id) });
     
     if (!product) {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
     
-    res.json({ success: true, product });
+    return res.json({ success: true, product });
   } catch (error) {
     console.error("Get product by ID error:", error);
-    res.status(500).json({ success: false, message: "Failed to fetch product" });
+    return res.status(500).json({ success: false, message: "Failed to fetch product" });
   }
 });
 
-app.post('/api/products/', async (req, res) => {
+app.post('/api/products/', async (req: Request & { body: ProductCreateDto }, res: Response) => {
   try {
     const productsCollection = await getProductsCollection();
     const { name, description, basePrice, currency, category, images, variants, tags, isActive } = req.body;
@@ -1767,8 +1742,8 @@ app.post('/api/products/', async (req, res) => {
       return res.status(400).json({ success: false, message: "Name, description, basePrice, currency, and category are required" });
     }
     
-    const product: any = {
-      _id: new (require("mongodb")).ObjectId(),
+    const product: ProductDocument = {
+      _id: new ObjectId(),
       name,
       description,
       basePrice: Number(basePrice),
@@ -1785,19 +1760,19 @@ app.post('/api/products/', async (req, res) => {
     const result = await productsCollection.insertOne(product);
     product._id = result.insertedId;
     
-    res.status(201).json({ success: true, message: "Product created successfully", product });
+    return res.status(201).json({ success: true, message: "Product created successfully", product });
   } catch (error) {
     console.error("Create product error:", error);
-    res.status(500).json({ success: false, message: "Failed to create product" });
+    return res.status(500).json({ success: false, message: "Failed to create product" });
   }
 });
 
-app.put('/api/products/:id/', async (req, res) => {
+app.put('/api/products/:id/', async (req: Request, res: Response) => {
   try {
     const productsCollection = await getProductsCollection();
     const { name, description, basePrice, currency, category, images, variants, tags, isActive } = req.body;
     
-    const updateData: any = {}
+    const updateData: any = {};
     
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
@@ -1812,7 +1787,7 @@ app.put('/api/products/:id/', async (req, res) => {
     updateData.updatedAt = new Date();
     
     const result = await productsCollection.updateOne(
-      { _id: new (require("mongodb")).ObjectId(req.params.id) },
+      { _id: new ObjectId(req.params.id) },
       { $set: updateData }
     );
     
@@ -1820,29 +1795,29 @@ app.put('/api/products/:id/', async (req, res) => {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
     
-    res.json({ success: true, message: "Product updated successfully" });
+    return res.json({ success: true, message: "Product updated successfully" });
   } catch (error) {
     console.error("Update product error:", error);
-    res.status(500).json({ success: false, message: "Failed to update product" });
+    return res.status(500).json({ success: false, message: "Failed to update product" });
   }
 });
 
-app.delete('/api/products/:id/', async (req, res) => {
+app.delete('/api/products/:id/', async (req: Request, res: Response) => {
   try {
     const productsCollection = await getProductsCollection();
     
     const result = await productsCollection.deleteOne(
-      { _id: new (require("mongodb")).ObjectId(req.params.id) }
+      { _id: new ObjectId(req.params.id) }
     );
     
     if (result.deletedCount === 0) {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
     
-    res.json({ success: true, message: "Product deleted successfully" });
+    return res.json({ success: true, message: "Product deleted successfully" });
   } catch (error) {
     console.error("Delete product error:", error);
-    res.status(500).json({ success: false, message: "Failed to delete product" });
+    return res.status(500).json({ success: false, message: "Failed to delete product" });
   }
 });
 
@@ -1859,11 +1834,11 @@ app.get('/api/wishlist', authenticateJwt, async (req, res) => {
       ...wishlist,
       _id: wishlist._id.toString(),
       userId: wishlist.userId.toString(),
-      items: wishlist.items.map(item => ({
-        ...item,
-        productId: item.productId.toString(),
-        variantId: item.variantId ? item.variantId.toString() : null
-      }))
+      items: wishlist.items.map((item: any) => ({
+          ...item,
+          productId: item.productId.toString(),
+          variantId: item.variantId ? item.variantId.toString() : null
+        }))
     }));
     
     res.json({ success: true, wishlists: wishlistsWithStringIds });
@@ -2058,7 +2033,7 @@ app.delete('/api/wishlist/:id/items/:itemId', authenticateJwt, async (req, res) 
   }
 });
 
- */
+
 
 // Health check endpoint for Render/load balancers
 app.get('/health', (req: Request, res: Response) => {
@@ -2079,7 +2054,8 @@ app.get('/health', (req: Request, res: Response) => {
 /**
  * Serve static files from /browser
  * Guard against invalid response objects during Angular SSR route extraction
- */
+
+ */ 
 app.use((req, res, next) => {
   if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
     console.warn('Static middleware guard: Invalid response object detected, skipping');
@@ -2098,7 +2074,8 @@ app.use(
 
 /**
  * Handle all other requests by rendering the Angular application.
- */
+
+ */ 
 app.use(async (req: Request, res: Response, next: NextFunction) => {
   // Guard against invalid Express response objects
   if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
@@ -2159,7 +2136,9 @@ app.use((err: any, req: any, res: any, next: any) => {
  * Start the server if this module is the main entry point, or it is ran via PM2.
  * In development, also start the server when PORT is set (for Angular CLI dev servers).
  * The server listens on the port defined by the `PORT` environment variable, or defaults to 4000.
- */
+ */ 
+
+
 if (isMainModule(import.meta.url) || process.env['pm_id'] || (process.env['NODE_ENV'] !== 'production' && process.env['PORT'])) {
   const port = process.env['PORT'] || 4000;
 
@@ -2182,7 +2161,12 @@ if (isMainModule(import.meta.url) || process.env['pm_id'] || (process.env['NODE_
 
 /**
  * Request handler used by the Angular CLI (for dev-server and during build) or Firebase Cloud Functions.
- */
+
+ */ 
+app.post('/api/test', (req, res) => {
+  res.json({ success: true, message: 'Test route' });
+});
+
 export const reqHandler = createNodeRequestHandler(app);
 
 // Export app as default for Angular SSR
