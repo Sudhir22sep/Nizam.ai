@@ -16,6 +16,19 @@ const dotenv = require('dotenv');
 import { dirname } from 'node:path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Extend Express Request type to include user property
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        userId: string;
+        email: string;
+        [key: string]: any;
+      };
+    }
+  }
+}
 console.log('__dirname:', __dirname);
 console.log('process.cwd():', process.cwd());
 
@@ -73,7 +86,109 @@ console.log("MONGODB_URI resolved:", mongoUrl.replace(/\/\/[^:]+:[^@]+@/, '//***
 console.log("Environment:", isProduction ? 'production' : 'development', "| Database:", defaultDbName);
 let mongoClient: MongoClient | null = null;
 let db: Db | null = null;
-// Order document type
+// Order docum
+
+// ============================================================================
+// PRICE COMPARISON TYPES & INTERFACES
+// ============================================================================
+// Try iwht other distributoins main ones also
+//snitch, nabero, nyka,westside and small ones also, redirect to ammawears adn try to buy from them and sale at easy prices.
+
+interface CompetitorPrice {
+  source: 'myntra' | 'flipkart' | 'amazon' | 'meesho' | 'ajio' | 'nykaa' | 'other';
+  sourceProductId: string;
+  sourceProductUrl: string;
+  price: number;
+  originalPrice?: number; // MRP/strikethrough price
+  discountPercent?: number;
+  availability: 'in_stock' | 'out_of_stock' | 'limited';
+  sellerName?: string;
+  sellerRating?: number;
+  deliveryDays?: number;
+  deliveryCharge?: number;
+  lastUpdated: Date;
+  isActive: boolean;
+}
+
+interface PriceComparisonProduct {
+  _id?: ObjectId;
+  ammawearsProductId: string; // Reference to our product
+  name: string;
+  description: string;
+  category: string;
+  brand?: string;
+  attributes: Record<string, string>; // e.g., { "fabric": "cotton", "fit": "oversized", "pattern": "graphic" }
+  images: string[];
+  competitorPrices: CompetitorPrice[];
+  bestPrice: {
+    source: string;
+    price: number;
+    totalPrice: number; // price + delivery
+    url: string;
+  } | null;
+  priceHistory: Array<{
+    date: Date;
+    source: string;
+    price: number;
+  }>;
+  createdAt: Date;
+  updatedAt: Date;
+  isActive: boolean;
+}
+
+interface ApiPartner {
+  _id?: ObjectId;
+  name: string;
+  email: string;
+  website?: string;
+  apiKey: string;
+  apiSecret: string;
+  tier: 'free' | 'starter' | 'pro' | 'enterprise';
+  monthlyRequestLimit: number;
+  currentMonthRequests: number;
+  commissionRate: number; // Percentage commission on sales
+  isActive: boolean;
+  createdAt: Date;
+  lastAccessedAt?: Date;
+  allowedOrigins: string[];
+  webhookUrl?: string;
+}
+
+interface PriceComparisonRequest {
+  productId?: string;
+  name?: string;
+  category?: string;
+  brand?: string;
+  attributes?: Record<string, string>;
+  limit?: number;
+}
+
+interface PriceComparisonResponse {
+  success: boolean;
+  product?: PriceComparisonProduct;
+  comparisons?: Array<{
+    source: string;
+    price: number;
+    originalPrice?: number;
+    discountPercent?: number;
+    availability: string;
+    sellerName?: string;
+    deliveryDays?: number;
+    deliveryCharge?: number;
+    totalPrice: number;
+    url: string;
+    lastUpdated: Date;
+  }>;
+  bestDeal?: {
+    source: string;
+    price: number;
+    totalPrice: number;
+    savings: number;
+    savingsPercent: number;
+    url: string;
+  };
+  message?: string;
+}
 interface OrderDocument {
   orderReference: string;
   name: string;
@@ -337,9 +452,9 @@ app.post('/api/create-razorpay-order', async (req, res) => {
 
 // Lazy initialization of AngularNodeAppEngine to handle both dev and production
 // In dev mode (Vite), we try to create the engine; if it fails, we fall back to CSR.
-let angularApp: AngularNodeAppEngine | null = null;
+let angularApp: typeof AngularNodeAppEngine | null = null;
 
-function getAngularApp(): AngularNodeAppEngine | null {
+function getAngularApp(): typeof AngularNodeAppEngine | null {
   if (!angularApp) {
     try {
       // Try to create the engine. This will work in:
@@ -509,6 +624,51 @@ async function getReviewsCollection() {
     throw new Error('MongoDB not connected');
   }
   return db.collection('reviews');
+}
+
+// Get or create price comparison collection
+export async function getPriceComparisonsCollection() {
+  await ensureMongoDBInitialized();
+
+  if (!db) {
+    throw new Error('MongoDB not connected');
+  }
+  const collection = db.collection('price_comparisons');
+  
+  // Create indexes for efficient querying
+  await collection.createIndexes([
+    { key: { ammawearsProductId: 1 }, unique: true },
+    { key: { name: 'text', description: 'text', brand: 'text', category: 'text' } },
+    { key: { category: 1, brand: 1 } },
+    { key: { 'competitorPrices.source': 1, 'competitorPrices.price': 1 } },
+    { key: { updatedAt: -1 } }
+  ]);
+  
+    return collection;
+}
+
+
+/**
+ * End of price comparison collection helper.
+ */
+
+// Get or create API partners collection
+async function getApiPartnersCollection() {
+  await ensureMongoDBInitialized();
+
+  if (!db) {
+    throw new Error('MongoDB not connected');
+  }
+  const collection = db.collection('api_partners');
+  
+  // Create indexes
+  await collection.createIndexes([
+    { key: { apiKey: 1 }, unique: true },
+    { key: { email: 1 }, unique: true },
+    { key: { isActive: 1 } }
+  ]);
+  
+  return collection;
 }
 
 async function sendEmail(params: { to: string | string[]; subject: string; text: string; html: string }) {
@@ -1825,7 +1985,7 @@ app.delete('/api/products/:id/', async (req: Request, res: Response) => {
 app.get('/api/wishlist', authenticateJwt, async (req, res) => {
   try {
     const wishlistsCollection = await getWishlistsCollection();
-    const userId = req.user.userId;
+const userId = req.user?.userId;
     
     const wishlists = await wishlistsCollection.find({ userId: new (require("mongodb")).ObjectId(userId) }).toArray();
     
@@ -1852,7 +2012,7 @@ app.post('/api/wishlist', authenticateJwt, async (req, res) => {
   try {
     const wishlistsCollection = await getWishlistsCollection();
     const { name, isPublic = false } = req.body;
-    const userId = req.user.userId;
+    const userId = req.user?.userId;
     
     if (!name) {
       return res.status(400).json({ success: false, message: "Wishlist name is required" });
@@ -1871,14 +2031,14 @@ app.post('/api/wishlist', authenticateJwt, async (req, res) => {
     const result = await wishlistsCollection.insertOne(wishlist);
     wishlist._id = result.insertedId;
     
-    res.status(201).json({ success: true, message: "Wishlist created successfully", wishlist: {
+    return res.status(201).json({ success: true, message: "Wishlist created successfully", wishlist: {
       ...wishlist,
       _id: wishlist._id.toString(),
       userId: wishlist.userId.toString()
     }});
   } catch (error) {
     console.error("Create wishlist error:", error);
-    res.status(500).json({ success: false, message: "Failed to create wishlist" });
+    return res.status(500).json({ success: false, message: "Failed to create wishlist" });
   }
 });
 
@@ -1886,7 +2046,7 @@ app.get('/api/wishlist/:id', authenticateJwt, async (req, res) => {
   try {
     const wishlistsCollection = await getWishlistsCollection();
     const wishlistId = req.params.id;
-    const userId = req.user.userId;
+    const userId = req.user?.userId;
     
     if (!require("mongodb").ObjectId.isValid(wishlistId)) {
       return res.status(400).json({ success: false, message: "Invalid wishlist ID" });
@@ -1906,17 +2066,17 @@ app.get('/api/wishlist/:id', authenticateJwt, async (req, res) => {
       ...wishlist,
       _id: wishlist._id.toString(),
       userId: wishlist.userId.toString(),
-      items: wishlist.items.map(item => ({
+      items: wishlist.items.map((item: any) => ({
         ...item,
         productId: item.productId.toString(),
         variantId: item.variantId ? item.variantId.toString() : null
       }))
     };
     
-    res.json({ success: true, wishlist: wishlistWithStringIds });
+    return res.json({ success: true, wishlist: wishlistWithStringIds });
   } catch (error) {
     console.error("Get wishlist by ID error:", error);
-    res.status(500).json({ success: false, message: "Failed to fetch wishlist" });
+    return res.status(500).json({ success: false, message: "Failed to fetch wishlist" });
   }
 });
 
@@ -1924,7 +2084,7 @@ app.post('/api/wishlist/:id/items', authenticateJwt, async (req, res) => {
   try {
     const wishlistsCollection = await getWishlistsCollection();
     const wishlistId = req.params.id;
-    const userId = req.user.userId;
+    const userId = req.user?.userId;
     const { productId, variantId = null, notes = "" } = req.body;
     
     if (!require("mongodb").ObjectId.isValid(wishlistId)) {
@@ -1950,7 +2110,7 @@ app.post('/api/wishlist/:id/items', authenticateJwt, async (req, res) => {
     }
     
     // Check if item already exists in wishlist
-    const itemExists = wishlist.items.some(item => 
+    const itemExists = wishlist.items.some((item: any) => 
       item.productId.equals(new (require("mongodb")).ObjectId(productId)) &&
       ((variantId === null && !item.variantId) || (item.variantId && item.variantId.equals(new (require("mongodb")).ObjectId(variantId))))
     );
@@ -1959,22 +2119,25 @@ app.post('/api/wishlist/:id/items', authenticateJwt, async (req, res) => {
       return res.status(409).json({ success: false, message: "Item already exists in wishlist" });
     }
     
-    const newItem = {
+    const newItem: any = {
       productId: new (require("mongodb")).ObjectId(productId),
       variantId: variantId ? new (require("mongodb")).ObjectId(variantId) : null,
       addedAt: new Date(),
-      notes
+      notes: notes || ""
     };
     
     await wishlistsCollection.updateOne(
       { _id: new (require("mongodb")).ObjectId(wishlistId) },
-      { $push: { items: newItem }, $set: { updatedAt: new Date() } }
+      { 
+        $push: { items: newItem }, 
+        $set: { updatedAt: new Date() } 
+      } as any
     );
     
-    res.json({ success: true, message: "Item added to wishlist successfully" });
+    return res.json({ success: true, message: "Item added to wishlist successfully" });
   } catch (error) {
     console.error("Add item to wishlist error:", error);
-    res.status(500).json({ success: false, message: "Failed to add item to wishlist" });
+    return res.status(500).json({ success: false, message: "Failed to add item to wishlist" });
   }
 });
 
@@ -1982,7 +2145,7 @@ app.delete('/api/wishlist/:id/items/:itemId', authenticateJwt, async (req, res) 
   try {
     const wishlistsCollection = await getWishlistsCollection();
     const wishlistId = req.params.id;
-    const userId = req.user.userId;
+    const userId = req.user?.userId;
     
     if (!require("mongodb").ObjectId.isValid(wishlistId)) {
       return res.status(400).json({ success: false, message: "Invalid wishlist ID" });
@@ -2005,7 +2168,7 @@ app.delete('/api/wishlist/:id/items/:itemId', authenticateJwt, async (req, res) 
       return res.status(400).json({ success: false, message: "Product ID is required" });
     }
     
-    const updateData = { $set: { updatedAt: new Date() } };
+    const updateData: any = { $set: { updatedAt: new Date() } };
     
     if (variantId && require("mongodb").ObjectId.isValid(variantId)) {
       updateData.$pull = { items: { productId: new (require("mongodb")).ObjectId(productId), variantId: new (require("mongodb")).ObjectId(variantId) } };
@@ -2026,10 +2189,10 @@ app.delete('/api/wishlist/:id/items/:itemId', authenticateJwt, async (req, res) 
       return res.status(409).json({ success: false, message: "Item not found in wishlist" });
     }
     
-    res.json({ success: true, message: "Item removed from wishlist successfully" });
+    return res.json({ success: true, message: "Item removed from wishlist successfully" });
   } catch (error) {
     console.error("Remove item from wishlist error:", error);
-    res.status(500).json({ success: false, message: "Failed to remove item from wishlist" });
+    return res.status(500).json({ success: false, message: "Failed to remove item from wishlist" });
   }
 });
 
@@ -2056,6 +2219,11 @@ app.get('/health', (req: Request, res: Response) => {
  * Guard against invalid response objects during Angular SSR route extraction
 
  */ 
+app.use('/api/competitor-price', ;);
+/**
+ * End of all route registrations - any custom middleware should be added above
+ * this point to avoid overwriting existing behavior.
+ */
 app.use((req, res, next) => {
   if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
     console.warn('Static middleware guard: Invalid response object detected, skipping');
