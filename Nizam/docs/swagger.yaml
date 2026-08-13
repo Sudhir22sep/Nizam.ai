@@ -1,0 +1,198 @@
+openapi: 3.0.3
+info:
+  title: AmmaWears Competitor Price API
+  version: 1.0.0
+  description: API for retrieving the best competitor price and submitting competitor prices for products.
+servers:
+  - url: https://api.ammawears.com
+    description: Production server
+paths:
+  /api/competitor-price/compare:
+    get:
+      summary: Get best price for a product from competitor data
+      description: Returns the lowest price among stored competitor prices for the given product.
+      parameters:
+        - name: productId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: objectid
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceComparisonResponse'
+        '400':
+          description: Bad request
+        '404':
+          description: No competitor data found
+        '401':
+          description: Unauthorized
+  /api/competitor-price/submit:
+    post:
+      summary: Submit a competitor price for a product
+      description: Partners submit competitor price data; earn commission if it becomes the new best price.
+      parameters:
+        - name: body
+          in: body
+          description: Competitor price submission payload
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitPriceRequest'
+        - name: x-api-key
+          in: header
+          description: API key of the partner
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Submission successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitPriceResponse'
+        '400':
+          description: Invalid payload
+        '401':
+          description: Invalid or inactive API key
+components:
+  schemas:
+    CompetitorPrice:
+      type: object
+      required:
+        - source
+        - price
+      properties:
+        source:
+          type: string
+          enum: [myntra, flipkart, amazon, meesho, ajio, nykaa, other]
+        sourceProductId:
+          type: string
+        sourceProductUrl:
+          type: string
+          format: uri
+        price:
+          type: number
+        originalPrice:
+          type: number
+          nullable: true
+        discountPercent:
+          type: number
+          nullable: true
+        availability:
+          type: string
+          enum: [in_stock, out_of_stock, limited]
+        sellerName:
+          type: string
+          nullable: true
+        sellerRating:
+          type: number
+          nullable: true
+        deliveryDays:
+          type: number
+          nullable: true
+        lastUpdated:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
+    BestPriceInfo:
+      type: object
+      properties:
+        source:
+          type: string
+        price:
+          type: number
+    AllPricesItem:
+      allOf:
+        - $ref: '#/components/schemas/CompetitorPrice'
+    PriceComparisonResponse:
+      type: object
+      required:
+        - success
+        - productId
+        - bestPrice
+        - allPrices
+      properties:
+        success:
+          type: boolean
+        productId:
+          type: string
+        bestPrice:
+          $ref: '#/components/schemas/BestPriceInfo'
+        allPrices:
+          type: array
+          items:
+            $ref: '#/components/schemas/AllPricesItem'
+        commissionEarned:
+          type: integer
+          nullable: true
+    SubmitPriceRequest:
+      type: object
+      required:
+        - productId
+        - source
+        - price
+      properties:
+        productId:
+          type: string
+          format: objectid
+        source:
+          type: string
+          enum: [myntra, flipkart, amazon, meesho, ajio, nykaa, other]
+        price:
+          type: number
+        originalPrice:
+          type: number
+          nullable: true
+        discountPercent:
+          type: number
+          nullable: true
+        url:
+          type: string
+          format: uri
+          nullable: true
+        availability:
+          type: string
+          enum: [in_stock, out_of_stock, limited]
+          nullable: true
+        deliveryDays:
+          type: number
+          nullable: true
+        sourceProductUrl:
+          type: string
+          format: uri
+          nullable: true
+    SubmitPriceResponse:
+      type: object
+      required:
+        - success
+        - message
+        - commissionEarned
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        commissionEarned:
+          type: integer
+          description: 1 if the submitted price is the new best price, otherwise 0
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Simple health endpoint used by orchestration platforms.
+      responses:
+        '200':
+          description: Service is up
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: OK
