@@ -22,7 +22,12 @@ export const authenticateJwt = (req: Request, res: Response, next: NextFunction)
   }
 
   const token = authHeader.substring(7);
-  const jwtSecret = process.env.JWT_SECRET || 'fallback_secret_key';
+  const jwtSecret = process.env.JWT_SECRET;
+
+  if (!jwtSecret) {
+    console.error('JWT_SECRET is not set in environment variables');
+    return res.status(500).json({ success: false, message: 'Server configuration error.' });
+  }
 
   try {
     const decoded = jwt.verify(token, jwtSecret);

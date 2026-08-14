@@ -3,8 +3,8 @@ import {
   Inject,
   PLATFORM_ID,
   Injector,
-  isPlatformServer,
-  isPlatformBrowser,
+  isServer,
+  isClient,
 } from '@angular/core';
 import { environment } from '../environments/environment';
 import { ActivatedRoute } from '@angular/router';
