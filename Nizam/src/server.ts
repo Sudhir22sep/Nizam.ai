@@ -265,7 +265,10 @@ console.log('RazorPay instance:', razorpay ? 'CREATED' : 'NULL');
 const appUrl = process.env['APP_URL'] || 'http://localhost:4200';
 
 // JWT Configuration
-const jwtSecret = process.env['JWT_SECRET'] || '10193d8ce7571d25550376f46ddae5e828daaf826d262a2f0def0ad109719addf600879a000771cf5c432cc7e3267a08e789377e682bd918c27c970333bc05d1';
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET must be set in .env file');
+}
+const jwtSecret = process.env.JWT_SECRET;
 const jwtExpiresIn = '7d';
 
 // User document type
@@ -2219,7 +2222,7 @@ app.get('/health', (req: Request, res: Response) => {
  * Guard against invalid response objects during Angular SSR route extraction
 
  */ 
-app.use('/api/competitor-price', ;);
+app.use('/api/competitor-price');
 /**
  * End of all route registrations - any custom middleware should be added above
  * this point to avoid overwriting existing behavior.
