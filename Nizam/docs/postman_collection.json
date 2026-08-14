@@ -1,0 +1,55 @@
+description: AmmaWears Competitor Price API Collection
+schema: 1.0
+groups: [
+  {
+    "groupName": "Competitor Price API",
+    "item": [
+      {
+        "name": "Get Best Price",
+        "request": {
+          "method": "GET",
+          "url": {
+            "raw": "https://api.ammawears.com/api/competitor-price/compare",
+            "protocol": "https",
+            "host": ["api", "ammawears", "com"],
+            "path": ["api", "competitor-price", "compare"]
+          },
+          "params": [
+            {
+              "key": "productId",
+              "value": "{{productId}}",
+              "type": "query"
+            }
+          ],
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer {{jwt}}",
+              "type": "text"
+            }
+          ]
+        },
+        "response": []
+      },
+      {
+        "name": "Submit Competitor Price",
+        "request": {
+          "method": "POST",
+          "url": {
+            "raw": "https://api.ammawears.com/api/competitor-price/submit",
+            "protocol": "https",
+            "host": ["api", "ammawears", "com"],
+            "path": ["api", "competitor-price", "submit"]
+          },
+          "header": [
+            {
+              "key": "x-api-key",
+              "value": "{{apiKey}}",
+              "type": "text"
+            }
+          ],
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"productId\": \"651f2345c3b1a2d5e8f9a0b1\",\n  \"source\": \"flipkart\",\n  \"price\": 499,\n  \"originalPrice\": 599,\n  \"discountPercent\": 16,\n  \"url\": \"https://flipkart.com/product/123\",\n  \"availability\": \"in_stock\",\n  \"deliveryDays\": 2\n}"
+}"]
+}

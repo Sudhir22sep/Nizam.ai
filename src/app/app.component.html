@@ -1,0 +1,11 @@
+<div class="app-container">
+  <header>
+    <h1>{{ pageTitle }}</h1>
+  </header>
+  <main>
+    <router-outlet></router-outlet>
+  </main>
+  <footer *ngIf="isServerRendered">
+    <p>Rendered on the server at {{ new Date().toISOString() }}</p>
+  </footer>
+</div>
