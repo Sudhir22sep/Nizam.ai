@@ -17,8 +17,8 @@ declare global {
 export const authenticateJwt = (req: Request, res: Response, next: NextFunction) => {
   // Skip JWT verification in development mode
   if (process.env.NODE_ENV !== 'production') {
-    // Auto-authenticate all requests in dev
-    req.user = { userId: 'dev-local', email: 'dev@local.com', isDev: true };
+    // Use a valid 24-char hex string for dev mode (ObjectId compatible)
+    req.user = { userId: '000000000000000000000001', email: 'dev@local.com', isDev: true };
     return next();
   }
   
