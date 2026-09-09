@@ -25,7 +25,7 @@ const __dirname = dirname(__filename);
 const require = createRequire(import.meta.url);
 
 // Load environment variables
-dotenv.config({ path: resolve(process.cwd(), '.env'), override: true });
+// dotenv.config({ path: resolve(process.cwd(), '.env'), override: true });
 
 // Set trust proxy headers EARLY - before Angular SSR engine is initialized
 // This prevents the "x-forwarded-scheme header but trustProxyHeaders was not set" warning
