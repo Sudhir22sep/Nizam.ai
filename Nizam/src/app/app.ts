@@ -5,7 +5,8 @@ import { NavbarComponent } from './components/navbar/navbar.component';
 @Component({
   selector: 'app-root',
   imports: [RouterOutlet, NavbarComponent],
-  templateUrl: './app.html',
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.scss'],
 })
 export class App {
   protected readonly title = signal('Amma Wears');
