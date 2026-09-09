@@ -1,0 +1,14 @@
+{
+  "dependencies": {
+    "@angular/ssr": "^22.0.6",
+    "@aws-sdk/client-ses": "^3.1116.0",
+    "dotenv": "^17.4.2",
+    "razorpay": "^2.9.6"
+  },
+  "scripts": {
+    "build": "ng build"
+  },
+  "devDependencies": {
+    "@angular/cli": "^21.2.20"
+  }
+}

@@ -19,6 +19,7 @@
           "options": {
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
+            "outputPath": "dist/Nizam",
             "assets": [
               {
                 "glob": "**/*",
@@ -27,11 +28,28 @@
             ],
             "styles": [
               "node_modules/@fortawesome/fontawesome-free/css/all.min.css",
-              "src/styles.css"
+              "src/app/app.component.scss"
             ],
-            "ssr": false,        
-            "prerender": false
+            "ssr": true,
+            "prerender": false,
+            "server": "src/server.ts",
+            "security": {
+              "allowedHosts": [
+                "localhost",
+                "localhost:4000",
+                "localhost:4200",
+                "verbose-cod-96rq44v9pjh7r69-4000.app.github.dev/",
+                "verbose-cod-96rq44v9pjh7r69-4000.app.github.dev",
+                "*.app.github.dev"
+              ]
+            }
           },
+          "fileReplacements": [
+            {
+              "replace": "src/environments/environment.ts",
+              "with": "src/environments/environment.prod.ts"
+            }
+          ],
           "configurations": {
             "production": {
               "budgets": [
@@ -51,7 +69,8 @@
             "development": {
               "optimization": false,
               "extractLicenses": false,
-              "sourceMap": true
+              "sourceMap": true,
+              "ssr": true
             }
           },
           "defaultConfiguration": "production"
@@ -66,10 +85,18 @@
               "buildTarget": "Nizam:build:development"
             }
           },
-          "defaultConfiguration": "development"
+          "defaultConfiguration": "development",
+          "options": {
+            "proxyConfig": "proxy.conf.json"
+          }
         },
         "test": {
-          "builder": "@angular/build:unit-test"
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "runner": "vitest",
+            "buildTarget": "Nizam:build:development",
+            "tsConfig": "tsconfig.spec.json"
+          }
         }
       }
     }

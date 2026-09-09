@@ -1,5 +1,13 @@
 [
   {
+    "id": 0,
+    "name": "Premium Messi Jersey",
+    "description": "A high-quality replica of the iconic Messi jersey, crafted with breathable fabric for comfort and performance.",
+    "price": 15.75,
+    "image": "images/products/premium-messi-jersey.jpeg",
+    "category": "Men"
+  },
+  {
     "id": 1,
     "name": "Satin Slip Dress",
     "description": "A sleek silhouette in satin with a delicate cowl neckline, perfect for evening outings and warm-weather style.",
@@ -17,6 +25,46 @@
   },
   {
     "id": 3,
+    "name": "Premium Slim Tee",
+    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
+    "price": 11.0,
+    "image": "images/products/premium-shirt.jpeg",
+    "category": "Men"
+  },
+  {
+    "id": 4,
+    "name": "Premium Slim Tee",
+    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
+    "price": 5.0,
+    "image": "images/products/Tshirt.jpeg",
+    "category": "Men"
+  },
+  {
+    "id": 5,
+    "name": "Premium Slim Tee",
+    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
+    "price": 5.0,
+    "image": "images/products/Tshirt2.jpeg",
+    "category": "Men"
+  },
+  {
+    "id": 6,
+    "name": "Premium Slim Tee",
+    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
+    "price": 5.0,
+    "image": "images/products/hoody.jpeg",
+    "category": "Men"
+  },
+  {
+    "id": 7,
+    "name": "Satin slip dress",
+    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
+    "price": 24.0,
+    "image": "images/products/satin.jpg",
+    "category": "Women"
+  },
+  {
+    "id": 8,
     "name": "Leather Tote Bag",
     "description": "A supple leather tote with clean lines and interior pockets for everyday essentials.",
     "price": 138.0,
@@ -24,7 +72,7 @@
     "category": "Accessories"
   },
   {
-    "id": 4,
+    "id": 9,
     "name": "Linen Relaxed Shirt",
     "description": "Breathable linen in a relaxed fit, designed for effortless layering and refined casual dressing.",
     "price": 79.5,
@@ -32,7 +80,7 @@
     "category": "Men"
   },
   {
-    "id": 5,
+    "id": 10,
     "name": "Silk Scarf",
     "description": "A timeless silk scarf featuring an elegant print to elevate any outfit.",
     "price": 49.95,
@@ -40,7 +88,7 @@
     "category": "Accessories"
   },
   {
-    "id": 6,
+    "id": 11,
     "name": "Stitched Leather Sneakers",
     "description": "Minimal leather sneakers with cushioned comfort and polished details for everyday wear.",
     "price": 112.0,
@@ -48,7 +96,7 @@
     "category": "Footwear"
   },
   {
-    "id": 7,
+    "id": 12,
     "name": "Cashmere Crewneck",
     "description": "A soft cashmere crewneck with a refined fit and luxurious feel for cozy layering.",
     "price": 149.99,
@@ -56,7 +104,7 @@
     "category": "Women"
   },
   {
-    "id": 8,
+    "id": 13,
     "name": "Tailored Chinos",
     "description": "Smart casual chinos cut with a tailored silhouette, ready for work or weekend plans.",
     "price": 89.0,
@@ -64,7 +112,7 @@
     "category": "Men"
   },
   {
-    "id": 9,
+    "id": 14,
     "name": "MENA Heritage Tee",
     "description": "Premium cotton T-shirt with an elegant MENA-inspired motif.",
     "price": 25.0,
@@ -72,7 +120,7 @@
     "category": "Men"
   },
   {
-    "id": 10,
+    "id": 15,
     "name": "Arabesque Pocket Tee",
     "description": "Comfort-fit tee featuring a subtle arabesque pocket print, breathable and durable.",
     "price": 22.5,
@@ -80,51 +128,11 @@
     "category": "Men"
   },
   {
-    "id": 11,
+    "id": 16,
     "name": "Gulf Coast Slim Tee",
     "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
     "price": 24.0,
     "image": "images/products/gulf-coast-slim-tee.svg",
     "category": "Men"
-  },
-  {
-    "id": 12,
-    "name": "Premium Slim Tee",
-    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
-    "price": 24.0,
-    "image": "images/products/premium-shirt.jpeg",
-    "category": "Men"
-  },
-  {
-    "id": 13,
-    "name": "Premium Slim Tee",
-    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
-    "price": 24.0,
-    "image": "images/products/Tshirt.jpeg",
-    "category": "Men"
-  },
-  {
-    "id": 14,
-    "name": "Premium Slim Tee",
-    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
-    "price": 24.0,
-    "image": "images/products/Tshirt2.jpeg",
-    "category": "Men"
-  },
-  {
-    "id": 15,
-    "name": "Premium Slim Tee",
-    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
-    "price": 24.0,
-    "image": "images/products/hoody.jpeg",
-    "category": "Men"
-  },
-  {
-    "id": 16,
-    "name": "Satin slip dress",
-    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
-    "price": 24.0,
-    "image": "images/products/satin.jpg",
-    "category": "Women"
   }
 ]

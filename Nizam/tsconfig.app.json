@@ -3,12 +3,23 @@
   "compilerOptions": {
     "outDir": "./out-tsc/app",
     "types": [],
-    "rootDir": "./src"     // <-- Ye line add karo
+    "lib": ["ES2020", "dom"],
+    "module": "ES2020",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "moduleResolution": "bundler",
   },
   "files": [
     "src/main.ts"
   ],
   "include": [
-    "src/**/*.d.ts"
+    "src/**/*.ts",
+    "src/index.html"
+  ],
+  "exclude": [
+    "src/**/*.spec.ts",
+    "src/server.ts",
+    "src/main.server.ts",
+    "src/test-setup.ts"
   ]
 }

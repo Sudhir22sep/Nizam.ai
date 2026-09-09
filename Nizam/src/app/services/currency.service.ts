@@ -11,9 +11,9 @@ export class CurrencyService {
   // In a real app fetch rates from an API and cache them.
   private rates: Record<CurrencyCode, number> = {
     USD: 1,
-    INR: 82.50,
+    INR: 95.21,
     AED: 3.67,
-    SAR: 3.75
+    SAR: 3.73
   };
 
   setCurrency(code: CurrencyCode) {

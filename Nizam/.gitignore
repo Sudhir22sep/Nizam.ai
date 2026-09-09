@@ -1,4 +1,5 @@
 # See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+node_modules/
 
 # Compiled output
 /dist
@@ -42,3 +43,6 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+# Environment Variables
+.env
+.env.example

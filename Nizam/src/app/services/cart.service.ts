@@ -18,7 +18,7 @@ export class CartService {
   );
 
   readonly cartTotal = computed(() =>
-    this.cartItems().reduce((total, item) => total + item.product.price * item.quantity, 0)
+    this.cartItems().reduce((total, item) => total + item.product.basePrice * item.quantity, 0)
   );
 
   getItems() {
@@ -48,7 +48,7 @@ export class CartService {
     }
   }
 
-  removeFromCart(productId: number) {
+  removeFromCart(productId: string) {
     this.cartItems.update(items => items.filter(item => item.product.id !== productId));
   }
 
