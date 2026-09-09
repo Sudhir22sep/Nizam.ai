@@ -13,8 +13,8 @@ module.exports = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Name, email, items, and total are required.' });
   }
 
-  const keyId = process.env.RAZORPAY_KEY_ID_LIVE || process.env.RAZORPAY_KEY_ID_TEST;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET_LIVE || process.env.RAZORPAY_KEY_SECRET_TEST;
+  const keyId = process.env['RAZORPAY_KEY_ID'] || process.env['RAZORPAY_TEST_KEY_ID'];
+  const keySecret = process.env['RAZORPAY_KEY_SECRET'] || process.env['RAZORPAY_TEST_KEY_SECRET'];
 
   if (!keyId || !keySecret) {
     return res.status(500).json({ success: false, message: 'Razorpay is not configured.' });
