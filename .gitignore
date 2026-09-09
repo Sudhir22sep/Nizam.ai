@@ -1,8 +1,9 @@
 .vercel
-node_modules/
+node_modules
 .env
 .env.*
 !.env.example
+
 AWS_EMAIL_SERVICE_SETUP.md
 AWS_EMAIL_README.md
 Nizam/EMAIL_SETUP.md
