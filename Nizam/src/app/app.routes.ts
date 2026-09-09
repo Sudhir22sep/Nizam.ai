@@ -8,17 +8,20 @@ import { CheckoutSuccessComponent } from './pages/checkout-success/checkout-succ
 import { LoginComponent } from './pages/login/login.component';
 import { RegisterComponent } from './pages/register/register.component';
 import { AuthGuard } from './guards/auth.guard';
+import { AboutComponent } from './pages/about/about.component';
 
 export const routes: Routes = [
-  { path: '', component: HomeComponent },
+  { path: 'home', component: HomeComponent},
   { path: 'products', component: ProductsComponent },
   { path: 'cart', component: CartComponent, canActivate: [AuthGuard] },
   { path: 'checkout', component: CheckoutComponent, canActivate: [AuthGuard] },
   { path: 'contact', component: ContactComponent },
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
+  { path: 'about', component: AboutComponent},
   { path: 'wishlist', loadComponent: () => import('./pages/wishlist/wishlist.component').then(m => m.WishlistComponent), canActivate: [AuthGuard] },
   { path: 'checkout-success', component: CheckoutSuccessComponent, canActivate: [AuthGuard] },
   { path: 'product/:id', loadComponent: () => import('./pages/product-detail/product-detail.component').then(m => m.ProductDetailComponent) },
+  { path: '', component: ProductsComponent },
   { path: '**', redirectTo: '' }
 ];

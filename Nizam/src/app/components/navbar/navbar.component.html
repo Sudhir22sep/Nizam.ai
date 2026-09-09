@@ -13,7 +13,7 @@
     <ul class="nav-menu" [class.active]="isMenuOpen">
       <li>
         <a 
-          routerLink="/" 
+          routerLink="/home" 
           routerLinkActive="active"
           [routerLinkActiveOptions]="{ exact: true }"
           (click)="closeMenu()">
@@ -45,7 +45,7 @@
         </a>
       </li>
       <li>
-        <a href="#about" (click)="closeMenu()">
+        <a href="about" (click)="closeMenu()">
           About
         </a>
       </li>

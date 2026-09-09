@@ -1,58 +1,108 @@
-const { AngularNodeAppEngine, createNodeRequestHandler, isMainModule, writeResponseToNodeResponse } = require('@angular/ssr/node');
-import express from 'express';
-import { Request, Response, NextFunction } from 'express';
+// server.ts - Clean SSR Server Setup
+import { createNodeRequestHandler } from '@angular/ssr/node';
+import express, { Response, Request, NextFunction } from 'express';
 import cors from 'cors';
-import { join, resolve } from 'node:path';
+import bodyParser from 'body-parser';
+import dotenv from 'dotenv';
+import { resolve } from 'path';
+import { join } from 'path';
+import { writeResponseToNodeResponse } from '@angular/ssr/node';
+import { isMainModule } from '@angular/ssr/node';
+import { Db, MongoClient, ObjectId } from 'mongodb';
+import Razorpay from 'razorpay';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
-const Razorpay = require('razorpay');
-//import Stripe from 'stripe';
-import { MongoClient, Db, WithId, ObjectId } from "mongodb";
-const bcrypt = require('bcryptjs');
+import { AngularNodeAppEngine } from '@angular/ssr/node';
+import { ɵsetAngularAppManifest, ɵsetAngularAppEngineManifest } from '@angular/ssr';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
-const jwt = require('jsonwebtoken');
-import { fileURLToPath } from 'node:url';
-import { existsSync } from 'node:fs';
-const dotenv = require('dotenv');
-import { dirname } from 'node:path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import { createRequire } from 'module';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const require = createRequire(import.meta.url);
 
-// Extend Express Request type to include user property
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        userId: string;
-        email: string;
-        [key: string]: any;
-      };
-    }
+// Load environment variables
+dotenv.config({ path: resolve(process.cwd(), '.env'), override: true });
+
+// Set trust proxy headers EARLY - before Angular SSR engine is initialized
+// This prevents the "x-forwarded-scheme header but trustProxyHeaders was not set" warning
+if (!process.env['NG_TRUST_PROXY_HEADERS']) {
+  process.env['NG_TRUST_PROXY_HEADERS'] = 'x-forwarded-for,x-forwarded-host,x-forwarded-port,x-forwarded-proto,x-forwarded-scheme';
+}
+
+// Browser distribution folder for SSR
+// In production build, __dirname is dist/Nizam/server/, so browser is at ../browser
+const browserDistFolder = resolve(__dirname, '../browser');
+
+// Load Angular SSR manifests (only available in production build)
+async function loadAngularManifests(): Promise<void> {
+  try {
+    // In production build, manifests are in the same directory as the server entry point
+    const manifestDir = resolve(__dirname, '.');
+    const appManifest = await import(`${manifestDir}/angular-app-manifest.mjs`);
+    const engineManifest = await import(`${manifestDir}/angular-app-engine-manifest.mjs`);
+    ɵsetAngularAppManifest(appManifest.default);
+    ɵsetAngularAppEngineManifest(engineManifest.default);
+  } catch (error) {
+    // Manifests not available (development mode) - will fall back to CSR
+    console.debug('Angular SSR manifests not found, falling back to CSR mode');
   }
 }
-console.log('__dirname:', __dirname);
-console.log('process.cwd():', process.cwd());
 
-// Prevent process exit on unhandled rejections (common with MongoDB in local dev)
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  // Don't exit in development
-  if (process.env['NODE_ENV'] !== 'production') {
-    console.warn('Continuing despite unhandled rejection (development mode)');
-  }
+// Initialize SES client - only if both region and credentials are configured
+let sesClient: any = null;
+if (process.env.SES_REGION && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+  sesClient = new SESClient({
+    region: process.env.SES_REGION,
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+    }
+  });
+}
+// If SES credentials are not configured, we'll handle email failures gracefully
+// and the client remains null - emails will be recorded but not sent via SES
+
+// Global SES client for email service
+(global as any).sesClient = sesClient;
+
+// Verified sender email for SES
+const verifiedSender = process.env.SES_VERIFIED_SENDER || 'sudhir.22sep@gmail.com';
+
+// Initialize Express app
+const app = express();
+
+// ✅ Fix: Trust proxy headers for GitHub Codespaces (x-forwarded-*)
+app.enable('trust proxy');
+
+// Required middleware - order matters!
+app.use(bodyParser.json({ limit: '50mb' })); // Parse JSON bodies
+app.use(express.raw({ type: 'application/json', limit: '50mb' })); // Raw body for webhooks
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || ['http://localhost:4200'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV || 'development'
+  });
 });
 
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-  if (process.env['NODE_ENV'] !== 'production') {
-    console.warn('Continuing despite uncaught exception (development mode)');
-  }
+// Test endpoint
+app.get('/api/test', (req, res) => {
+  res.json({ success: true, message: 'Server is running' });
 });
 
-const browserDistFolder = join(__dirname, '../browser');
-console.log('browserDistFolder:', browserDistFolder);
-console.log('Does browserDistFolder exist?', existsSync(browserDistFolder));
-console.log('Does index.csr.html exist?', existsSync(join(browserDistFolder, 'index.csr.html')));
-dotenv.config({ path: resolve(process.cwd(), '.env'), override: true });
+// Export for Angular SSR Node.js server
+export default app;
 
 // Determine environment and default database name
  const isProduction = process.env['NODE_ENV'] === 'production';
@@ -201,6 +251,14 @@ interface OrderDocument {
   status: string;
   razorpayPaymentId?: string;
   razorpayOrderId?: string;
+  // Fulfillment tracking fields
+  fulfillmentService?: 'qikink' | 'printful' | 'manual';
+  fulfillmentStatus?: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  fulfillmentOrderId?: string;
+  fulfillmentTrackingNumber?: string;
+  fulfillmentCarrier?: string;
+  fulfillmentEstimatedDelivery?: Date;
+  fulfillmentUpdatedAt?: Date;
   createdAt: Date;
   updatedAt?: Date;
 }
@@ -262,6 +320,18 @@ console.log('RazorPay Key ID:', razorpayKeyId ? 'SET' : 'NOT SET');
 // console.log('RazorPay Key Secret:', razorpayKeySecret ? 'SET' : 'NOT SET'); // Avoid logging secret
 console.log('RazorPay instance:', razorpay ? 'CREATED' : 'NULL');
 
+// Qikink Configuration
+const qikinkApiKey = process.env['QIKINK_API_KEY'] || '';
+const qikink = qikinkApiKey ? true : false;
+console.log('Qikink API Key:', qikinkApiKey ? 'SET' : 'NOT SET');
+console.log('Qikink integration:', qikink ? 'ENABLED' : 'DISABLED');
+
+// Printful Configuration
+const printfulApiKey = process.env['PRINTFUL_API_KEY'] || '';
+const printful = printfulApiKey ? true : false;
+console.log('Printful API Key:', printfulApiKey ? 'SET' : 'NOT SET');
+console.log('Printful integration:', printful ? 'ENABLED' : 'DISABLED');
+
 const appUrl = process.env['APP_URL'] || 'http://localhost:4200';
 
 // JWT Configuration
@@ -269,7 +339,7 @@ if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET must be set in .env file');
 }
 const jwtSecret = process.env.JWT_SECRET;
-const jwtExpiresIn = '7d';
+const jwtExpiresIn = '30d';
 
 // User document type
 interface UserDocument {
@@ -297,7 +367,6 @@ interface UserDocument {
 
 // Use import.meta.dirname directly - it will resolve correctly both in dev (src/) and production (dist/Nizam/server/)
 
-const app = express();
 // parse JSON bodies for most routes
 // IMPORTANT: Razorpay webhook needs raw body for signature verification
 // Register raw body parser for webhook BEFORE express.json()
@@ -453,18 +522,187 @@ app.post('/api/create-razorpay-order', async (req, res) => {
   }
 });
 
+async function createQikinkOrder(orderData: Record<string, any>) {
+  try {
+    const response = await fetch('https://api.qikink.com/v1/orders', {
+      method: 'POST',
+      headers: {
+        'Authorization': `ApiKey ${process.env.QIKINK_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(orderData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Qikink API error: ${errorText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error creating Qikink order:', error);
+    throw error;
+  }
+}
+
+app.post('/api/create-qikink-order', async (req, res) => {
+  // Guard against invalid response object
+  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
+    console.error('Invalid response object in create-qikink-order');
+    return;
+  }
+  try {
+    const { name, email, address, items, total, currency } = req.body;
+    if (!name || !email || !Array.isArray(items) || typeof total !== 'number') {
+      return res.status(400).json({ success: false, message: 'Name, email, items, and total are required.' });
+    }
+    const orderReference = `QK-${Date.now()}`;
+    const qikinkOrderData = {
+      customer_name: name,
+      customer_email: email,
+      items: items.map(item => ({
+        product_name: item.product?.name || 'Unnamed Product',
+        quantity: item.quantity || 1,
+        price: item.price || 0
+      })),
+      total_amount: total,
+      currency_code: currency || 'INR'
+    };
+    const qikinkResponse = await createQikinkOrder(qikinkOrderData);
+    const ordersCollection = await getOrdersCollection();
+    const normalizedItems = items.map(item => {
+      const price = item.price ?? item.product?.basePrice ?? 0;
+      const productName = item.product?.name || 'Unnamed Item';
+      return {
+        product: { name: productName, price },
+        quantity: typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1
+      };
+    });
+    const newOrder = {
+      orderReference,
+      name,
+      email,
+      address: address || '',
+      items: normalizedItems,
+      total,
+      currency: currency || 'INR',
+      paymentMethod: 'Qikink',
+      status: 'pending',
+      createdAt: new Date(),
+      qikinkOrderId: qikinkResponse?.id || ''
+    };
+    await ordersCollection.insertOne(newOrder);
+    return res.status(200).json({
+      success: true,
+      orderReference,
+      qikinkOrderId: qikinkResponse?.id,
+      message: 'Order placed with Qikink successfully.'
+    });
+  } catch (error) {
+    console.error('Create Qikink Order error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to create Qikink order.' });
+  }
+});
+
+// Printful Integration Endpoint
+async function createPrintfulOrder(orderData: Record<string, any>) {
+  try {
+    const response = await fetch('https://api.printful.com/store/products', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.PRINTFUL_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(orderData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Printful API error: ${errorText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error creating Printful order:', error);
+    throw error;
+  }
+}
+
+app.post('/api/create-printful-order', async (req, res) => {
+  // Guard against invalid response object
+  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
+    console.error('Invalid response object in create-printful-order');
+    return;
+  }
+  try {
+    const { name, email, address, items, total, currency, designId } = req.body;
+    if (!name || !email || !Array.isArray(items) || typeof total !== 'number' || !designId) {
+      return res.status(400).json({ success: false, message: 'Name, email, items, total, and designId are required.' });
+    }
+    const orderReference = `PF-${Date.now()}`;
+    const printfulResponse = await createPrintfulOrder({
+      design_id: designId,
+      name: name,
+      variants: items.map(item => ({
+        quantity: item.quantity || 1,
+        external_product_id: item.product?.id || ''
+      }))
+    });
+    const ordersCollection = await getOrdersCollection();
+    const normalizedItems = items.map(item => {
+      const price = item.price ?? item.product?.basePrice ?? 0;
+      const productName = item.product?.name || 'Unnamed Item';
+      return {
+        product: { name: productName, price },
+        quantity: typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1
+      };
+    });
+    const newOrder = {
+      orderReference,
+      name,
+      email,
+      address: address || '',
+      items: normalizedItems,
+      total,
+      currency: currency || 'USD',
+      paymentMethod: 'Printful',
+      status: 'pending',
+      createdAt: new Date(),
+      printfulProductId: printfulResponse?.result?.id || ''
+    };
+    await ordersCollection.insertOne(newOrder);
+    return res.status(200).json({
+      success: true,
+      orderReference,
+      printfulProductId: printfulResponse?.result?.id,
+      message: 'Printful order created successfully.'
+    });
+  } catch (error) {
+    console.error('Create Printful Order error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to create Printful order.' });
+  }
+});
 // Lazy initialization of AngularNodeAppEngine to handle both dev and production
 // In dev mode (Vite), we try to create the engine; if it fails, we fall back to CSR.
-let angularApp: typeof AngularNodeAppEngine | null = null;
+let angularApp: AngularNodeAppEngine | null = null;
 
-function getAngularApp(): typeof AngularNodeAppEngine | null {
+async function getAngularApp(): Promise<AngularNodeAppEngine | null> {
   if (!angularApp) {
     try {
+      // Load Angular SSR manifests (only available in production build)
+      await loadAngularManifests();
+      
+      // Set allowed hosts via environment variables if not already set
+      if (!process.env['NG_ALLOWED_HOSTS']) {
+        process.env['NG_ALLOWED_HOSTS'] = 'localhost,localhost:4000,localhost:4200,verbose-cod-96rq44v9pjh7r69-4000.app.github.dev,*.app.github.dev';
+      }
+      // Set trust proxy headers to allow X-Forwarded-* headers
+      if (!process.env['NG_TRUST_PROXY_HEADERS']) {
+        process.env['NG_TRUST_PROXY_HEADERS'] = 'x-forwarded-for,x-forwarded-host,x-forwarded-port,x-forwarded-proto';
+      }
+      
       // Try to create the engine. This will work in:
       // - Production: when the manifest exists (built with ng build)
       // - Development SSR mode (ng run <project>:serve-ssr): when the Angular CLI sets up the environment
       // It will fail in a pure client-side dev setup (ng serve) but we catch the error and fall back to CSR.
       angularApp = new AngularNodeAppEngine();
+      console.log('Angular SSR engine initialized successfully');
     } catch (error) {
       console.warn('AngularNodeAppEngine initialization failed:', error instanceof Error ? error.message : error);
       // Fall back to null to indicate SSR not available
@@ -474,9 +712,7 @@ function getAngularApp(): typeof AngularNodeAppEngine | null {
   return angularApp;
 }
 
-const sesRegion = process.env['SES_REGION'];
-const sesClient = sesRegion ? new SESClient({ region: sesRegion }) : null;
-const verifiedSender = process.env['SES_VERIFIED_SENDER'] || 'sudhir.22sep@gmail.com';
+// SES client and verified sender are initialized at the top of the file
 
 
 // Health check endpoint for Render (and general health monitoring)
@@ -697,7 +933,14 @@ async function sendEmail(params: { to: string | string[]; subject: string; text:
     },
   });
 
-  return sesClient.send(command);
+  try {
+    const result = await sesClient.send(command);
+        console.log(`Email sent successfully to ${(Array.isArray(to) ? to : [to]).join(', ')}`);
+    return result;
+  } catch (error: unknown) {
+    console.error('Failed to send email:', error);
+    throw new Error(`Email delivery failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 function buildContactMessage(params: { name: string; email: string; message: string }) {
@@ -765,6 +1008,7 @@ function buildOrderConfirmationMessage(params: {
 async function trySendEmail(params: { to: string | string[]; subject: string; text: string; html: string }) {
   try {
     await sendEmail(params);
+    console.log('Email sent successfully');
     return true;
   } catch (error) {
     console.warn('Email not sent:', error instanceof Error ? error.message : error);
@@ -792,8 +1036,9 @@ app.post('/api/contact', async (req, res) => {
     await contactsCollection.insertOne(contact);
 
     const mail = buildContactMessage({ name, email, message });
+    const notificationRecipient = process.env.CONTACT_RECIPIENT_EMAIL || verifiedSender;
     const sent = await trySendEmail({
-      to: verifiedSender,
+      to: notificationRecipient,
       subject: mail.subject,
       text: mail.text,
       html: mail.html,
@@ -1599,7 +1844,7 @@ app.post('/api/confirm-razorpay-payment', async (req, res) => {
 /**
  * Razorpay Webhook - Server-side payment confirmation (RELIABLE for UPI/redirect payments)
  * Configure this URL in Razorpay Dashboard: https://api.ammawears.com/api/razorpay-webhook
-
+ */
 app.post('/api/razorpay-webhook', async (req: Request, res: Response) => {
   // Guard against invalid response object
   if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
@@ -1710,6 +1955,103 @@ app.post('/api/razorpay-webhook', async (req: Request, res: Response) => {
   } catch (err) {
     console.error('Razorpay webhook error', err);
     return res.status(500).json({ success: false, message: 'Webhook processing failed.' });
+  }
+});
+// Qikink Webhook Handler
+app.post('/api/qikink-webhook', async (req, res) => {
+  // Verify Qikink signature if required
+  // For now, we'll assume Qikink uses a simple API key check in headers
+  if (!req.headers.authorization || !req.headers.authorization.startsWith('ApiKey ')) {
+    return res.status(401).json({ success: false, message: 'Missing or invalid Qikink API key in headers' });
+  }
+
+  try {
+    const rawBody = req.body instanceof Buffer ? req.body.toString('utf8') : JSON.stringify(req.body);
+    const qikinkEvent = JSON.parse(rawBody);
+
+    // Handle Qikink fulfillment events
+    if (qikinkEvent.event_type === 'order.shipped') {
+      const orderRef = qikinkEvent.order_reference;
+      const trackingNumber = qikinkEvent.tracking_number;
+      const estimatedDelivery = new Date(qikinkEvent.estimated_delivery);
+
+      const ordersCollection = await getOrdersCollection();
+      const order = await ordersCollection.findOne({ orderReference: orderRef });
+
+      if (order) {
+        await ordersCollection.updateOne(
+          { orderReference: orderRef },
+          {
+            $set: {
+              fulfillmentStatus: 'shipped',
+              fulfillmentService: 'qikink',
+              fulfillmentOrderId: qikinkEvent.order_id,
+              fulfillmentTrackingNumber: trackingNumber,
+              fulfillmentEstimatedDelivery: estimatedDelivery,
+              fulfillmentUpdatedAt: new Date()
+            }
+          }
+        );
+
+        return res.status(200).json({ success: true, message: `Qikink order ${orderRef} shipped successfully` });
+      } else {
+        return res.status(404).json({ success: false, message: 'Order not found in database' });
+      }
+    }
+    // Add more event types as needed
+    else {
+      return res.status(200).json({ success: true, message: 'Qikink webhook received (unhandled event)' });
+    }
+  } catch (error) {
+    console.error('Qikink webhook error:', error);
+    return res.status(500).json({ success: false, message: String(error) });
+  }
+});
+
+// Printful Webhook Handler
+app.post('/api/printful-webhook', async (req, res) => {
+  // Printful uses webhook verification via signature
+  // Implementation depends on Printful's webhook documentation
+  try {
+    const rawBody = req.body instanceof Buffer ? req.body.toString('utf8') : JSON.stringify(req.body);
+    const printfulEvent = JSON.parse(rawBody);
+
+    // Handle Printful fulfillment events
+    if (printfulEvent.event === 'order.shipped') {
+      const orderRef = printfulEvent.order_reference;
+      const trackingNumber = printfulEvent.tracking_number;
+      const estimatedDelivery = new Date(printfulEvent.estimated_delivery);
+
+      const ordersCollection = await getOrdersCollection();
+      const order = await ordersCollection.findOne({ orderReference: orderRef });
+
+      if (order) {
+        await ordersCollection.updateOne(
+          { orderReference: orderRef },
+          {
+            $set: {
+              fulfillmentStatus: 'shipped',
+              fulfillmentService: 'printful',
+              fulfillmentOrderId: printfulEvent.order_id,
+              fulfillmentTrackingNumber: trackingNumber,
+              fulfillmentEstimatedDelivery: estimatedDelivery,
+              fulfillmentUpdatedAt: new Date()
+            }
+          }
+        );
+
+        res.status(200).json({ success: true, message: `Printful order ${orderRef} shipped successfully` });
+      } else {
+        res.status(404).json({ success: false, message: 'Order not found in database' });
+      }
+    }
+    // Add more event types as needed
+    else {
+      res.status(200).json({ success: true, message: 'Printful webhook received (unhandled event)' });
+    }
+  } catch (error) {
+    console.error('Printful webhook error:', error);
+    res.status(500).json({ success: false, message: String(error) });
   }
 });
 
@@ -2222,7 +2564,8 @@ app.get('/health', (req: Request, res: Response) => {
  * Guard against invalid response objects during Angular SSR route extraction
 
  */ 
-app.use('/api/competitor-price');
+// Competitor price route is handled above - no additional middleware needed here
+
 /**
  * End of all route registrations - any custom middleware should be added above
  * this point to avoid overwriting existing behavior.
@@ -2248,11 +2591,10 @@ app.use(
 
  */ 
 app.use(async (req: Request, res: Response, next: NextFunction) => {
-  // Guard against invalid Express response objects
+  // Guard against invalid Express response objects - return early if res is invalid
   if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
-    console.error('SSR middleware invoked with invalid response object');
-    // We cannot send a response, so we just return to avoid errors.
-    return;
+    console.warn('SSR middleware skipped: invalid response object');
+    return next();
   }
 
   try {
@@ -2261,27 +2603,44 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
       return next();
     }
 
-    const engine = getAngularApp();
+    const engine = angularApp;
     if (!engine) {
       // In development without SSR build, serve index.csr.html for client-side routing
       const fallbackHtml = join(browserDistFolder, 'index.csr.html');
-      res.sendFile(fallbackHtml, (err: Error | null) => {
-        if (err) {
-          console.error('Failed to serve fallback HTML:', err);
-          next(err);
-        }
-      });
+      if (res && !res.headersSent) {
+        res.sendFile(fallbackHtml, (err: Error | null) => {
+          if (err) {
+            console.error('Failed to serve fallback HTML:', err);
+            next(err);
+          }
+        });
+      }
       return;
     }
     const response = await engine.handle(req);
     if (response) {
-      await writeResponseToNodeResponse(response, res);
+      if (res && !res.headersSent) {
+        await writeResponseToNodeResponse(response, res);
+      }
       return;
     }
     next();
   } catch (err) {
     console.error('SSR Error:', err);
-    next(err);
+    // Serve fallback CSR if SSR fails
+    try {
+      const fallbackHtml = join(browserDistFolder, 'index.csr.html');
+      if (res && !res.headersSent) {
+        res.sendFile(fallbackHtml, (fileErr: Error | null) => {
+          if (fileErr) {
+            console.error('Fallback HTML serve failed:', fileErr);
+            next(err);
+          }
+        });
+      }
+    } catch {
+      next(err);
+    }
   }
 });
 // Express error-handling middleware
@@ -2340,5 +2699,3 @@ app.post('/api/test', (req, res) => {
 
 export const reqHandler = createNodeRequestHandler(app);
 
-// Export app as default for Angular SSR
-export default app;

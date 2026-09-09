@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "node16",
-    "moduleResolution": "node16",
+    "module": "Node16",
+    "moduleResolution": "Node16",
     "lib": ["ES2020", "DOM"],
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
@@ -12,10 +12,7 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "rootDir": "./src",
-    "outDir": "./dist/server",
-    
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "outDir": "./dist/server"
   },
   "include": ["src/server.ts","server/**/*","src/**/*","next-env.d.ts"],
   "exclude":["node_modules","dist","client","**/*.spec.ts","**/*.test.ts"]
