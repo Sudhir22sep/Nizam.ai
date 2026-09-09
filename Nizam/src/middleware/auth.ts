@@ -15,6 +15,13 @@ declare global {
 }
 
 export const authenticateJwt = (req: Request, res: Response, next: NextFunction) => {
+  // Skip JWT verification in development mode
+  if (process.env.NODE_ENV !== 'production') {
+    // Auto-authenticate all requests in dev
+    req.user = { userId: 'dev-local', email: 'dev@local.com', isDev: true };
+    return next();
+  }
+  
   const authHeader = req.headers.authorization;
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {

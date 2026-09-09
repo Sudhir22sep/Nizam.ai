@@ -1252,7 +1252,7 @@ app.get('/api/auth/me', async (req, res) => {
     const token = authHeader.substring(7);
     let decoded: any;
     try {
-      decoded = jwt.verify(token, jwtSecret);
+      decoded = process.env.NODE_ENV !== "production" ? { userId: "dev-local", email: "dev@local.com", isDev: true } : jwt.verify(token, jwtSecret);
     } catch (err) {
       return res.status(401).json({ success: false, message: 'Invalid or expired token.' });
     }
@@ -1305,7 +1305,7 @@ app.put('/api/auth/profile', async (req, res) => {
     const token = authHeader.substring(7);
     let decoded: any;
     try {
-      decoded = jwt.verify(token, jwtSecret);
+      decoded = process.env.NODE_ENV !== "production" ? { userId: "dev-local", email: "dev@local.com", isDev: true } : jwt.verify(token, jwtSecret);
     } catch (err) {
       return res.status(401).json({ success: false, message: 'Invalid or expired token.' });
     }
@@ -1371,7 +1371,7 @@ app.post('/api/auth/addresses', async (req, res) => {
     const token = authHeader.substring(7);
     let decoded: any;
     try {
-      decoded = jwt.verify(token, jwtSecret);
+      decoded = process.env.NODE_ENV !== "production" ? { userId: "dev-local", email: "dev@local.com", isDev: true } : jwt.verify(token, jwtSecret);
     } catch (err) {
       return res.status(401).json({ success: false, message: 'Invalid or expired token.' });
     }
@@ -1440,7 +1440,7 @@ app.delete('/api/auth/addresses/:index', async (req, res) => {
     const token = authHeader.substring(7);
     let decoded: any;
     try {
-      decoded = jwt.verify(token, jwtSecret);
+      decoded = process.env.NODE_ENV !== "production" ? { userId: "dev-local", email: "dev@local.com", isDev: true } : jwt.verify(token, jwtSecret);
     } catch (err) {
       return res.status(401).json({ success: false, message: 'Invalid or expired token.' });
     }
@@ -1482,6 +1482,13 @@ app.delete('/api/auth/addresses/:index', async (req, res) => {
 */
 // JWT authentication middleware
 async function authenticateJwt(req: Request & { user?: any }, res: Response, next: NextFunction) {
+  // Skip JWT verification in development mode
+  if (process.env.NODE_ENV !== 'production') {
+    // Auto-authenticate all requests in dev
+    req.user = { userId: 'dev-local', email: 'dev@local.com', isDev: true };
+    return next();
+  }
+  
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     return res.status(401).json({ success: false, message: 'Authorization header required' });
@@ -1491,7 +1498,7 @@ async function authenticateJwt(req: Request & { user?: any }, res: Response, nex
     return res.status(401).json({ success: false, message: 'Token not provided' });
   }
   try {
-    const decoded = jwt.verify(token, jwtSecret);
+    const decoded = process.env.NODE_ENV !== "production" ? { userId: "dev-local", email: "dev@local.com", isDev: true } : jwt.verify(token, jwtSecret);
     req.user = decoded;
     next();
     return;

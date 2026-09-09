@@ -12,7 +12,7 @@ services:
         value: production
       - key: PORT
         value: "4000"
-                  - key: MONGODB_URI
+      - key: MONGODB_URI
         value: "mongodb+srv://sudhir22sep_db_user:Sudhir0501@amma-wear.vgvwvpo.mongodb.net/ammawears_prod?retryWrites=true&w=majority"
       - key: SES_REGION
         sync: false  # Set in Render dashboard
@@ -26,6 +26,8 @@ services:
         sync: false
       - key: RAZORPAY_TEST_KEY_SECRET
         sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false  # Set in Render dashboard
       - key: APP_URL
         value: "https://ammawears.com"
       - key: CORS_ORIGIN
