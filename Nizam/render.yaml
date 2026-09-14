@@ -39,7 +39,7 @@ services:
       - key: RAZORPAY_WEBHOOK_SECRET
         sync: false  # Set in Render dashboard
       - key: JWT_SECRET
-        sync: false  # Set in Render dashboard; do not commit secrets
+        sync: false  # Set in Render dashboard (required, server exits without it)
       - key: APP_URL
         value: "https://ammawears.com"
       - key: CORS_ORIGIN

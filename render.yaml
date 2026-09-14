@@ -14,10 +14,16 @@ services:
         value: "4000"
       - key: MONGODB_URI
         sync: false  # Set in Render dashboard
+      - key: JWT_SECRET
+        sync: false  # Set in Render dashboard (required, server exits without it)
       - key: SES_REGION
         sync: false  # Set in Render dashboard
       - key: SES_VERIFIED_SENDER
         sync: false  # Set in Render dashboard
+      - key: AWS_ACCESS_KEY_ID
+        sync: false  # Set in Render dashboard (required for SES email)
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false  # Set in Render dashboard (required for SES email)
       - key: RAZORPAY_KEY_ID
         sync: false  # Set in Render dashboard
       - key: RAZORPAY_KEY_SECRET
@@ -28,6 +34,8 @@ services:
         sync: false
       - key: APP_URL
         value: "https://nizam-ai.onrender.com"  # Update with your actual URL
+      - key: CORS_ORIGIN
+        value: "https://ammawears.com"  # Frontend origin allowed to call this API
       - key: environment
         value: "production"
     healthCheckPath: /health

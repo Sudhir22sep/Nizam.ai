@@ -1,0 +1,55 @@
+[2026-08-23 18:14:29] Starting daily MongoDB backup...
+[Sun Aug 23 18:14:29 UTC 2026] Starting MongoDB backup...
+2026-08-23T18:14:30.293+0000	writing `sample_supplies.sales` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/sample_supplies/sales.bson`
+2026-08-23T18:14:30.293+0000	writing `sample_analytics.transactions` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/sample_analytics/transactions.bson`
+2026-08-23T18:14:30.294+0000	writing `sample_analytics.accounts` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/sample_analytics/accounts.bson`
+2026-08-23T18:14:30.294+0000	writing `sample_analytics.customers` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/sample_analytics/customers.bson`
+2026-08-23T18:14:30.399+0000	done dumping `sample_analytics.accounts` (1746 documents)
+2026-08-23T18:14:30.399+0000	writing `ammawears_prod.orders` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/ammawears_prod/orders.bson`
+2026-08-23T18:14:30.399+0000	done dumping `sample_analytics.customers` (500 documents)
+2026-08-23T18:14:30.400+0000	writing `ammawears_dev.orders` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/ammawears_dev/orders.bson`
+2026-08-23T18:14:30.416+0000	done dumping `ammawears_prod.orders` (78 documents)
+2026-08-23T18:14:30.416+0000	writing `ammawears_dev.products` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/ammawears_dev/products.bson`
+2026-08-23T18:14:30.422+0000	done dumping `ammawears_dev.orders` (57 documents)
+2026-08-23T18:14:30.422+0000	writing `ammawears_prod.products` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/ammawears_prod/products.bson`
+2026-08-23T18:14:30.438+0000	done dumping `ammawears_dev.products` (17 documents)
+2026-08-23T18:14:30.438+0000	writing `ammawears_prod.contacts` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/ammawears_prod/contacts.bson`
+2026-08-23T18:14:30.443+0000	done dumping `ammawears_prod.products` (17 documents)
+2026-08-23T18:14:30.443+0000	writing `sample_guides.planets` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/sample_guides/planets.bson`
+2026-08-23T18:14:30.574+0000	done dumping `sample_supplies.sales` (5000 documents)
+2026-08-23T18:14:30.575+0000	writing `nizam_ai.orders` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/nizam_ai/orders.bson`
+2026-08-23T18:14:30.845+0000	done dumping `sample_analytics.transactions` (1746 documents)
+2026-08-23T18:14:30.845+0000	writing `test.orders` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/test/orders.bson`
+2026-08-23T18:14:30.956+0000	done dumping `ammawears_prod.contacts` (9 documents)
+2026-08-23T18:14:30.956+0000	writing `ammawears_prod.wishlists` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/ammawears_prod/wishlists.bson`
+2026-08-23T18:14:30.959+0000	done dumping `nizam_ai.orders` (8 documents)
+2026-08-23T18:14:30.959+0000	writing `ammawears_prod.users` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/ammawears_prod/users.bson`
+2026-08-23T18:14:30.960+0000	done dumping `sample_guides.planets` (8 documents)
+2026-08-23T18:14:30.960+0000	writing `ammawears_dev.wishlists` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/ammawears_dev/wishlists.bson`
+2026-08-23T18:14:30.960+0000	done dumping `test.orders` (6 documents)
+2026-08-23T18:14:30.960+0000	writing `ammawears_dev.users` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/ammawears_dev/users.bson`
+2026-08-23T18:14:30.965+0000	done dumping `ammawears_prod.wishlists` (5 documents)
+2026-08-23T18:14:30.965+0000	writing `ammawears_dev.contacts` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/ammawears_dev/contacts.bson`
+2026-08-23T18:14:30.968+0000	done dumping `ammawears_prod.users` (4 documents)
+2026-08-23T18:14:30.968+0000	writing `nizam_ai.users` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/nizam_ai/users.bson`
+2026-08-23T18:14:30.970+0000	done dumping `ammawears_dev.wishlists` (4 documents)
+2026-08-23T18:14:30.970+0000	writing `nizam_ai.contacts` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/nizam_ai/contacts.bson`
+2026-08-23T18:14:30.971+0000	done dumping `ammawears_dev.users` (4 documents)
+2026-08-23T18:14:30.971+0000	writing `ammawears_prod.ammawears prod` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/ammawears_prod/ammawears+prod.bson`
+2026-08-23T18:14:30.973+0000	done dumping `ammawears_dev.contacts` (3 documents)
+2026-08-23T18:14:30.973+0000	writing `ammawears_int.ammawears_int` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/ammawears_int/ammawears_int.bson`
+2026-08-23T18:14:30.978+0000	done dumping `nizam_ai.users` (2 documents)
+2026-08-23T18:14:30.978+0000	writing `ammawears_dev.system.buckets.Ammawears dev` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/ammawears_dev/system.buckets.Ammawears+dev.bson`
+2026-08-23T18:14:30.979+0000	done dumping `nizam_ai.contacts` (1 document)
+2026-08-23T18:14:30.979+0000	writing `test.contacts` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/test/contacts.bson`
+2026-08-23T18:14:30.980+0000	done dumping `ammawears_prod.ammawears prod` (0 documents)
+2026-08-23T18:14:30.980+0000	writing `test.users` to `/workspaces/Nizam.ai/backups/backup_20260823_181429/test/users.bson`
+2026-08-23T18:14:30.981+0000	done dumping `ammawears_int.ammawears_int` (0 documents)
+2026-08-23T18:14:30.987+0000	done dumping `ammawears_dev.system.buckets.Ammawears dev` (0 documents)
+2026-08-23T18:14:30.989+0000	done dumping `test.contacts` (0 documents)
+2026-08-23T18:14:30.989+0000	done dumping `test.users` (0 documents)
+[Sun Aug 23 18:14:31 UTC 2026] Creating compressed archive: nizam_backup_20260823_181429.tar.gz
+tar: Removing leading `/' from member names
+[Sun Aug 23 18:14:31 UTC 2026] Cleaning up old backups (30 days retention)...
+[Sun Aug 23 18:14:31 UTC 2026] Backup completed: nizam_backup_20260823_181429.tar.gz
+[2026-08-23 18:14:31] Backup completed
