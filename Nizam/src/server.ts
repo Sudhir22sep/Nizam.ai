@@ -24,8 +24,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const require = createRequire(import.meta.url);
 
-// Load environment variables
-dotenv.config({ path: resolve(process.cwd(), '.env'), override: true });
+// Load local environment variables as a fallback. Never override variables
+// injected by the hosting platform (for example, Render).
+dotenv.config({ path: resolve(process.cwd(), '.env') });
 
 // Set trust proxy headers EARLY - before Angular SSR engine is initialized
 // This prevents the "x-forwarded-scheme header but trustProxyHeaders was not set" warning
@@ -336,7 +337,7 @@ const appUrl = process.env['APP_URL'] || 'http://localhost:4200';
 
 // JWT Configuration
 if (!process.env.JWT_SECRET) {
-  throw new Error('JWT_SECRET must be set in .env file');
+  throw new Error('JWT_SECRET must be set in the runtime environment');
 }
 const jwtSecret = process.env.JWT_SECRET;
 const jwtExpiresIn = '30d';
