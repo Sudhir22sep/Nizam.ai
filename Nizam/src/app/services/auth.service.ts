@@ -118,7 +118,9 @@ export class AuthService {
       return of(null);
     }
     
-    return this.http.get(`${this.apiUrl}/me`).pipe(
+    return this.http.get(`${this.apiUrl}/me`, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).pipe(
       tap((response: any) => {
         if (response.success && response.user) {
           // Update localStorage with fresh user data

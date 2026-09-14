@@ -54,15 +54,24 @@ In Render dashboard → Settings → Environment Variables, add:
 
 **Required:**
 - `MONGODB_URI` = your MongoDB Atlas connection string
+- `JWT_SECRET` = at least 32 random bytes (base64/hex). **The server exits at startup with `JWT_SECRET must be set in the runtime environment` if this is missing**, and every login/register call 500s without it.
 - `SES_REGION` = `us-east-1` (or your SES region)
-- `SES_VERIFIED_SENDER` = your verified SES email
+- `SES_VERIFIED_SENDER` = your verified SES email (must be a verified identity; the SES sandbox also requires verified recipients)
+- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` = IAM user with `ses:SendEmail` + `ses:SendRawEmail`. Optional: omit both to use the AWS SDK default credential chain (environment, `AWS_PROFILE`/SSO, instance role).
 - `RAZORPAY_KEY_ID` = your Razorpay live key ID
 - `RAZORPAY_KEY_SECRET` = your Razorpay live key secret
 - `APP_URL` = `https://your-app.onrender.com` (or custom domain)
+- `CORS_ORIGIN` = the frontend origin allowed to call this API (e.g. `https://ammawears.com`); defaults to `http://localhost:4200` if unset
 
 **Optional (for testing):**
 - `RAZORPAY_TEST_KEY_ID` = test key
 - `RAZORPAY_TEST_KEY_SECRET` = test secret
+
+> **Blueprint note:** Render reads `render.yaml` from the **repository root** (`Nizam.ai/render.yaml`), which sets
+> `workingDirectory: ./Nizam`. The copy at `Nizam/render.yaml` is not read by Render.
+>
+> **`.env` note:** the server loads a `.env` file only as a *fallback* - values injected by Render always win.
+> Never rely on a committed `.env` in production, and never commit real secrets.
 
 ### 4. Add MongoDB (if not using Atlas)
 If you want Render to manage MongoDB:
