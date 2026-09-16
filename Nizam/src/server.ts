@@ -398,7 +398,16 @@ function resolveRequestUser(req: Request): { userId: string; email: string; role
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7).trim();
     if (token) {
-      return jwt.verify(token, jwtSecret) as { userId: string; email: string; role?: string };
+      try {
+        return jwt.verify(token, jwtSecret) as { userId: string; email: string; role?: string };
+      } catch (err) {
+        // A token that is expired, malformed, or signed with a different JWT_SECRET
+        // (e.g. the secret was rotated) must never crash the request. Treat it as
+        // "not authenticated" so the caller responds with 401 and the client can
+        // clear the stale session, instead of throwing an unhandled error.
+        console.warn('Rejected bearer token:', err instanceof Error ? err.message : err);
+        return null;
+      }
     }
   }
 
