@@ -15,7 +15,7 @@ services:
       - key: MONGODB_URI
         sync: false  # Set in Render dashboard
       - key: JWT_SECRET
-        value: "iItp9xMb4LUSOxRNbFeqiQ0Morenqvrg2aWKstZPuQi5vzgBfxSWdpKOmHjGoOFkNpyuiDkA2jw1YotEvKG5FQ=="
+        sync: false  # Set in Render dashboard (required, server exits without it)
       - key: SES_REGION
         sync: false  # Set in Render dashboard
       - key: SES_VERIFIED_SENDER
