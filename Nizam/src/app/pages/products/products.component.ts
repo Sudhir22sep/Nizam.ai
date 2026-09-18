@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { PricePipe } from '../../pipes/price.pipe';
 import { ImageFallbackDirective } from '../../directives/image-fallback.directive';
-import { ProductService, Product } from '../../services/product.service';
+import { ProductService, Product, primaryProductImage } from '../../services/product.service';
 import { CartService } from '../../services/cart.service';
 import { WishlistService } from '../../services/wishlist.service';
 
@@ -93,6 +93,10 @@ export class ProductsComponent {
 
   trackByProductId(_: number, product: Product) {
     return product.id;
+  }
+
+  primaryImage(product: Product): string {
+    return primaryProductImage(product.images, undefined, product.name);
   }
 
   // image fallback handled by ImageFallbackDirective

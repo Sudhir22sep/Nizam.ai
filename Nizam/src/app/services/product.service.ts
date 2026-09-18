@@ -2,6 +2,64 @@ import { Injectable, signal, PLATFORM_ID, Inject } from '@angular/core';
 import { isPlatformServer } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 
+export const PRODUCT_IMAGE_PLACEHOLDER = '/images/products/placeholder.svg';
+
+// Satin Slip Dress has three proper photographic views in the repo and should
+// never fall back to the generic placeholder.
+export const SATIN_SLIP_DRESS_IMAGES = [
+  '/images/products/slip-dress.jpeg',
+  '/images/products/satin.jpg',
+  '/images/products/satin-slip-dress.jpeg'
+];
+
+function normalizeProductImage(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const image = value.trim();
+  if (!image || image === 'null' || image === 'undefined') {
+    return null;
+  }
+
+  // Keep fully qualified URLs and root-relative app paths as-is.
+  if (/^(https?:|data:|blob:|\/)/i.test(image)) {
+    return image;
+  }
+
+  // Catalog data historically stores paths such as
+  // "images/products/satin-slip-dress.jpeg" without a leading slash. Serve them
+  // root-relative so they keep working on nested routes such as /product/:id.
+  return `/${image.replace(/^\.\//, '')}`;
+}
+
+export function normalizeProductImages(images: unknown, image?: unknown, productName?: string): string[] {
+  if (isSatinSlipDress(productName)) {
+    return [...SATIN_SLIP_DRESS_IMAGES];
+  }
+
+  const rawImages = Array.isArray(images) ? images : image !== undefined ? [image] : [];
+  const normalized: string[] = [];
+
+  for (const rawImage of rawImages) {
+    const normalizedImage = normalizeProductImage(rawImage);
+    if (normalizedImage && !normalized.includes(normalizedImage)) {
+      normalized.push(normalizedImage);
+    }
+  }
+
+  return normalized;
+}
+
+function isSatinSlipDress(productName?: string): boolean {
+  return typeof productName === 'string' && productName.trim().toLowerCase() === 'satin slip dress';
+}
+
+export function primaryProductImage(images: unknown, image?: unknown, productName?: string): string {
+  return normalizeProductImages(images, image, productName)[0] ?? PRODUCT_IMAGE_PLACEHOLDER;
+}
+
+
 export interface Product {
   id: string;
   name: string;
@@ -48,10 +106,10 @@ export class ProductService {
             id: p._id.toString(),
             name: p.name,
             description: p.description,
-            basePrice: p.basePrice,
+            basePrice: p.basePrice ?? p.price ?? 0,
             currency: p.currency,
             category: p.category,
-            images: p.images || [],
+            images: normalizeProductImages(p.images, p.image, p.name),
             variants: p.variants || [],
             tags: p.tags || [],
             isActive: p.isActive !== undefined ? p.isActive : true,
@@ -75,7 +133,7 @@ export class ProductService {
           basePrice: p.price,
           currency: 'USD',
           category: p.category,
-          images: [p.image],
+          images: normalizeProductImages(p.images, p.image, p.name),
           variants: [],
           tags: [],
           isActive: true,
