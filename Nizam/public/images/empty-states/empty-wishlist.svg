@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" fill="none" aria-hidden="true">
+  <!-- Heart outline (fashion wishlist) -->
+  <path d="M120 168
+           C 58 128, 48 92, 72 68
+           C 90 50, 110 50, 120 72
+           C 130 50, 150 50, 168 68
+           C 192 92, 182 128, 120 168 Z"
+        stroke="#B08D57" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"
+        fill="rgba(241,238,232,0.4)"/>
+  <!-- Orbital sparkles -->
+  <circle cx="62"  cy="48"  r="3" fill="#C9A76B"/>
+  <circle cx="186" cy="44"  r="2.5" fill="#C9A76B"/>
+  <circle cx="44"  cy="82"  r="2" fill="#96754A" opacity="0.7"/>
+  <circle cx="200" cy="78"  r="2" fill="#96754A" opacity="0.7"/>
+  <circle cx="76"  cy="172" r="2.5" fill="#C9A76B" opacity="0.6"/>
+  <circle cx="168" cy="174" r="2" fill="#C9A76B" opacity="0.6"/>
+  <!-- Small star accents -->
+  <path d="M180 108 L182 104 L184 108 L188 108 L185 111 L186 115 L182 113 L180 115 L178 111 L182 108 Z"
+        fill="#C9A76B" opacity="0.85"/>
+  <path d="M56 112 L57.5 109 L59 112 L62 112 L59.5 114 L58 117 L56.5 114 Z"
+        fill="#C9A76B" opacity="0.7"/>
+</svg>

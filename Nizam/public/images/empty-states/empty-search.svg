@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" fill="none" aria-hidden="true">
+  <!-- Magnifying glass -->
+  <circle cx="96" cy="90" r="44" stroke="#1E2A38" stroke-width="2.5" fill="rgba(241,238,232,0.5)"/>
+  <path d="M131 125 L168 162"
+        stroke="#96754A" stroke-width="8" stroke-linecap="round"/>
+  <!-- Garment hint (simple shirt outline inside glass) -->
+  <path d="M82 86 L82 118 L90 126 L96 118 L102 126 L110 118 L110 86 Z"
+        stroke="#B08D57" stroke-width="1.8" stroke-linejoin="round" opacity="0.7"/>
+  <line x1="82" y1="100" x2="110" y2="100" stroke="#B08D57" stroke-width="1.5" opacity="0.55"/>
+</svg>

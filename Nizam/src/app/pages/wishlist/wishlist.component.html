@@ -50,11 +50,14 @@
 
   <!-- Wishlists List -->
   <div class="wishlists-grid">
-    <div *ngIf="wishlists.length === 0 && !isLoading" class="empty-state">
-      <p>You haven't created any wishlists yet.</p>
-      <button class="btn btn-primary" (click)="openCreateWishlistModal()">
-        Create Your First Wishlist
-      </button>
+    <div *ngIf="wishlists.length === 0 && !isLoading" class="empty-state-wrapper">
+      <app-empty-state
+        variant="wishlist"
+        title="No wishlists yet"
+        body="Create your first wishlist and save your favorite styles."
+        actionLabel="Create Your First Wishlist"
+        [actionCallback]="onCreateFirstWishlist"
+      ></app-empty-state>
     </div>
     <div *ngIf="isLoading" class="loading-indicator">
       <div class="spinner"></div>
@@ -85,8 +88,12 @@
          </div>
 
          <div class="wishlist-items empty" *ngIf="!wishlist.items || wishlist.items.length === 0">
-           <p>No items in this wishlist yet.</p>
-         </div>
+            <app-empty-state
+              variant="wishlist"
+              title="This wishlist is empty"
+              body="Start adding items you love."
+            ></app-empty-state>
+          </div>
 
          <div class="wishlist-actions">
            <button class="btn btn-outline" (click)="viewWishlistItems(wishlist._id)">

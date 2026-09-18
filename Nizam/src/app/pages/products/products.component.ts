@@ -1,103 +1,85 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, OnInit, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { PricePipe } from '../../pipes/price.pipe';
-import { ImageFallbackDirective } from '../../directives/image-fallback.directive';
-import { ProductService, Product, primaryProductImage } from '../../services/product.service';
+import { FormsModule } from '@angular/forms';
+import { ProductService, Product } from '../../services/product.service';
 import { CartService } from '../../services/cart.service';
 import { WishlistService } from '../../services/wishlist.service';
+import { ToastService } from '../../services/toast.service';
+import { ImageFallbackDirective } from '../../directives/image-fallback.directive';
+import { EmptyStateComponent } from '../../components/empty-state/empty-state.component';
 
 @Component({
   selector: 'app-products',
   standalone: true,
-  imports: [CommonModule, RouterLink, PricePipe, ImageFallbackDirective],
+  imports: [CommonModule, RouterLink, FormsModule, ImageFallbackDirective, EmptyStateComponent],
   templateUrl: './products.component.html',
   styleUrl: './products.component.css'
 })
-export class ProductsComponent {
-  readonly products!: ReturnType<ProductService['getProducts']>;
-  readonly selectedCategory = signal('');
-
-  readonly categories = computed(() =>
-    Array.from(new Set(this.products().map(product => product.category)))
-  );
-
-  readonly filteredProducts = computed(() => {
-    const category = this.selectedCategory();
-    const products = this.products();
-    if (!category) {
-      return products;
-    }
-    return products.filter(product => product.category === category);
+export class ProductsComponent implements OnInit {
+  selectedCategory = '';
+  categories = computed(() => Array.from(new Set(this.filteredProducts().map(p => p.category))));
+  filteredProducts = computed(() => {
+    const all = this.productService.getProducts();
+    const cat = this.selectedCategory;
+    return cat
+      ? all().filter(p => p.category === cat)
+      : all();
   });
 
-  constructor(
-    private productService: ProductService,
-    private cartService: CartService,
-    private wishlistService: WishlistService
-  ) {
-    this.products = this.productService.getProducts();
+  private readonly productService = inject(ProductService);
+  private readonly cartService = inject(CartService);
+  private readonly wishlistService = inject(WishlistService);
+  private readonly toast = inject(ToastService);
+
+  ngOnInit() {
+    this.productService.ensureLoaded();
   }
 
   filterByCategory(category: string) {
-    this.selectedCategory.set(category);
+    this.selectedCategory = category;
   }
 
   resetFilter() {
-    this.selectedCategory.set('');
+    this.selectedCategory = '';
   }
 
   addToCart(product: Product) {
     this.cartService.addToCart(product, 1);
-    alert(`${product.name} has been added to your cart.`);
+    this.toast.success(`${product.name} added to cart.`);
   }
 
   addToWishlist(product: Product) {
-    // For simplicity, we'll add to a default wishlist or prompt to create/select one
-    // In a full implementation, we'd show a modal to select/create wishlist
     this.wishlistService.getWishlists().subscribe({
       next: (wishlists) => {
-        const defaultWishlist = wishlists.find(w => w.name === 'My Favorites') || wishlists[0];
-        if (defaultWishlist) {
-          this.wishlistService.addItemToWishlist(defaultWishlist._id, product.id).subscribe({
-            next: () => {
-              alert(`${product.name} has been added to your wishlist!`);
+        if (wishlists.length === 0) {
+          this.wishlistService.createWishlist('My Favorites', false).subscribe({
+            next: (response) => {
+              if (response.success && response.wishlist) {
+                this.wishlistService.addItemToWishlist(response.wishlist._id, product.id).subscribe({
+                  next: () => this.toast.success(`${product.name} added to wishlist.`),
+                  error: () => this.toast.error('Failed to add to wishlist. Try again.')
+                });
+              }
             },
-            error: (error) => {
-              console.error('Error adding to wishlist:', error);
-              alert('Failed to add item to wishlist. Please try again.');
-            }
+            error: () => this.toast.error('Could not create wishlist. Try again.')
           });
         } else {
-          // No wishlists exist, prompt to create one
-          if (confirm('You don\'t have any wishlists yet. Create a new wishlist called "My Favorites" and add this item to it?')) {
-            this.wishlistService.createWishlist('My Favorites', false).subscribe({
-              next: (response) => {
-                if (response.success) {
-                  this.wishlistService.addItemToWishlist(response.wishlist._id, product.id).subscribe({
-                    next: () => {
-                      alert(`${product.name} has been added to your new wishlist!`);
-                    },
-                    error: (error) => {
-                      console.error('Error adding to wishlist:', error);
-                    }
-                  });
-                }
-              }
-            });
-          }
+          this.wishlistService.addItemToWishlist(wishlists[0]._id, product.id).subscribe({
+            next: () => this.toast.success(`${product.name} added to wishlist.`),
+            error: () => this.toast.error('Failed to add to wishlist. Try again.')
+          });
         }
-      }
+      },
+      error: () => this.toast.error('Could not access wishlists. Try again.')
     });
   }
 
-  trackByProductId(_: number, product: Product) {
+  trackByProductId(index: number, product: Product) {
     return product.id;
   }
 
   primaryImage(product: Product): string {
-    return primaryProductImage(product.images, undefined, product.name);
+    return product.images[0] ?? '';
   }
-
-  // image fallback handled by ImageFallbackDirective
 }

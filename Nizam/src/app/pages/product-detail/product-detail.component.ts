@@ -6,6 +6,7 @@ import { ImageFallbackDirective } from '../../directives/image-fallback.directiv
 import { ProductService, Product, primaryProductImage } from '../../services/product.service';
 import { CartService } from '../../services/cart.service';
 import { WishlistService } from '../../services/wishlist.service';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-product-detail',
@@ -19,6 +20,7 @@ export class ProductDetailComponent implements OnInit {
   private productService = inject(ProductService);
   private cartService = inject(CartService);
   private wishlistService = inject(WishlistService);
+  private readonly toast = inject(ToastService);
 
   product: Product | undefined;
   relatedProducts: Product[] = [];
@@ -108,7 +110,7 @@ export class ProductDetailComponent implements OnInit {
       return;
     }
     this.cartService.addToCart(this.product, this.quantity);
-    alert(`${this.quantity} ${this.product.name} item(s) added to cart.`);
+    this.toast.success(`${this.quantity} ${this.product.name} item(s) added to cart.`);
   }
 
   addToWishlist() {
@@ -137,7 +139,7 @@ export class ProductDetailComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading wishlists:', error);
-        alert('Unable to access wishlists. Please try again.');
+        this.toast.error('Unable to access wishlists. Please try again.');
       }
     });
   }
@@ -153,14 +155,14 @@ export class ProductDetailComponent implements OnInit {
     ).subscribe({
       next: (response) => {
         if (response.success) {
-          alert('Product added to wishlist!');
+          this.toast.success('Product added to wishlist!');
         } else {
-          alert('Failed to add product to wishlist.');
+          this.toast.error('Failed to add product to wishlist.');
         }
       },
       error: (error) => {
         console.error('Error adding to wishlist:', error);
-        alert('Failed to add product to wishlist.');
+        this.toast.error('Failed to add product to wishlist.');
       }
     });
   }

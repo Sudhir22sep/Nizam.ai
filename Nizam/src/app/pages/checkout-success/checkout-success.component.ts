@@ -1,5 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { environment } from '../../../environments/environment';
 
@@ -11,14 +11,19 @@ import { environment } from '../../../environments/environment';
   styleUrl: './checkout-success.component.css'
 })
 export class CheckoutSuccessComponent implements OnInit {
+  private readonly platformId = inject(PLATFORM_ID);
+  private readonly route = inject(ActivatedRoute);
   sessionId = '';
   orderReference = '';
   statusMessage = 'Confirming your payment...';
 
   ngOnInit() {
+    if (!isPlatformBrowser(this.platformId)) {
+      this.statusMessage = 'Payment confirmation pending.';
+      return;
+    }
     const params = new URLSearchParams(window.location.search);
     this.sessionId = params.get('session_id') || '';
-
     if (this.sessionId) {
       this.confirmPayment(this.sessionId);
     } else {
@@ -33,7 +38,6 @@ export class CheckoutSuccessComponent implements OnInit {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId }),
       });
-
       const data = await res.json();
       if (res.ok && data.success) {
         this.orderReference = data.orderReference;

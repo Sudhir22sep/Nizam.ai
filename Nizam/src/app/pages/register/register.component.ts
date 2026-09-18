@@ -1,10 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
-import { ReactiveFormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-register',
@@ -16,13 +15,13 @@ import { AuthService } from '../../services/auth.service';
 export class RegisterComponent implements OnInit {
   registerForm: FormGroup;
   isLoading = false;
-  errorMessage: string | null = null;
 
-  constructor(
-    private fb: FormBuilder,
-    private authService: AuthService,
-    private router: Router
-  ) {
+  private readonly fb = inject(FormBuilder);
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
+
+  constructor() {
     this.registerForm = this.fb.group({
       firstName: ['', Validators.required],
       lastName: ['', Validators.required],
@@ -36,7 +35,6 @@ export class RegisterComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // If user is already logged in, redirect to home
     if (this.authService.isLoggedIn()) {
       this.router.navigate(['/']);
     }
@@ -49,23 +47,23 @@ export class RegisterComponent implements OnInit {
 
   onSubmit(): void {
     if (this.registerForm.invalid) {
+      this.registerForm.markAllAsTouched();
       return;
     }
 
     this.isLoading = true;
-    this.errorMessage = null;
-
     const { firstName, lastName, email, phone, password } = this.registerForm.value;
 
     this.authService.register(firstName, lastName, email, phone, password).subscribe({
       next: () => {
         this.isLoading = false;
-        // Show success message and redirect to login
+        this.toast.success('Account created! You can now sign in.');
         this.router.navigate(['/login']);
       },
       error: (error) => {
         this.isLoading = false;
-        this.errorMessage = error.message || 'Registration failed';
+        const message = error?.error?.message || 'Registration failed. Please try again.';
+        this.toast.error(message);
       }
     });
   }

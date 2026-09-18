@@ -147,34 +147,8 @@ const app = express();
 app.enable('trust proxy');
 
 // Required middleware - order matters!
-app.use(bodyParser.json({ limit: '50mb' })); // Parse JSON bodies
-app.use(express.raw({ type: 'application/json', limit: '50mb' })); // Raw body for webhooks
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || ['http://localhost:4200'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    env: process.env.NODE_ENV || 'development'
-  });
-});
-
-// Test endpoints
-app.get('/api/test', (req, res) => {
-  res.json({ success: true, message: 'Server is running' });
-});
-
-app.post('/api/test', (req, res) => {
-  res.json({ success: true, message: 'Test route' });
-});
-
-// Export for Angular SSR Node.js server
-export default app;
+// (Body parser, CORS, and global guard are registered later after DB init,
+// see around line 480 — the early registrations here were duplicates.)
 
 // Determine environment and default database name
  const isProduction = process.env['NODE_ENV'] === 'production';
@@ -816,6 +790,14 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// Simple test endpoint for smoke tests and basic health checking
+app.get('/api/test', (req, res) => {
+  res.json({ success: true, message: 'Test endpoint OK' });
+});
+app.post('/api/test', (req, res) => {
+  res.json({ success: true, message: 'Test endpoint OK' });
+});
+
 // Simple server-side currency rates (relative to USD).
 // These MUST match the client's CurrencyService rates, otherwise the totals the
 // frontend sends will not reconcile with the item prices converted here.
@@ -1294,6 +1276,15 @@ app.post('/api/save-user', async (req, res) => {
   try {
     const usersCollection = await getUsersCollection();
 
+    // Split the full name into firstName/lastName to match the auth endpoints
+    // and the UserDocument schema (firstName + lastName).
+    const [firstName = '', ...lastNameParts] = name.trim().split(/\s+/);
+    const lastName = lastNameParts.join(' ');
+
+    if (!firstName || !lastName) {
+      return res.status(400).json({ success: false, message: 'Name must include both a first name and a last name.' });
+    }
+
     // Check if user already exists
     const existingUser = await usersCollection.findOne({ email });
     if (existingUser) {
@@ -1302,7 +1293,8 @@ app.post('/api/save-user', async (req, res) => {
         { email },
         {
           $set: {
-            name,
+            firstName,
+            lastName,
             phone: phone || (existingUser as any).phone,
             address: address || (existingUser as any).address,
             updatedAt: new Date(),
@@ -1314,11 +1306,15 @@ app.post('/api/save-user', async (req, res) => {
 
     // Create new user
     const user = {
-      name,
+      firstName,
+      lastName,
       email,
       phone: phone || '',
       address: address || '',
+      addresses: [],
       createdAt: new Date(),
+      isActive: true,
+      role: 'user',
     };
 
     const result = await usersCollection.insertOne(user);
@@ -1955,7 +1951,7 @@ app.get('/api/orders/:orderReference', authenticateJwt, async (req, res) => {
 });
 
 // PATCH /api/orders/:orderReference/status - Update order status
-app.patch('/api/orders/:orderReference/status', async (req, res) => {
+app.patch('/api/orders/:orderReference/status', authenticateJwt, async (req, res) => {
   try {
     const ordersCollection = await getOrdersCollection();
     const { status } = req.body;
@@ -2865,7 +2861,7 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
       return next();
     }
 
-    const engine = angularApp;
+    const engine = await getAngularApp();
     if (!engine) {
       // In development without SSR build, serve index.csr.html for client-side routing
       const fallbackHtml = join(browserDistFolder, 'index.csr.html');
@@ -2956,4 +2952,6 @@ if (isMainModule(import.meta.url) || process.env['pm_id'] || (process.env['NODE_
 
  */ 
 export const reqHandler = createNodeRequestHandler(app);
+
+export default app;
 

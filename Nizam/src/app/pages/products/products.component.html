@@ -8,14 +8,14 @@
   <div class="filters" role="group" aria-label="Filter products by category">
     <button
       class="filter-btn"
-      [class.active]="selectedCategory() === ''"
+      [class.active]="selectedCategory === ''"
       (click)="resetFilter()">
       All
     </button>
     <button
       *ngFor="let category of categories()"
       class="filter-btn"
-      [class.active]="selectedCategory() === category"
+      [class.active]="selectedCategory === category"
       (click)="filterByCategory(category)">
       {{ category }}
     </button>
@@ -46,7 +46,13 @@
     </div>
   </div>
 
-  <div *ngIf="products.length === 0" class="no-products">
-    <p>No products found in this category.</p>
+  <div *ngIf="filteredProducts().length === 0" class="no-products-wrapper">
+    <app-empty-state
+      variant="no-products"
+      title="No products found"
+      body="Try adjusting your filters or browse a different category."
+      actionLabel="Reset filters"
+      [actionCallback]="resetFilter"
+    ></app-empty-state>
   </div>
 </div>
