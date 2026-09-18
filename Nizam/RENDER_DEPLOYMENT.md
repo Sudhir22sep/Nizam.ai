@@ -156,9 +156,27 @@ npm run dev:ssr
 - Check build used `@angular/build:application` builder
 
 ### Emails Not Sending
-- Verify SES is in production mode (not sandbox)
-- Check `SES_VERIFIED_SENDER` is verified in AWS SES
-- Check AWS credentials/region
+Run the diagnostic first (from the `Nizam/` directory) — it reports exactly which
+value is missing or still a placeholder, and whether AWS credentials resolve:
+
+```bash
+node scripts/check-ses-credentials.cjs                      # config + credential check
+node scripts/check-ses-credentials.cjs --send-to you@x.com  # + a real test email
+```
+
+Then check, in this order:
+- **Credentials**: `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` must be real IAM
+  keys (with `ses:SendEmail` + `ses:SendRawEmail`). Without them the server logs
+  `Could not load credentials from any providers`. They are needed locally too —
+  put them in `Nizam/.env` as well as in the Render dashboard.
+- `SES_VERIFIED_SENDER` must be a **verified identity in AWS SES**, in the same
+  region as `SES_REGION` (identities are per-region).
+- Shell/Codespaces environment variables **override** `.env` (the loader never
+  overrides real environment variables), so a stale exported
+  `SES_VERIFIED_SENDER=your-email@example.com` wins over the file. The startup
+  log names the effective value.
+- Verify SES is in production mode (not sandbox); in the sandbox every recipient
+  must be verified too.
 
 ## File Structure (Production Build)
 ```

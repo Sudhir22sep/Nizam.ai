@@ -80,13 +80,37 @@ async function loadAngularManifests(): Promise<void> {
 let sesClient: any = null;
 const sesRegion = process.env.SES_REGION;
 if (sesRegion) {
-  const hasStaticCredentials = Boolean(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY);
+  // Placeholder values from .env.example must not be treated as real keys: the
+  // SDK would sign every request with them and fail with InvalidClientTokenId
+  // instead of the actionable "could not load credentials" error.
+  const PLACEHOLDER_CREDENTIALS = new Set([
+    'your_access_key_here',
+    'your_secret_access_key_here',
+    'your_aws_access_key_id',
+    'your_aws_secret_access_key',
+    'AKIAIOSFODNN7EXAMPLE',
+    'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'
+  ]);
+  const staticAccessKeyId = (process.env.AWS_ACCESS_KEY_ID || '').trim();
+  const staticSecretAccessKey = (process.env.AWS_SECRET_ACCESS_KEY || '').trim();
+  const hasStaticCredentials =
+    staticAccessKeyId.length > 0 &&
+    staticSecretAccessKey.length > 0 &&
+    !PLACEHOLDER_CREDENTIALS.has(staticAccessKeyId) &&
+    !PLACEHOLDER_CREDENTIALS.has(staticSecretAccessKey);
+
+  if ((staticAccessKeyId || staticSecretAccessKey) && !hasStaticCredentials) {
+    console.warn(
+      'AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY are placeholders, not real IAM keys; ignoring them and using the AWS SDK default credential chain (AWS_PROFILE / SSO / instance role).'
+    );
+  }
+
   sesClient = hasStaticCredentials
     ? new SESClient({
         region: sesRegion,
         credentials: {
-          accessKeyId: process.env.AWS_ACCESS_KEY_ID as string,
-          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY as string
+          accessKeyId: staticAccessKeyId,
+          secretAccessKey: staticSecretAccessKey
         }
       })
     : new SESClient({ region: sesRegion });
@@ -99,14 +123,20 @@ if (sesRegion) {
   console.warn('SES email delivery disabled. Missing environment variable(s): SES_REGION');
 }
 
-// Global SES client for email service
-(global as any).sesClient = sesClient;
+// Verified sender email for SES.
+// There is deliberately no silent fallback address: SES rejects any sender that
+// is not a verified identity, and a hidden default turns a configuration error
+// into what looks like a delivery outage.
+const PLACEHOLDER_SENDERS = new Set(['your-email@example.com', 'your-verified-email@example.com']);
+const verifiedSender = (process.env.SES_VERIFIED_SENDER || '').trim();
+const isSenderConfigured =
+  verifiedSender.length > 0 && !PLACEHOLDER_SENDERS.has(verifiedSender.toLowerCase());
 
-// Verified sender email for SES
-const verifiedSender = process.env.SES_VERIFIED_SENDER || 'sudhir.22sep@gmail.com';
-if (sesClient && verifiedSender === 'your-email@example.com') {
+if (sesClient && !isSenderConfigured) {
   console.warn(
-    'SES_VERIFIED_SENDER is still the placeholder value from .env.example and is not a verified SES identity; sends will be rejected.'
+    verifiedSender
+      ? `SES_VERIFIED_SENDER ("${verifiedSender}") is a placeholder value, not a verified SES identity; email delivery will fail. Verify it in SES (region ${sesRegion}).`
+      : `SES_VERIFIED_SENDER is not set; email delivery will fail. Set it to an identity verified in SES (region ${sesRegion}).`
   );
 }
 
@@ -500,29 +530,33 @@ app.post('/api/create-razorpay-order', async (req, res) => {
 
   const orderReference = `ORDER-${Date.now()}`;
 
-  // Exchange rates relative to USD (1 USD = X target) - must match CurrencyService
-  const exchangeRates: Record<string, number> = {
-    USD: 1,
-    INR: 95.21,
-    AED: 3.67,
-    SAR: 3.73
-  };
+  const frontendCurrency = String(currency || 'USD').toUpperCase();
 
-  // Convert the total from the frontend's currency to INR
-  // The frontend sends the total in its active currency (e.g., USD, INR, AED, SAR)
-  // We need to convert to INR for Razorpay
-  const frontendCurrency = currency || 'USD';
-  const frontendRate = exchangeRates[frontendCurrency] ?? 1;
-  const inrRate = exchangeRates['INR'] ?? 95.21;
-  
-  // Convert: total (in frontend currency) -> USD -> INR
-  const totalInUsd = total / frontendRate;
+  // Re-price the order from the catalog so a tampered or stale cart cannot set
+  // the amount Razorpay charges.
+  const priced = await priceOrderItems(items);
+  if (!priced.ok) {
+    return res.status(400).json({ success: false, message: priced.message });
+  }
+
+  const resolved = resolveOrderTotal(priced, total, frontendCurrency, '[Razorpay]');
+  if (!resolved.ok) {
+    return res.status(400).json({ success: false, message: resolved.message });
+  }
+  const orderTotal = resolved.total;
+
+  // Convert the order total from the shopper's currency to INR for Razorpay.
+  const frontendRate = serverRates[frontendCurrency] ?? 1;
+  const inrRate = serverRates['INR'] ?? 95.21;
+
+  // Convert: order total (in frontend currency) -> USD -> INR
+  const totalInUsd = orderTotal / frontendRate;
   const totalInInr = totalInUsd * inrRate;
-  
+
   // Convert to paise (smallest unit for INR)
   const amountInPaise = Math.round(totalInInr * 100);
 
-  console.log(`[Razorpay] Frontend currency: ${frontendCurrency}, Total: ${total}, USD: ${totalInUsd.toFixed(2)}, INR: ${totalInInr.toFixed(2)}, Paise: ${amountInPaise}`);
+  console.log(`[Razorpay] Frontend currency: ${frontendCurrency}, Total: ${orderTotal}, USD: ${totalInUsd.toFixed(2)}, INR: ${totalInInr.toFixed(2)}, Paise: ${amountInPaise}`);
 
   try {
     const razorpayOrder = await razorpay.orders.create({
@@ -541,44 +575,14 @@ app.post('/api/create-razorpay-order', async (req, res) => {
     // This ensures the order exists when payment is confirmed
     const ordersCollection = await getOrdersCollection();
     
-    // Normalize items to match OrderDocument structure
-    const normalizedItems = items.map(item => {
-      // Extract price from either item.price or item.product.basePrice or item.product.price
-      let price = 0;
-      let productName = 'Unnamed Item';
-      
-      if (typeof item.price === 'number' && item.price > 0) {
-        price = item.price;
-        productName = item.product?.name || productName;
-      } else if (item.product && typeof item.product === 'object') {
-        if (typeof item.product.basePrice === 'number' && item.product.basePrice > 0) {
-          price = item.product.basePrice;
-          productName = item.product.name || productName;
-        } else if (typeof item.product.price === 'number' && item.product.price > 0) {
-          price = item.product.price;
-          productName = item.product.name || productName;
-        }
-      }
-      
-      const quantity = typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1;
-      
-      return {
-        product: {
-          name: productName,
-          price: price
-        },
-        quantity: quantity
-      };
-    });
-
     const order: OrderDocument = {
       orderReference,
       name,
       email,
       address: address || '',
-      items: normalizedItems,
-      total,
-      currency: 'INR', // Razorpay always uses INR
+      items: priced.items,
+      total: orderTotal,
+      currency: frontendCurrency, // total is expressed in the shopper's currency
       paymentMethod: 'Razorpay',
       status: 'pending',
       createdAt: new Date()
@@ -812,12 +816,14 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Simple server-side currency rates (relative to USD)
+// Simple server-side currency rates (relative to USD).
+// These MUST match the client's CurrencyService rates, otherwise the totals the
+// frontend sends will not reconcile with the item prices converted here.
 const serverRates: Record<string, number> = {
   USD: 1,
   INR: 95.21,
   AED: 3.67,
-  SAR: 3.75,
+  SAR: 3.73,
 };
 let mongoInitPromise: Promise<void> | null = null;
 
@@ -825,6 +831,150 @@ function formatCurrency(amount: number, currency = 'USD') {
   const symbol = currency === 'INR' ? '₹' : currency === 'AED' ? 'د.إ ' : currency === 'SAR' ? '﷼ ' : '$';
   return `${symbol}${amount.toFixed(2)}`;
 }
+
+// Product/cart prices are stored as USD base amounts, while the order total is
+// sent in the shopper's selected currency. Convert the base amounts into the
+// order currency so every line of the email is in one single currency.
+function convertFromUsd(amountUsd: number, currency = 'USD') {
+  const rate = serverRates[(currency || 'USD').toUpperCase()] ?? 1;
+  return amountUsd * rate;
+}
+
+// ---- Order pricing -------------------------------------------------------
+// Catalog prices are USD base amounts. The browser also sends its own `total`
+// in the shopper's currency, so the server re-prices every order from the
+// catalog and compares instead of trusting the client amount.
+//
+// Items are resolved by Mongo `_id` (the /api/products response) or by the
+// numeric `id` (the bundled products.json fallback), so both cart sources are
+// priced authoritatively.
+const TOTAL_TOLERANCE = 0.01;
+
+function roundCurrency(amount: number) {
+  return Math.round(amount * 100) / 100;
+}
+
+async function lookupCatalogPriceUsd(productId: unknown): Promise<number | null> {
+  const raw = productId === undefined || productId === null ? '' : String(productId).trim();
+  if (!raw) {
+    return null;
+  }
+
+  const lookups: any[] = [];
+  if (/^[a-f\d]{24}$/i.test(raw)) {
+    lookups.push({ _id: new ObjectId(raw) });
+  }
+  const asNumber = Number(raw);
+  if (Number.isFinite(asNumber)) {
+    lookups.push({ id: asNumber });
+  }
+  lookups.push({ id: raw });
+
+  const productsCollection = await getProductsCollection();
+  const product: any = await productsCollection.findOne({ $or: lookups });
+  const price = product?.basePrice ?? product?.price;
+  return typeof price === 'number' && price > 0 ? price : null;
+}
+
+interface PricedOrderItem {
+  product: { name: string; price: number };
+  quantity: number;
+}
+
+type PricingResult =
+  | { ok: true; items: PricedOrderItem[]; subtotalUsd: number; pricedFromCatalog: boolean }
+  | { ok: false; message: string };
+
+async function priceOrderItems(rawItems: unknown[]): Promise<PricingResult> {
+  if (rawItems.length === 0) {
+    return { ok: false, message: 'At least one item is required.' };
+  }
+
+  const items: PricedOrderItem[] = [];
+  let catalogPricedCount = 0;
+
+  for (const rawItem of rawItems) {
+    if (!rawItem || typeof rawItem !== 'object') {
+      return { ok: false, message: 'Each item must be an object' };
+    }
+
+    const item: any = rawItem;
+    const product: any = item.product && typeof item.product === 'object' ? item.product : {};
+
+    // Client-supplied price - only used when the product is no longer in the catalog.
+    let clientPrice: number | undefined;
+    if (typeof item.price === 'number' && item.price > 0) {
+      clientPrice = item.price;
+    } else if (typeof product.basePrice === 'number' && product.basePrice > 0) {
+      clientPrice = product.basePrice;
+    } else if (typeof product.price === 'number' && product.price > 0) {
+      clientPrice = product.price;
+    }
+
+    const quantity = typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1;
+
+    let unitPriceUsd: number | null = null;
+    try {
+      unitPriceUsd = await lookupCatalogPriceUsd(product.id ?? product._id ?? item.productId);
+    } catch (error) {
+      console.warn(
+        'Order pricing: catalog lookup failed, falling back to the client price:',
+        error instanceof Error ? error.message : error
+      );
+    }
+
+    if (unitPriceUsd === null) {
+      if (clientPrice === undefined || clientPrice <= 0) {
+        return { ok: false, message: 'Each item must have a valid positive price' };
+      }
+      unitPriceUsd = clientPrice;
+    } else {
+      catalogPricedCount += 1;
+    }
+
+    items.push({
+      product: { name: product.name || `Item ${items.length + 1}`, price: unitPriceUsd },
+      quantity,
+    });
+  }
+
+  const subtotalUsd = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  return {
+    ok: true,
+    items,
+    subtotalUsd,
+    pricedFromCatalog: catalogPricedCount === rawItems.length,
+  };
+}
+
+// Returns the amount the order must be stored and charged with.
+function resolveOrderTotal(
+  priced: { subtotalUsd: number; pricedFromCatalog: boolean },
+  claimedTotal: number,
+  currency: string,
+  context: string
+): { ok: true; total: number } | { ok: false; message: string } {
+  if (!priced.pricedFromCatalog) {
+    // A product is missing from the catalog (for example a deleted product), so
+    // the client total is the only remaining source. Keep the order flowing.
+    console.warn(`${context}: could not price every item from the catalog; using the client total.`);
+    return { ok: true, total: roundCurrency(claimedTotal) };
+  }
+
+  const catalogTotal = roundCurrency(convertFromUsd(priced.subtotalUsd, currency));
+  if (Math.abs(catalogTotal - roundCurrency(claimedTotal)) > TOTAL_TOLERANCE) {
+    console.warn(
+      `${context}: rejected order - client total ${claimedTotal} ${currency} does not match catalog total ${catalogTotal} ${currency}`
+    );
+    return {
+      ok: false,
+      message: 'Your cart total is out of date. Please refresh the page and try again.',
+    };
+  }
+
+  return { ok: true, total: catalogTotal };
+}
+
 
 // Initialize MongoDB connection
 async function initializeMongoDB(): Promise<void> {
@@ -992,6 +1142,9 @@ async function sendEmail(params: { to: string | string[]; subject: string; text:
   if (!sesClient) {
     throw new Error('Email service is not configured. Missing environment variable(s): SES_REGION');
   }
+  if (!isSenderConfigured) {
+    throw new Error('Email service is not configured. SES_VERIFIED_SENDER must be a verified SES identity.');
+  }
 
   const destination = {
     ToAddresses: Array.isArray(to) ? to : [to],
@@ -1036,30 +1189,32 @@ function buildOrderConfirmationMessage(params: {
   total: number;
   orderReference: string;
   paymentMethod?: string;
+  currency?: string;
 }) {
-  const { name, email, items, total, orderReference, paymentMethod } = params;
+  const { name, email, items, total, orderReference, paymentMethod, currency } = params;
+  const orderCurrency = (currency || 'USD').toUpperCase();
   const methodLabel = paymentMethod === 'COD' ? 'Cash on Delivery (COD)' : 'Card payment';
   const itemRows = items.map((item) => {
-    const price = item.product.price ?? item.product.basePrice ?? 0;
+    const price = convertFromUsd(item.product.price ?? item.product.basePrice ?? 0, orderCurrency);
     const productName = item.product.name || 'Unnamed Item';
     return `
     <tr>
       <td>${productName}</td>
       <td>${item.quantity}</td>
-      <td>$${price.toFixed(2)}</td>
-      <td>$${(price * item.quantity).toFixed(2)}</td>
+      <td>${formatCurrency(price, orderCurrency)}</td>
+      <td>${formatCurrency(price * item.quantity, orderCurrency)}</td>
     </tr>
   `}).join('');
 
   const itemText = items.map((item) => {
-    const price = item.product.price ?? item.product.basePrice ?? 0;
+    const price = convertFromUsd(item.product.price ?? item.product.basePrice ?? 0, orderCurrency);
     const productName = item.product.name || 'Unnamed Item';
-    return `${item.quantity} x ${productName} @ $${price.toFixed(2)} = $${(price * item.quantity).toFixed(2)}`;
+    return `${item.quantity} x ${productName} @ ${formatCurrency(price, orderCurrency)} = ${formatCurrency(price * item.quantity, orderCurrency)}`;
   }).join('\n');
 
   return {
     subject: `Order confirmation — ${orderReference}`,
-    text: `Thank you for your order, ${name}!\n\nOrder reference: ${orderReference}\nPayment method: ${methodLabel}\n\nItems:\n${itemText}\n\nTotal: $${total.toFixed(2)}\n\nWe will ship to:\n${email}\n\nFor dropshipping or wholesale inquiries, email sudhir.22sep@gmail.com.`,
+    text: `Thank you for your order, ${name}!\n\nOrder reference: ${orderReference}\nPayment method: ${methodLabel}\n\nItems:\n${itemText}\n\nTotal: ${formatCurrency(total, orderCurrency)}\n\nWe will ship to:\n${email}\n\nFor dropshipping or wholesale inquiries, email sudhir.22sep@gmail.com.`,
     html: `<p>Thank you for your order, <strong>${name}</strong>!</p>
       <p>Order reference: <strong>${orderReference}</strong></p>
       <p>Payment method: <strong>${methodLabel}</strong></p>
@@ -1076,7 +1231,7 @@ function buildOrderConfirmationMessage(params: {
           ${itemRows}
         </tbody>
       </table>
-      <p><strong>Total: $${total.toFixed(2)}</strong></p>
+      <p><strong>Total: ${formatCurrency(total, orderCurrency)}</strong></p>
       <p>We will ship your order shortly.</p>
       <p>For dropshipping or wholesale inquiries, email <strong>sudhir.22sep@gmail.com</strong>.</p>`,
   };
@@ -1668,59 +1823,26 @@ app.post('/api/create-cod-order', async (req: Request, res: Response) => {
       });
     }
 
-    // Validate each item and normalize structure
-    const normalizedItems = [];
-    for (const item of items) {
-      if (!item || typeof item !== 'object') {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Each item must be an object' 
-        });
-      }
+    const orderCurrency = String(currency || 'USD').toUpperCase();
 
-      // Extract price from either item.price or item.product.basePrice or item.product.price
-      let price: number | undefined;
-      let productName = '';
-      
-      if (typeof item.price === 'number' && item.price > 0) {
-        price = item.price;
-        productName = item.product?.name || `Item ${normalizedItems.length + 1}`;
-      } else if (item.product && typeof item.product === 'object') {
-        // Support frontend cart item structure: { product: { basePrice: number, name: string, ... }, quantity: number }
-        if (typeof item.product.basePrice === 'number' && item.product.basePrice > 0) {
-          price = item.product.basePrice;
-          productName = item.product.name || `Item ${normalizedItems.length + 1}`;
-        } else if (typeof item.product.price === 'number' && item.product.price > 0) {
-          price = item.product.price;
-          productName = item.product.name || `Item ${normalizedItems.length + 1}`;
-        }
-      }
-      
-      if (price === undefined || price <= 0) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Each item must have a valid positive price' 
-        });
-      }
-
-      // Validate quantity
-      const quantity = typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1;
-      if (quantity <= 0) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Each item quantity must be a positive number' 
-        });
-      }
-
-      // Normalize to the expected OrderDocument structure
-      normalizedItems.push({
-        product: {
-          name: productName,
-          price: price
-        },
-        quantity: quantity
+    // Re-price the order from the catalog so a tampered or stale cart cannot set
+    // the amount recorded for the order (and charged, for online payments).
+    const priced = await priceOrderItems(items);
+    if (!priced.ok) {
+      return res.status(400).json({ 
+        success: false, 
+        message: priced.message 
       });
     }
+
+    const resolved = resolveOrderTotal(priced, total, orderCurrency, '[COD]');
+    if (!resolved.ok) {
+      return res.status(400).json({ 
+        success: false, 
+        message: resolved.message 
+      });
+    }
+    const orderTotal = resolved.total;
 
     const orderReference = `ORDER-${Date.now()}`;
     const ordersCollection = await getOrdersCollection();
@@ -1730,9 +1852,9 @@ app.post('/api/create-cod-order', async (req: Request, res: Response) => {
       name,
       email,
       address,
-      items: normalizedItems,
-      total,
-      currency: currency || 'USD',
+      items: priced.items,
+      total: orderTotal,
+      currency: orderCurrency,
       paymentMethod: 'COD',
       status: 'pending',
       createdAt: new Date()
@@ -1741,8 +1863,8 @@ app.post('/api/create-cod-order', async (req: Request, res: Response) => {
     await ordersCollection.insertOne(order);
 
     const mail = buildOrderConfirmationMessage({ 
-      name, email, items: normalizedItems, total, 
-      orderReference, paymentMethod: 'COD' 
+      name, email, items: priced.items, total: orderTotal, 
+      orderReference, paymentMethod: 'COD', currency: orderCurrency 
     });
 
     const sent = await trySendEmail({
@@ -1911,7 +2033,8 @@ app.post('/api/confirm-razorpay-payment', async (req, res) => {
         name: order.name, 
         email: order.email, 
         items: order.items, 
-        total: order.total, 
+        total: order.total,
+        currency: order.currency,
         orderReference,
         paymentMethod: 'Razorpay'
       });
@@ -2007,7 +2130,6 @@ app.post('/api/razorpay-webhook', async (req: Request, res: Response) => {
             razorpayPaymentId: paymentId, 
             razorpayOrderId: orderId,
             amount,
-            currency,
             updatedAt: new Date() 
           } 
         },
@@ -2022,7 +2144,8 @@ app.post('/api/razorpay-webhook', async (req: Request, res: Response) => {
             name: order.name, 
             email: order.email, 
             items: order.items, 
-            total: order.total, 
+            total: order.total,
+            currency: order.currency,
             orderReference,
             paymentMethod: 'Razorpay'
           });

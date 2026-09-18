@@ -50,19 +50,18 @@
 
   <!-- Wishlists List -->
   <div class="wishlists-grid">
-   <div class="wishlists-grid">
-     <div *ngIf="wishlists.length === 0 && !isLoading" class="empty-state">
-       <p>You haven't created any wishlists yet.</p>
-       <button class="btn btn-primary" (click)="openCreateWishlistModal()">
-         Create Your First Wishlist
-       </button>
-     </div>
-     <div *ngIf="isLoading" class="loading-indicator">
-       <div class="spinner"></div>
-       <p>Loading wishlists...</p>
-     </div>
-     <div *ngIf="wishlists.length > 0 && !isLoading">
-       <div *ngFor="let wishlist of wishlists" class="wishlist-card">
+    <div *ngIf="wishlists.length === 0 && !isLoading" class="empty-state">
+      <p>You haven't created any wishlists yet.</p>
+      <button class="btn btn-primary" (click)="openCreateWishlistModal()">
+        Create Your First Wishlist
+      </button>
+    </div>
+    <div *ngIf="isLoading" class="loading-indicator">
+      <div class="spinner"></div>
+      <p>Loading wishlists...</p>
+    </div>
+    <div *ngIf="wishlists.length > 0 && !isLoading">
+      <div *ngFor="let wishlist of wishlists" class="wishlist-card">
          <div class="wishlist-header">
            <h3>{{ wishlist.name }}</h3>
            <div class="wishlist-meta">
@@ -99,6 +98,5 @@
          </div>
        </div>
      </div>
-   </div>
   </div>
 </div>

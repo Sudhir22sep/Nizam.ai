@@ -1,36 +1,60 @@
 .checkout-success {
-  max-width: 860px;
+  min-height: 60vh;
+  max-width: 720px;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 96px 24px;
   text-align: center;
 }
 
+.success-card {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 28px;
+  padding: 56px 32px;
+  box-shadow: var(--shadow-card);
+}
+
+.success-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(43, 125, 100, 0.12);
+  color: #2b7d64;
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+}
+
 .checkout-success h1 {
-  margin-bottom: 1rem;
-  font-size: clamp(2rem, 3vw, 2.8rem);
+  margin-bottom: 12px;
+  font-size: clamp(2rem, 3vw, 2.6rem);
 }
 
 .checkout-success p {
-  color: #333;
+  color: var(--text-light);
   line-height: 1.8;
 }
 
-.btn-primary {
-  background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
-  color: #fff;
-  padding: 0.95rem 1.4rem;
-  border-radius: 999px;
-  text-decoration: none;
-  min-width: 220px;
+.checkout-success strong {
+  color: var(--brand-dark);
+}
+
+.checkout-success .btn-primary {
+  margin-top: 28px;
 }
 
 @media (max-width: 600px) {
   .checkout-success {
-    padding: 1.5rem 1rem;
+    padding: 48px 18px;
   }
 
-  .btn-primary {
+  .success-card {
+    padding: 40px 22px;
+  }
+
+  .checkout-success .btn-primary {
     width: 100%;
-    min-width: auto;
   }
 }

@@ -3,20 +3,27 @@
   <router-outlet></router-outlet>
 </main>
 <footer class="site-footer">
-  <div class="footer-content">
-    <p>&copy; 2026 Amma Wears. Crafted for confident everyday style.</p>
-    <nav>
-      <a href="https://www.instagram.com/ammawears/" target="_blank">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <p class="footer-logo">Amma Wears</p>
+      <p class="footer-tagline">Everyday luxury for modern wardrobes. Crafted for confident everyday style.</p>
+    </div>
+    <nav class="footer-nav" aria-label="Footer">
+      <a routerLink="/home">Home</a>
+      <a routerLink="/products">Shop</a>
+      <a routerLink="/about">About</a>
+      <a routerLink="/contact">Contact</a>
+    </nav>
+    <div class="footer-social" aria-label="Social links">
+      <a href="https://www.instagram.com/ammawears/" target="_blank" rel="noopener" aria-label="Amma Wears on Instagram">
         <i class="fab fa-instagram"></i>
       </a>
-
-      <a href="https://www.facebook.com/profile.php?id=61590810583670" target="_blank">
+      <a href="https://www.facebook.com/profile.php?id=61590810583670" target="_blank" rel="noopener" aria-label="Amma Wears on Facebook">
         <i class="fab fa-facebook"></i>
       </a>
-      <a href="home">Home</a>
-      <a href="products">Shop</a>
-      <a href="about">About</a>
-      <a href="contact">Contact</a>
-    </nav>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>&copy; 2026 Amma Wears. All rights reserved.</p>
   </div>
 </footer>

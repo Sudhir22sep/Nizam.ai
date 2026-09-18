@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { PricePipe } from '../../pipes/price.pipe';
 import { ImageFallbackDirective } from '../../directives/image-fallback.directive';
 import { CartService } from '../../services/cart.service';
+import { primaryProductImage } from '../../services/product.service';
 
 @Component({
   selector: 'app-cart',
@@ -25,6 +26,10 @@ export class CartComponent {
 
   removeItem(productId: string) {
     this.cartService.removeFromCart(productId);
+  }
+
+  primaryImage(product?: { images?: unknown; image?: unknown; name?: string }): string {
+    return primaryProductImage(product?.images, product?.image, product?.name);
   }
 
   trackByCartItem(_: number, item: { product: { id: string } }) {

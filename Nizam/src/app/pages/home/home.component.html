@@ -1,38 +1,46 @@
 <div class="home-container">
   <div class="promo-banner">
-    <p>Winter edit live — 15% off with free shipping on orders over ₹2999. COD available.<br> Weather in Hyderabad is currently 26°C with light rain/overcast conditions, so enjoy shopping from home.</p>
+    <p><span class="promo-pill">New</span> Winter edit live — 15% off with free shipping on orders over ₹2999 · COD available</p>
   </div>
 
   <section class="hero">
-    <div class="hero-copy">
-      <span class="eyebrow">Limited drop</span>
-      <h1>Everyday luxury for modern wardrobes</h1>
-      <p>Discover premium apparel, effortless layering pieces, and curated essentials designed for style, comfort, and confidence.</p>
+    <div class="hero-glow hero-glow-one"></div>
+    <div class="hero-glow hero-glow-two"></div>
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <span class="eyebrow">Limited drop</span>
+        <h1>Everyday luxury for <em>modern wardrobes</em></h1>
+        <p>Discover premium apparel, effortless layering pieces, and curated essentials designed for style, comfort, and confidence.</p>
 
-      <div class="hero-actions">
-        <a routerLink="/products" class="cta-button">Shop the collection</a>
-        <a routerLink="/contact" class="text-link">Talk to a style advisor</a>
+        <div class="hero-actions">
+          <a routerLink="/products" class="cta-button">Shop the collection</a>
+          <a routerLink="/contact" class="hero-ghost-link">Talk to a style advisor</a>
+        </div>
+
+        <div class="hero-highlights">
+          <div>
+            <strong>Fast delivery</strong>
+            <span>Across MENA &amp; India</span>
+          </div>
+          <div>
+            <strong>Easy returns</strong>
+            <span>7-day hassle-free policy</span>
+          </div>
+          <div>
+            <strong>COD available</strong>
+            <span>Pay on delivery, worry free</span>
+          </div>
+        </div>
       </div>
 
-      <div class="hero-highlights">
-        <div>
-          <strong>Fast delivery</strong>
-          <span>Across MENA & India</span>
+      <div class="hero-visual">
+        <div class="hero-card">
+          <img src="/images/products/hero.jpg" alt="Fashion collection imagery" appImageFallback>
         </div>
-        <div>
-          <strong>Easy returns</strong>
-          <span>7-day hassle-free policy</span>
+        <div class="hero-card-chip">
+          <strong>New season</strong>
+          <span>Premium fabrics, refined fits</span>
         </div>
-        <div>
-          <strong>COD available</strong>
-          <span>Pay on delivery for added trust</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="hero-visual">
-      <div class="hero-card">
-        <img src="images/products/hero.jpg" alt="Fashion collection imagery" appImageFallback>
       </div>
     </div>
   </section>
@@ -43,39 +51,46 @@
         <span class="eyebrow">Shop by category</span>
         <h2>Trending collections</h2>
       </div>
-      <a routerLink="/products" class="link-secondary">View all styles</a>
+      <a routerLink="/products" class="link-secondary">View all styles →</a>
     </div>
 
     <div class="category-grid">
-      <div class="category-card">
+      <a routerLink="/products" class="category-card">
+        <span class="category-icon">🧥</span>
         <h3>Men’s essentials</h3>
         <p>Modern shirts, tees, and relaxed tailoring for every day.</p>
-      </div>
-      <div class="category-card">
+      </a>
+      <a routerLink="/products" class="category-card">
+        <span class="category-icon">👗</span>
         <h3>Women’s edit</h3>
         <p>Flowing silhouettes, luxe knitwear, and elevated staples.</p>
-      </div>
-      <div class="category-card">
+      </a>
+      <a routerLink="/products" class="category-card">
+        <span class="category-icon">🧢</span>
         <h3>Street style</h3>
         <p>Bold prints, graphic tees, and wardrobe refreshes.</p>
-      </div>
-      <div class="category-card">
+      </a>
+      <a routerLink="/products" class="category-card">
+        <span class="category-icon">✨</span>
         <h3>Seasonal picks</h3>
         <p>Curated outfits for festivals, evenings out, and travel.</p>
-      </div>
+      </a>
     </div>
   </section>
 
   <section class="value-grid">
     <div class="value-card">
+      <span class="value-icon">🧵</span>
       <h3>Quality materials</h3>
       <p>Premium fabrics that feel good, wash well, and hold their shape.</p>
     </div>
     <div class="value-card">
+      <span class="value-icon">🚚</span>
       <h3>Local delivery</h3>
       <p>Quick fulfillment and tracking for orders across the region.</p>
     </div>
     <div class="value-card">
+      <span class="value-icon">🤍</span>
       <h3>Styled for comfort</h3>
       <p>Effortless looks engineered for modern everyday wear.</p>
     </div>
@@ -83,6 +98,7 @@
 
   <section id="about" class="about-section">
     <div class="about-copy">
+      <span class="eyebrow">Our story</span>
       <h2>Designed for modern wardrobes.</h2>
       <p>At Amma Wears, we blend thoughtful design with premium quality. Each item is crafted to bring refined comfort, polished style, and confidence to every look.</p>
     </div>
@@ -91,7 +107,7 @@
   <section id="contact" class="contact-section">
     <div class="contact-copy">
       <h2>Need help styling your look?</h2>
-      <p>Send us a note and our style team will get back to you shortly.</p>
+      <p>Send us a note and our style team will get back to you within one business day.</p>
       <a routerLink="/contact" class="cta-button">Contact our team</a>
     </div>
   </section>

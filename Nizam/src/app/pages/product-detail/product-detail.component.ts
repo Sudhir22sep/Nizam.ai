@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PricePipe } from '../../pipes/price.pipe';
 import { ImageFallbackDirective } from '../../directives/image-fallback.directive';
-import { ProductService, Product } from '../../services/product.service';
+import { ProductService, Product, primaryProductImage } from '../../services/product.service';
 import { CartService } from '../../services/cart.service';
 import { WishlistService } from '../../services/wishlist.service';
 
@@ -23,6 +23,7 @@ export class ProductDetailComponent implements OnInit {
   product: Product | undefined;
   relatedProducts: Product[] = [];
   quantity: number = 1;
+  selectedImageIndex = 0;
   private productId: string | null = null;
 
   constructor() {
@@ -36,12 +37,14 @@ export class ProductDetailComponent implements OnInit {
           const product = this.productService.getProductById(this.productId);
           if (product) {
             this.product = product;
+            this.selectedImageIndex = 0;
             this.relatedProducts = this.productService
               .getProductsByCategory(product.category)
               .filter(p => p.id !== product.id)
               .slice(0, 3);
           } else {
             this.product = undefined;
+            this.selectedImageIndex = 0;
             this.relatedProducts = [];
           }
         }
@@ -67,6 +70,37 @@ export class ProductDetailComponent implements OnInit {
 
   trackByProductId(_: number, product: Product) {
     return product.id;
+  }
+
+  trackByImage(_: number, image: string) {
+    return image;
+  }
+
+  galleryImages(product?: Product): string[] {
+    if (!product) {
+      return [];
+    }
+
+    const images = Array.isArray(product.images) ? product.images : [];
+    return images.length > 0 ? images : [primaryProductImage(undefined, undefined, product.name)];
+  }
+
+  selectedImage(product?: Product): string {
+    const images = this.galleryImages(product);
+    if (images.length === 0) {
+      return primaryProductImage(undefined, undefined, product?.name);
+    }
+    return images[Math.min(this.selectedImageIndex, images.length - 1)];
+  }
+
+  selectImage(index: number) {
+    this.selectedImageIndex = index;
+  }
+
+  primaryImage(product?: Product): string {
+    // Stateless first-image lookup: related-product cards must not inherit the
+    // main gallery's selected index.
+    return primaryProductImage(product?.images, undefined, product?.name);
   }
 
   addToCart() {

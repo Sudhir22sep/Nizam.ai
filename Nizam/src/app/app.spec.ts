@@ -19,7 +19,7 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    const footerText = compiled.querySelector('.footer-content')?.textContent || '';
+    const footerText = compiled.querySelector('.footer-inner')?.textContent || '';
     expect(footerText).toContain('Amma Wears');
   });
 });
