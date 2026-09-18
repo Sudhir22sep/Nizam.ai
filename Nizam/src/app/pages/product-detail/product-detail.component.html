@@ -3,7 +3,18 @@
 
   <div class="product-detail">
     <div class="product-image">
-      <img [src]="product.images[0] || '/assets/images/placeholder.jpg'" [alt]="product.name" appImageFallback>
+      <img [src]="selectedImage(product)" [alt]="product.name" appImageFallback>
+      <div class="product-thumbnails" *ngIf="galleryImages(product).length > 1">
+        <button
+          type="button"
+          *ngFor="let image of galleryImages(product); let imageIndex = index; trackBy: trackByImage"
+          class="product-thumbnail"
+          [class.active]="imageIndex === selectedImageIndex"
+          (click)="selectImage(imageIndex)"
+          [attr.aria-label]="'View image ' + (imageIndex + 1) + ' of ' + product.name">
+          <img [src]="image" [alt]="product.name + ' view ' + (imageIndex + 1)" appImageFallback>
+        </button>
+      </div>
     </div>
 
     <div class="product-details">
@@ -92,7 +103,7 @@
         *ngFor="let product of relatedProducts; trackBy: trackByProductId" 
         [routerLink]="['/product', product.id]"
         class="related-card">
-        <img [src]="product.images[0] || '/assets/images/placeholder.jpg'" [alt]="product.name" appImageFallback>
+        <img [src]="primaryImage(product)" [alt]="product.name" appImageFallback>
         <h4>{{ product.name }}</h4>
         <p class="price">{{ product.basePrice | price }}</p>
       </a>

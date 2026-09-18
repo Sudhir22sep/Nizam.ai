@@ -1,80 +1,108 @@
 .contact-page {
   max-width: 860px;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 64px 24px 96px;
 }
 
 .contact-page h1 {
-  margin-bottom: 0.75rem;
+  font-size: clamp(2rem, 3.4vw, 2.9rem);
+  margin-bottom: 12px;
 }
 
-.contact-page p {
-  color: #555;
-  max-width: 680px;
+.contact-page > p {
+  color: var(--text-light);
+  max-width: 640px;
   line-height: 1.75;
+  margin-bottom: 32px;
 }
 
-form {
-  margin-top: 2rem;
+.contact-panel {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: var(--shadow-card);
+}
+
+.contact-panel form {
   display: grid;
-  gap: 1.2rem;
+  gap: 18px;
 }
 
 label {
   display: grid;
-  gap: 0.5rem;
-  font-weight: 600;
-}
-
-input,
-textarea {
-  width: 100%;
-  border: 1px solid #ddd;
-  border-radius: 14px;
-  padding: 1rem;
+  gap: 8px;
   font-size: 0.95rem;
 }
 
-button {
+button[type='submit'] {
   width: fit-content;
   border: none;
-  background: #111;
+  background: var(--gradient-brand);
   color: #fff;
   border-radius: 999px;
-  padding: 0.95rem 1.6rem;
+  padding: 13px 30px;
+  font-weight: 800;
+  font-size: 0.97rem;
   cursor: pointer;
+  box-shadow: 0 10px 24px rgba(127, 90, 240, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+button[type='submit']:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 34px rgba(127, 90, 240, 0.36);
+}
+
+button[type='submit']:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .status {
-  color: #333;
-  margin-top: 0.5rem;
+  color: var(--text-light);
+  font-size: 0.92rem;
 }
 
 .contact-details {
-  margin-top: 2.5rem;
-  padding: 1.8rem;
-  background: #f8f8f8;
+  margin-top: 24px;
+  padding: 28px;
+  background: rgba(127, 90, 240, 0.05);
+  border: 1px solid rgba(127, 90, 240, 0.14);
   border-radius: 20px;
 }
 
 .contact-details h2 {
-  margin-top: 0;
+  font-size: 1.2rem;
+  margin-bottom: 10px;
 }
 
-@media (max-width: 760px) {
+.contact-details p {
+  color: var(--text-light);
+  line-height: 1.7;
+  margin-bottom: 6px;
+  font-size: 0.95rem;
+}
+
+.contact-details a {
+  color: var(--brand-primary);
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
   .contact-page {
-    padding: 1.5rem 1rem;
+    padding: 40px 18px 64px;
   }
 
-  form {
-    gap: 1rem;
-  }
-
-  button {
-    width: 100%;
+  .contact-panel {
+    padding: 22px 18px;
   }
 
   .contact-details {
-    padding: 1.4rem;
+    padding: 22px 18px;
+  }
+
+  button[type='submit'] {
+    width: 100%;
   }
 }

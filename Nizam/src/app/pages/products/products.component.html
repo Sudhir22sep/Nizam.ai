@@ -1,15 +1,18 @@
 <div class="products-container">
-  <h1>Shop the Collection</h1>
-  
-  <div class="filters">
-    <h3>Shop by category</h3>
-    <button 
-      class="filter-btn" 
+  <header class="page-header">
+    <span class="eyebrow">The collection</span>
+    <h1>Shop the Collection</h1>
+    <p class="page-subtitle">Premium apparel and curated essentials, crafted for style, comfort, and confidence.</p>
+  </header>
+
+  <div class="filters" role="group" aria-label="Filter products by category">
+    <button
+      class="filter-btn"
       [class.active]="selectedCategory() === ''"
       (click)="resetFilter()">
       All
     </button>
-    <button 
+    <button
       *ngFor="let category of categories()"
       class="filter-btn"
       [class.active]="selectedCategory() === category"
@@ -20,25 +23,18 @@
 
   <div class="products-grid">
     <div *ngFor="let product of filteredProducts(); trackBy: trackByProductId" class="product-card">
-      <div class="product-image">
-        <img [src]="product.images[0] || '/assets/images/placeholder.jpg'" [alt]="product.name" appImageFallback>
-      </div>
+      <a [routerLink]="[product.id]" class="product-image" [attr.aria-label]="'View ' + product.name">
+        <img [src]="primaryImage(product)" [alt]="product.name" appImageFallback loading="lazy">
+      </a>
       <div class="product-info">
-        <h3>{{ product.name }}</h3>
         <p class="category">{{ product.category }}</p>
+        <h3>{{ product.name }}</h3>
         <p class="description">{{ product.description }}</p>
         <div class="product-footer">
           <span class="price">{{ product.basePrice | price }}</span>
           <div class="product-actions">
-            <a [routerLink]="[product.id]" class="btn-details">
-              View Details
-            </a>
-            <button class="btn-add-cart" (click)="addToCart(product)">
-              Add to cart
-            </button>
-            <button class="btn btn-wishlist" (click)="addToWishlist(product)">
-              ♥ Wishlist
-            </button>
+            <button class="btn-add-cart" (click)="addToCart(product)">Add to cart</button>
+            <button class="btn-wishlist" (click)="addToWishlist(product)" aria-label="Add to wishlist">♥</button>
           </div>
         </div>
       </div>

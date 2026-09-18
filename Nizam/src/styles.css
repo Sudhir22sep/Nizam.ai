@@ -1,1 +1,281 @@
-/* You can add global styles to this file, and also import other style files */
+/* ==========================================================================
+   Amma Wears — Global Design System
+   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* Brand palette */
+  --ink-900: #0c0a22;
+  --ink-800: #120f2c;
+  --ink-700: #1b1740;
+  --ink-600: #2a2456;
+  --brand-primary: #7f5af0;
+  --brand-primary-strong: #6a44e0;
+  --brand-secondary: #ff6b81;
+  --brand-tertiary: #9d7bff;
+  --brand-dark: #120f2c;
+  --accent-cyan: #48bfe3;
+
+  /* Neutrals */
+  --text-color: #2f2b4a;
+  --text-light: #6f6a8a;
+  --text-faint: #918da8;
+  --bg-page: #f6f5fb;
+  --bg-light: #f8f9fa;
+  --surface: #ffffff;
+  --border-color: #e7e4f2;
+  --border-strong: #d9d4ec;
+
+  /* Shadows */
+  --shadow: 0 2px 10px rgba(18, 15, 44, 0.08);
+  --shadow-lg: 0 24px 70px rgba(18, 15, 44, 0.16);
+  --brand-shadow: 0 12px 34px rgba(18, 15, 44, 0.1), 0 2px 8px rgba(18, 15, 44, 0.06);
+  --shadow-card: 0 1px 2px rgba(18, 15, 44, 0.05), 0 10px 30px rgba(18, 15, 44, 0.07);
+  --shadow-card-hover: 0 2px 6px rgba(18, 15, 44, 0.06), 0 22px 48px rgba(18, 15, 44, 0.13);
+
+  /* Radii & spacing */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  --container: 1200px;
+  --gradient-brand: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+  --gradient-dark: linear-gradient(160deg, #120f2c 0%, #1e1745 55%, #2a1f57 100%);
+  --gradient-nav: linear-gradient(135deg, rgba(12, 10, 34, 0.78) 0%, rgba(18, 15, 44, 0.85) 100%);
+}
+
+/* ---------- Reset ---------- */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-color);
+  background-color: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+h1, h2, h3, h4 {
+  line-height: 1.15;
+  color: var(--brand-dark);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--brand-primary);
+}
+
+button {
+  font-family: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgba(127, 90, 240, 0.22);
+}
+
+/* ---------- Page scaffolding ---------- */
+.page-shell {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: var(--space-7) var(--space-5) var(--space-9);
+}
+
+.page-header {
+  margin-bottom: var(--space-6);
+}
+
+.page-header .eyebrow {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--brand-primary);
+  margin-bottom: var(--space-2);
+}
+
+.page-header h1 {
+  font-size: clamp(2rem, 3.4vw, 2.9rem);
+  margin-bottom: var(--space-3);
+}
+
+.page-header .page-subtitle {
+  color: var(--text-light);
+  font-size: 1.05rem;
+  max-width: 640px;
+}
+
+/* ---------- Buttons ---------- */
+.btn-primary,
+.btn-secondary,
+.cta-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 26px;
+  border: none;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.97rem;
+  font-family: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, opacity 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-primary,
+.cta-button {
+  background: var(--gradient-brand);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(127, 90, 240, 0.28);
+}
+
+.btn-primary:hover,
+.cta-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 34px rgba(127, 90, 240, 0.36);
+}
+
+.btn-secondary {
+  background: rgba(127, 90, 240, 0.1);
+  color: var(--brand-dark);
+}
+
+.btn-secondary:hover {
+  background: rgba(127, 90, 240, 0.18);
+  transform: translateY(-2px);
+}
+
+.btn-outline {
+  background: var(--surface);
+  border: 1.5px solid var(--border-strong);
+  color: var(--brand-dark);
+}
+
+.btn-outline:hover {
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
+}
+
+button:disabled,
+.btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ---------- Forms ---------- */
+label {
+  font-weight: 600;
+  color: var(--brand-dark);
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: 1rem;
+  color: var(--text-color);
+}
+
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='tel'],
+input[type='number'],
+textarea {
+  width: 100%;
+  background: var(--surface);
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 4px rgba(127, 90, 240, 0.14);
+}
+
+input.is-invalid {
+  border-color: #ff6b6b;
+}
+
+.invalid-feedback {
+  color: #e5484d;
+  font-size: 0.85rem;
+  margin-top: 6px;
+}
+
+/* ---------- Scrollbar ---------- */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-page);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(127, 90, 240, 0.45);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-primary);
+}
+
+/* ---------- Motion safety ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

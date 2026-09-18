@@ -1,26 +1,31 @@
 <div class="contact-page">
-  <h1>Contact us</h1>
-  <p>Have a styling question or need help with your order? Send us a message and we’ll reply within one business day.</p>
+  <header class="page-header">
+    <span class="eyebrow">We’re here to help</span>
+    <h1>Contact us</h1>
+    <p class="page-subtitle">Have a styling question or need help with your order? Send us a message and we’ll reply within one business day.</p>
+  </header>
 
-  <form (ngSubmit)="submitContact()">
-    <label>
-      Name
-      <input type="text" [(ngModel)]="name" name="name" required />
-    </label>
+  <div class="contact-panel">
+    <form (ngSubmit)="submitContact()">
+      <label>
+        Name
+        <input type="text" [(ngModel)]="name" name="name" required />
+      </label>
 
-    <label>
-      Email
-      <input type="email" [(ngModel)]="email" name="email" required />
-    </label>
+      <label>
+        Email
+        <input type="email" [(ngModel)]="email" name="email" required />
+      </label>
 
-    <label>
-      Message
-      <textarea [(ngModel)]="message" name="message" rows="5" required></textarea>
-    </label>
+      <label>
+        Message
+        <textarea [(ngModel)]="message" name="message" rows="5" required></textarea>
+      </label>
 
-    <button type="submit" [disabled]="isSubmitting">Send message</button>
-    <p class="status">{{ status }}</p>
-  </form>
+      <button type="submit" [disabled]="isSubmitting">Send message</button>
+      <p class="status">{{ status }}</p>
+    </form>
+  </div>
 
   <div class="contact-details">
     <h2>Need faster support?</h2>

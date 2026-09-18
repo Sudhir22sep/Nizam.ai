@@ -1,9 +1,12 @@
 <div class="checkout-success">
-  <h1>Checkout complete</h1>
-  <p>{{ statusMessage }}</p>
+  <div class="success-card">
+    <span class="success-icon">✓</span>
+    <h1>Checkout complete</h1>
+    <p>{{ statusMessage }}</p>
 
-  <div *ngIf="orderReference">
-    <p>Your order reference is <strong>{{ orderReference }}</strong>.</p>
-    <a routerLink="/products" class="btn-primary">Continue shopping</a>
+    <div *ngIf="orderReference">
+      <p>Your order reference is <strong>{{ orderReference }}</strong>.</p>
+      <a routerLink="/products" class="btn-primary">Continue shopping</a>
+    </div>
   </div>
 </div>

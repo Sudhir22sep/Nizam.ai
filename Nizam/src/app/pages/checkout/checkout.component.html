@@ -1,7 +1,11 @@
 <div class="checkout-page">
-  <h1>Checkout</h1>
+  <header class="page-header">
+    <span class="eyebrow">Secure checkout</span>
+    <h1>Checkout</h1>
+  </header>
 
   <div *ngIf="orderConfirmed" class="order-confirmation">
+    <span class="confirm-icon">✓</span>
     <h2>Thank you for your purchase!</h2>
     <p>Your order reference is <strong>{{ confirmationReference }}</strong>.</p>
     <p>We’ll send shipping updates to <strong>{{ email }}</strong>.</p>
@@ -10,16 +14,16 @@
 
   <div *ngIf="!orderConfirmed">
     <div class="checkout-layout">
-      <section class="cart-summary">
+      <section class="cart-summary panel">
         <h2>Order summary</h2>
         <div *ngIf="items.length > 0; else emptyCart">
           <div *ngFor="let item of items" class="cart-item">
-            <div>
+            <div class="cart-item-info">
               <h3>{{ item.product.name }}</h3>
-               <p>{{ item.quantity }} × {{ item.product.basePrice | price }}</p>
+              <p>{{ item.quantity }} × {{ item.product.basePrice | price }}</p>
             </div>
             <div class="item-total">
-               {{ item.product.basePrice * item.quantity | price }}
+              {{ item.product.basePrice * item.quantity | price }}
             </div>
           </div>
 
@@ -30,23 +34,23 @@
         </div>
 
         <ng-template #emptyCart>
-          <p>Your cart is empty. Add a product and return to checkout.</p>
+          <p class="empty-note">Your cart is empty. Add a product and return to checkout.</p>
           <a routerLink="/products" class="btn-secondary">Go to shop</a>
         </ng-template>
       </section>
 
-      <section class="payment-form" *ngIf="items.length > 0">
-        <h2>Payment & shipping</h2>
+      <section class="payment-form panel" *ngIf="items.length > 0">
+        <h2>Payment &amp; shipping</h2>
 
         <form (ngSubmit)="submitOrder()">
           <label>
             Full name
-            <input type="text" [(ngModel)]="name" name="name" required />
+            <input type="text" [(ngModel)]="name" name="name" required autocomplete="name" />
           </label>
 
           <label>
             Email address
-            <input type="email" [(ngModel)]="email" name="email" required />
+            <input type="email" [(ngModel)]="email" name="email" required autocomplete="email" />
           </label>
 
           <label>
@@ -56,13 +60,13 @@
 
           <fieldset class="payment-methods">
             <legend>Payment method</legend>
-            <label>
+            <label class="method-option">
               <input type="radio" name="paymentMethod" value="razorpay" [(ngModel)]="paymentMethod" />
-              Online Payment (Card/UPI)
+              <span class="method-text">Online Payment (Card/UPI)</span>
             </label>
-            <label>
+            <label class="method-option">
               <input type="radio" name="paymentMethod" value="cod" [(ngModel)]="paymentMethod" />
-              Cash on delivery (COD)
+              <span class="method-text">Cash on delivery (COD)</span>
             </label>
           </fieldset>
 
@@ -70,14 +74,10 @@
             <p>You will enter your card/UPI details in a secure payment popup.</p>
           </div>
 
-          <button type="submit" class="btn-primary">
-            {{ paymentMethod === 'cod' ? 'Place order with COD' : 'Submit payment' }}
-          </button>
+          <button type="submit" class="btn-primary btn-submit">{{ paymentMethod === 'cod' ? 'Place order with COD' : 'Submit payment' }}</button>
         </form>
 
-        <p class="hint">
-          For dropshipping or wholesale inquiries, please email <strong>sudhir.22sep@gmail.com</strong>.
-        </p>
+        <p class="hint">For dropshipping or wholesale inquiries, email <strong>sudhir.22sep@gmail.com</strong>.</p>
       </section>
     </div>
   </div>

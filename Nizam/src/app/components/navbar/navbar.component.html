@@ -1,76 +1,36 @@
 <nav class="navbar">
   <div class="navbar-container">
     <div class="navbar-brand">
-      <a routerLink="/" class="logo">Amma Wears</a>
+      <a routerLink="/" class="logo">Amma <span>Wears</span></a>
     </div>
 
-    <button class="menu-toggle" (click)="toggleMenu()" [class.active]="isMenuOpen">
+    <button class="menu-toggle" (click)="toggleMenu()" [class.active]="isMenuOpen" aria-label="Toggle navigation menu">
       <span></span>
       <span></span>
       <span></span>
     </button>
 
     <ul class="nav-menu" [class.active]="isMenuOpen">
-      <li>
-        <a 
-          routerLink="/home" 
-          routerLinkActive="active"
-          [routerLinkActiveOptions]="{ exact: true }"
-          (click)="closeMenu()">
-          Home
-        </a>
-      </li>
-      <li>
-        <a 
-          routerLink="/products" 
-          routerLinkActive="active"
-          (click)="closeMenu()">
-          Shop
-        </a>
-      </li>
-      <li>
-        <a 
-          routerLink="/cart"
-          routerLinkActive="active"
-          (click)="closeMenu()">
-          Cart
-        </a>
-      </li>
-      <li>
-        <a 
-          routerLink="/checkout"
-          routerLinkActive="active"
-          (click)="closeMenu()">
-          Checkout
-        </a>
-      </li>
-      <li>
-        <a href="about" (click)="closeMenu()">
-          About
-        </a>
-      </li>
-      <li>
-        <a 
-          routerLink="/contact"
-          routerLinkActive="active"
-          (click)="closeMenu()">
-          Contact
-        </a>
-      </li>
+      <li><a routerLink="/home" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenu()">Home</a></li>
+      <li><a routerLink="/products" routerLinkActive="active" (click)="closeMenu()">Shop</a></li>
+      <li><a routerLink="/cart" routerLinkActive="active" (click)="closeMenu()">Cart</a></li>
+      <li><a routerLink="/wishlist" routerLinkActive="active" (click)="closeMenu()">Wishlist</a></li>
+      <li><a routerLink="/about" routerLinkActive="active" (click)="closeMenu()">About</a></li>
+      <li><a routerLink="/contact" routerLinkActive="active" (click)="closeMenu()">Contact</a></li>
     </ul>
 
     <div class="navbar-icons">
-      <a href="#search" class="icon-btn">🔍</a>
-      <a routerLink="/cart" class="icon-btn">
-        🛒 <span class="cart-count">{{ cartService.getItemCount() }}</span>
+      <a routerLink="/cart" class="icon-btn" aria-label="Shopping cart">
+        <i class="fas fa-shopping-bag"></i>
+        <span class="cart-count">{{ cartService.getItemCount() }}</span>
       </a>
-      <select class="currency-select" [value]="currentCurrency" (change)="changeCurrency($any($event.target).value)">
+      <select class="currency-select" [value]="currentCurrency" (change)="changeCurrency($any($event.target).value)" aria-label="Currency">
         <option value="INR">INR</option>
         <option value="USD">USD</option>
         <option value="AED">AED</option>
         <option value="SAR">SAR</option>
       </select>
-      <a href="#account" class="icon-btn">👤</a>
+      <a routerLink="/login" class="btn-nav-cta" (click)="closeMenu()">Sign in</a>
     </div>
   </div>
 </nav>
