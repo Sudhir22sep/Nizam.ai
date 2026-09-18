@@ -35,6 +35,43 @@ body {
   padding-top: 72px;
 }
 
+/* Trust bar (under the fixed navbar, above page content) */
+.trust-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px 32px;
+  padding: 11px 24px;
+  background: #FBF9F5;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-light);
+  letter-spacing: 0.01em;
+}
+
+.trust-bar span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.trust-bar i {
+  font-style: normal;
+  font-weight: 800;
+  color: var(--brand-primary);
+}
+
+@media (max-width: 640px) {
+  .trust-bar {
+    gap: 8px 18px;
+    padding: 9px 14px;
+    font-size: 0.78rem;
+  }
+}
+
 /* Footer styles */
 .site-footer {
   background: var(--gradient-dark);

@@ -23,19 +23,24 @@
 
   <div class="products-grid">
     <div *ngFor="let product of filteredProducts(); trackBy: trackByProductId" class="product-card">
-      <a [routerLink]="[product.id]" class="product-image" [attr.aria-label]="'View ' + product.name">
-        <img [src]="primaryImage(product)" [alt]="product.name" appImageFallback loading="lazy">
-      </a>
+      <div class="product-media">
+        <a [routerLink]="[product.id]" class="product-image" [attr.aria-label]="'View ' + product.name">
+          <img [src]="primaryImage(product)" [alt]="product.name" appImageFallback loading="lazy">
+        </a>
+        <span class="product-overlay">
+          <button type="button" class="btn-quick-add" (click)="addToCart(product)">
+            <span aria-hidden="true">+</span> Quick add
+          </button>
+          <button type="button" class="overlay-heart" (click)="addToWishlist(product)" aria-label="Add to wishlist">♥</button>
+        </span>
+      </div>
       <div class="product-info">
         <p class="category">{{ product.category }}</p>
         <h3>{{ product.name }}</h3>
         <p class="description">{{ product.description }}</p>
         <div class="product-footer">
           <span class="price">{{ product.basePrice | price }}</span>
-          <div class="product-actions">
-            <button class="btn-add-cart" (click)="addToCart(product)">Add to cart</button>
-            <button class="btn-wishlist" (click)="addToWishlist(product)" aria-label="Add to wishlist">♥</button>
-          </div>
+          <button class="btn-wishlist" (click)="addToWishlist(product)" aria-label="Add to wishlist">♥</button>
         </div>
       </div>
     </div>
