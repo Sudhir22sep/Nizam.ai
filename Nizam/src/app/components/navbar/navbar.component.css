@@ -4,7 +4,7 @@
   left: 0;
   right: 0;
   z-index: 1000;
-  background: linear-gradient(135deg, rgba(12, 10, 34, 0.78) 0%, rgba(18, 15, 44, 0.85) 100%);
+  background: linear-gradient(135deg, rgba(30, 42, 56, 0.78) 0%, rgba(30, 42, 56, 0.85) 100%);
   -webkit-backdrop-filter: blur(16px) saturate(1.4);
   backdrop-filter: blur(16px) saturate(1.4);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -35,7 +35,7 @@
 }
 
 .logo span {
-  background: var(--gradient-brand, linear-gradient(135deg, #7f5af0, #ff6b81));
+  background: var(--gradient-brand, linear-gradient(135deg, #B08D57, #B4593F));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -70,7 +70,7 @@
 
 .nav-menu a.active {
   color: #fff;
-  background: rgba(127, 90, 240, 0.28);
+  background: rgba(176, 141, 87, 0.28);
 }
 
 .navbar-icons {
@@ -105,7 +105,7 @@
   position: absolute;
   top: -6px;
   right: -6px;
-  background: var(--brand-secondary, #ff6b81);
+  background: var(--brand-secondary, #B4593F);
   color: #fff;
   border-radius: 999px;
   min-width: 20px;
@@ -116,7 +116,7 @@
   justify-content: center;
   font-size: 0.7rem;
   font-weight: 800;
-  border: 2px solid rgba(12, 10, 34, 0.9);
+  border: 2px solid rgba(30, 42, 56, 0.9);
 }
 
 .currency-select {
@@ -131,7 +131,7 @@
 }
 
 .currency-select option {
-  color: #120f2c;
+  color: #1E2A38;
 }
 
 .btn-nav-cta {
@@ -140,7 +140,7 @@
   justify-content: center;
   padding: 10px 20px;
   border-radius: 999px;
-  background: var(--gradient-brand, linear-gradient(135deg, #7f5af0, #ff6b81));
+  background: var(--gradient-brand, linear-gradient(135deg, #B08D57, #B4593F));
   color: #fff;
   text-decoration: none;
   font-weight: 700;
@@ -150,7 +150,7 @@
 
 .btn-nav-cta:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(127, 90, 240, 0.4);
+  box-shadow: 0 8px 20px rgba(176, 141, 87, 0.4);
 }
 
 .menu-toggle {
@@ -230,7 +230,7 @@
     flex-direction: column;
     gap: 4px;
     padding: 12px 18px 20px;
-    background: linear-gradient(135deg, rgba(12, 10, 34, 0.97) 0%, rgba(18, 15, 44, 0.97) 100%);
+    background: linear-gradient(135deg, rgba(30, 42, 56, 0.97) 0%, rgba(30, 42, 56, 0.97) 100%);
     -webkit-backdrop-filter: blur(20px);
     backdrop-filter: blur(20px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);

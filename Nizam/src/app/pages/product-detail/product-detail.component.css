@@ -275,13 +275,13 @@
   font-weight: 800;
   font-size: 0.97rem;
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(127, 90, 240, 0.28);
+  box-shadow: 0 10px 24px rgba(176, 141, 87, 0.28);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .btn-add-cart:hover {
   transform: translateY(-2px);
-  box-shadow: 0 16px 34px rgba(127, 90, 240, 0.36);
+  box-shadow: 0 16px 34px rgba(176, 141, 87, 0.36);
 }
 
 .btn-checkout {

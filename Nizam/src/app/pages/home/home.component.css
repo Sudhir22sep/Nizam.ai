@@ -44,14 +44,14 @@
   height: 480px;
   top: -160px;
   right: -80px;
-  background: rgba(127, 90, 240, 0.45);
+  background: rgba(176, 141, 87, 0.45);
 }
 .hero-glow-two {
   width: 380px;
   height: 380px;
   bottom: -180px;
   left: -100px;
-  background: rgba(255, 107, 129, 0.28);
+  background: rgba(180, 89, 63, 0.28);
 }
 .hero-inner {
   position: relative;
@@ -86,7 +86,7 @@
 }
 .hero-copy h1 em {
   font-style: normal;
-  background: linear-gradient(120deg, #9d7bff 0%, #ff8ba0 100%);
+  background: linear-gradient(120deg, #C9A76B 0%, #E3C089 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -112,13 +112,13 @@
   color: rgba(255, 255, 255, 0.85);
   font-weight: 700;
   text-decoration: none;
-  border-bottom: 2px solid rgba(157, 123, 255, 0.5);
+  border-bottom: 2px solid rgba(201, 167, 107, 0.5);
   padding-bottom: 3px;
   transition: color 0.2s ease, border-color 0.2s ease;
 }
 .hero-ghost-link:hover {
   color: #fff;
-  border-color: #9d7bff;
+  border-color: #C9A76B;
 }
 .hero-highlights {
   display: grid;
@@ -160,7 +160,7 @@
   position: absolute;
   left: 24px;
   bottom: 24px;
-  background: rgba(12, 10, 34, 0.66);
+  background: rgba(30, 42, 56, 0.66);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -224,7 +224,7 @@
 .category-card:hover {
   transform: translateY(-5px);
   box-shadow: var(--shadow-card-hover);
-  border-color: rgba(127, 90, 240, 0.35);
+  border-color: rgba(176, 141, 87, 0.35);
 }
 .category-icon {
   display: inline-flex;
@@ -233,7 +233,7 @@
   width: 52px;
   height: 52px;
   border-radius: 16px;
-  background: rgba(127, 90, 240, 0.1);
+  background: rgba(176, 141, 87, 0.1);
   font-size: 1.4rem;
   margin-bottom: 20px;
 }
@@ -255,8 +255,8 @@
   gap: 24px;
 }
 .value-card {
-  background: rgba(127, 90, 240, 0.05);
-  border: 1px solid rgba(127, 90, 240, 0.14);
+  background: rgba(176, 141, 87, 0.05);
+  border: 1px solid rgba(176, 141, 87, 0.14);
   border-radius: 24px;
   padding: 32px 28px;
 }
@@ -267,7 +267,7 @@
   width: 52px;
   height: 52px;
   border-radius: 16px;
-  background: rgba(127, 90, 240, 0.12);
+  background: rgba(176, 141, 87, 0.12);
   font-size: 1.4rem;
   margin-bottom: 20px;
 }

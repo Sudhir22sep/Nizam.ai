@@ -1,18 +1,18 @@
 :root {
-  --brand-dark: #120f2c;
-  --brand-secondary: #ff6b81;
-  --brand-primary: #7f5af0;
-  --brand-tertiary: #9d7bff;
-  --brand-shadow: 0 12px 34px rgba(18, 15, 44, 0.1), 0 2px 8px rgba(18, 15, 44, 0.06);
-  --primary-color: #120f2c;
-  --secondary-color: #7f5af0;
-  --accent-color: #ff6b81;
+  --brand-dark: #1E2A38;
+  --brand-secondary: #B4593F;
+  --brand-primary: #B08D57;
+  --brand-tertiary: #C9A76B;
+  --brand-shadow: 0 12px 34px rgba(30, 42, 56, 0.1), 0 2px 8px rgba(30, 42, 56, 0.06);
+  --primary-color: #1E2A38;
+  --secondary-color: #B08D57;
+  --accent-color: #B4593F;
   --text-color: #2f2b4a;
   --text-light: #6f6a8a;
   --bg-light: #f6f5fb;
   --border-color: #e7e4f2;
-  --shadow: 0 2px 10px rgba(18, 15, 44, 0.08);
-  --shadow-lg: 0 24px 70px rgba(18, 15, 44, 0.16);
+  --shadow: 0 2px 10px rgba(30, 42, 56, 0.08);
+  --shadow-lg: 0 24px 70px rgba(30, 42, 56, 0.16);
 }
 
 * {
@@ -86,7 +86,7 @@ body {
 }
 
 .footer-nav a:hover {
-  color: #ffb3c7;
+  color: #C9A76B;
 }
 
 .footer-social {
@@ -153,7 +153,7 @@ body {
 /* Button styles */
 .cta-button {
   display: inline-block;
-  background: linear-gradient(135deg, var(--secondary-color), #9d7bff);
+  background: linear-gradient(135deg, var(--secondary-color), #C9A76B);
   color: white;
   padding: 14px 28px;
   border-radius: 999px;

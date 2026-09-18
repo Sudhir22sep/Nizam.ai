@@ -3,9 +3,9 @@
   margin: 0 auto;
   padding: 0 24px 96px;
   background:
-    radial-gradient(640px 320px at 92% 4%, rgba(127, 90, 240, 0.12), transparent 60%),
-    radial-gradient(560px 300px at 4% 62%, rgba(255, 107, 129, 0.09), transparent 60%),
-    linear-gradient(180deg, rgba(127, 90, 240, 0.05) 0%, rgba(246, 245, 251, 0) 420px);
+    radial-gradient(640px 320px at 92% 4%, rgba(176, 141, 87, 0.12), transparent 60%),
+    radial-gradient(560px 300px at 4% 62%, rgba(180, 89, 63, 0.09), transparent 60%),
+    linear-gradient(180deg, rgba(176, 141, 87, 0.05) 0%, rgba(246, 245, 251, 0) 420px);
   border-radius: 0 0 40px 40px;
 }
 
@@ -63,7 +63,7 @@
 .product-card:hover {
   transform: translateY(-5px);
   box-shadow: var(--shadow-card-hover);
-  border-color: rgba(127, 90, 240, 0.3);
+  border-color: rgba(176, 141, 87, 0.3);
 }
 
 .product-image {
@@ -174,7 +174,7 @@
 
 .btn-wishlist:hover {
   border-color: var(--brand-secondary);
-  background: rgba(255, 107, 129, 0.08);
+  background: rgba(180, 89, 63, 0.08);
   transform: translateY(-1px);
 }
 
@@ -190,7 +190,7 @@
   margin: 0 -24px 48px;
   padding: 76px 24px 68px;
   text-align: center;
-  background: linear-gradient(135deg, #0c0a22 0%, #16123a 55%, #241a5e 100%);
+  background: linear-gradient(135deg, #16202C 0%, #16202C 55%, #2C3B4D 100%);
   border-radius: 0 0 40px 40px;
   position: relative;
   overflow: hidden;
@@ -210,7 +210,7 @@
   height: 340px;
   top: -140px;
   left: -80px;
-  background: rgba(127, 90, 240, 0.4);
+  background: rgba(176, 141, 87, 0.4);
 }
 
 .products-container .page-header::after {
@@ -218,7 +218,7 @@
   height: 300px;
   bottom: -140px;
   right: -60px;
-  background: rgba(255, 107, 129, 0.22);
+  background: rgba(180, 89, 63, 0.22);
 }
 
 .products-container .page-header h1 {
@@ -226,7 +226,7 @@
 }
 
 .products-container .page-header .eyebrow {
-  color: #9d7bff;
+  color: #C9A76B;
 }
 
 .products-container .page-header .page-subtitle {
