@@ -80,8 +80,8 @@ import { Component } from '@angular/core';
     }
 
     .about-point {
-      background: rgba(127, 90, 240, 0.05);
-      border: 1px solid rgba(127, 90, 240, 0.12);
+      background: rgba(176, 141, 87, 0.05);
+      border: 1px solid rgba(176, 141, 87, 0.12);
       border-radius: 16px;
       padding: 18px;
     }

@@ -28,7 +28,7 @@
   object-fit: cover;
   object-position: center top;
   border-radius: 14px;
-  background: #f1eefb;
+  background: #F1EEE8;
 }
 
 .item-details h2 {
@@ -64,8 +64,8 @@
 
 .btn-remove {
   border: none;
-  background: rgba(255, 107, 129, 0.1);
-  color: #d64562;
+  background: rgba(180, 89, 63, 0.1);
+  color: #B4593F;
   width: 40px;
   height: 40px;
   border-radius: 12px;
@@ -74,7 +74,7 @@
 }
 
 .btn-remove:hover {
-  background: rgba(255, 107, 129, 0.18);
+  background: rgba(180, 89, 63, 0.18);
   transform: translateY(-1px);
 }
 
@@ -138,7 +138,7 @@
   width: 72px;
   height: 72px;
   border-radius: 24px;
-  background: rgba(127, 90, 240, 0.08);
+  background: rgba(176, 141, 87, 0.08);
   font-size: 1.8rem;
   margin-bottom: 20px;
 }

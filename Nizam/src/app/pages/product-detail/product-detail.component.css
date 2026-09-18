@@ -39,7 +39,7 @@
   object-fit: cover;
   object-position: center top;
   border-radius: 28px;
-  background: #f1eefb;
+  background: #F1EEE8;
   box-shadow: var(--shadow-card);
 }
 
@@ -58,7 +58,7 @@
   overflow: hidden;
   border: 2px solid transparent;
   cursor: pointer;
-  background: #f1eefb;
+  background: #F1EEE8;
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
@@ -275,13 +275,13 @@
   font-weight: 800;
   font-size: 0.97rem;
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(127, 90, 240, 0.28);
+  box-shadow: 0 10px 24px rgba(176, 141, 87, 0.28);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .btn-add-cart:hover {
   transform: translateY(-2px);
-  box-shadow: 0 16px 34px rgba(127, 90, 240, 0.36);
+  box-shadow: 0 16px 34px rgba(176, 141, 87, 0.36);
 }
 
 .btn-checkout {
@@ -383,7 +383,7 @@
   aspect-ratio: 3 / 4;
   object-fit: cover;
   object-position: center top;
-  background: #f1eefb;
+  background: #F1EEE8;
 }
 
 .related-card h4 {

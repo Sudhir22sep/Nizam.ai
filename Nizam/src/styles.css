@@ -1,43 +1,41 @@
 /* ==========================================================================
    Amma Wears — Global Design System
    ========================================================================== */
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
-
 :root {
-  /* Brand palette */
-  --ink-900: #0c0a22;
-  --ink-800: #120f2c;
-  --ink-700: #1b1740;
-  --ink-600: #2a2456;
-  --brand-primary: #7f5af0;
-  --brand-primary-strong: #6a44e0;
-  --brand-secondary: #ff6b81;
-  --brand-tertiary: #9d7bff;
-  --brand-dark: #120f2c;
-  --accent-cyan: #48bfe3;
+  /* Brand palette — Midnight Slate / Warm Ivory / Antique Brass */
+  --ink-900: #1E2A38;
+  --ink-800: #1E2A38;
+  --ink-700: #2C3B4D;
+  --ink-600: #3C4C5E;
+  --brand-primary: #B08D57;      /* Antique Brass — interactive accent   */
+  --brand-primary-strong: #96754A;
+  --brand-secondary: #5C6B73;    /* Storm Grey — secondary text          */
+  --brand-tertiary: #B08D57;
+  --brand-dark: #1E2A38;
+  --accent-cyan: #4A6B57;
 
   /* Neutrals */
-  --text-color: #2f2b4a;
-  --text-light: #6f6a8a;
-  --text-faint: #918da8;
-  --bg-page: #f6f5fb;
-  --bg-light: #f8f9fa;
-  --surface: #ffffff;
-  --border-color: #e7e4f2;
-  --border-strong: #d9d4ec;
+  --text-color: #3C4C5E;
+  --text-light: #5C6B73;
+  --text-faint: #8A94A0;
+  --bg-page: #F7F5F1;            /* Warm Ivory canvas                    */
+  --bg-light: #F1EEE8;
+  --surface: #FFFFFF;
+  --border-color: #E6E1D8;
+  --border-strong: #D8D2C6;
 
   /* Shadows */
-  --shadow: 0 2px 10px rgba(18, 15, 44, 0.08);
-  --shadow-lg: 0 24px 70px rgba(18, 15, 44, 0.16);
-  --brand-shadow: 0 12px 34px rgba(18, 15, 44, 0.1), 0 2px 8px rgba(18, 15, 44, 0.06);
-  --shadow-card: 0 1px 2px rgba(18, 15, 44, 0.05), 0 10px 30px rgba(18, 15, 44, 0.07);
-  --shadow-card-hover: 0 2px 6px rgba(18, 15, 44, 0.06), 0 22px 48px rgba(18, 15, 44, 0.13);
+  --shadow: 0 2px 10px rgba(30, 42, 56, 0.08);
+  --shadow-lg: 0 24px 70px rgba(30, 42, 56, 0.16);
+  --brand-shadow: 0 12px 34px rgba(30, 42, 56, 0.1), 0 2px 8px rgba(30, 42, 56, 0.06);
+  --shadow-card: 0 1px 2px rgba(30, 42, 56, 0.05), 0 10px 30px rgba(30, 42, 56, 0.07);
+  --shadow-card-hover: 0 2px 6px rgba(30, 42, 56, 0.06), 0 22px 48px rgba(30, 42, 56, 0.13);
 
   /* Radii & spacing */
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-  --radius-xl: 28px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+  --radius-xl: 8px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -48,9 +46,9 @@
   --space-8: 64px;
   --space-9: 96px;
   --container: 1200px;
-  --gradient-brand: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
-  --gradient-dark: linear-gradient(160deg, #120f2c 0%, #1e1745 55%, #2a1f57 100%);
-  --gradient-nav: linear-gradient(135deg, rgba(12, 10, 34, 0.78) 0%, rgba(18, 15, 44, 0.85) 100%);
+  --gradient-brand: linear-gradient(135deg, #B08D57 0%, #C9A76B 100%);
+  --gradient-dark: linear-gradient(160deg, #16202C 0%, #1E2A38 55%, #2C3B4D 100%);
+  --gradient-nav: linear-gradient(135deg, rgba(30, 42, 56, 0.92) 0%, rgba(44, 59, 77, 0.88) 100%);
 }
 
 /* ---------- Reset ---------- */
@@ -68,7 +66,7 @@ html {
 }
 
 body {
-  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     'Helvetica Neue', Arial, sans-serif;
   font-size: 16px;
   line-height: 1.6;
@@ -84,10 +82,11 @@ img {
 }
 
 h1, h2, h3, h4 {
+  font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
   line-height: 1.15;
   color: var(--brand-dark);
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 p {
@@ -108,7 +107,7 @@ button {
 }
 
 ::selection {
-  background: rgba(127, 90, 240, 0.22);
+  background: rgba(176, 141, 87, 0.25);
 }
 
 /* ---------- Page scaffolding ---------- */
@@ -146,6 +145,8 @@ button {
 /* ---------- Buttons ---------- */
 .btn-primary,
 .btn-secondary,
+.btn-dark,
+.btn-ghost,
 .cta-button {
   display: inline-flex;
   align-items: center;
@@ -157,9 +158,10 @@ button {
   font-weight: 700;
   font-size: 0.97rem;
   font-family: inherit;
+  letter-spacing: 0.01em;
   text-decoration: none;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, opacity 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
   white-space: nowrap;
 }
 
@@ -167,22 +169,53 @@ button {
 .cta-button {
   background: var(--gradient-brand);
   color: #fff;
-  box-shadow: 0 10px 24px rgba(127, 90, 240, 0.28);
+  box-shadow: 0 10px 24px rgba(150, 117, 74, 0.28);
 }
 
 .btn-primary:hover,
 .cta-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 16px 34px rgba(127, 90, 240, 0.36);
+  box-shadow: 0 16px 34px rgba(150, 117, 74, 0.36);
+}
+
+.btn-primary:active,
+.cta-button:active,
+.btn-secondary:active,
+.btn-dark:active,
+.btn-ghost:active {
+  transform: translateY(0) scale(0.98);
 }
 
 .btn-secondary {
-  background: rgba(127, 90, 240, 0.1);
+  background: rgba(176, 141, 87, 0.1);
   color: var(--brand-dark);
 }
 
 .btn-secondary:hover {
-  background: rgba(127, 90, 240, 0.18);
+  background: rgba(176, 141, 87, 0.18);
+  transform: translateY(-2px);
+}
+
+.btn-dark {
+  background: var(--ink-800);
+  color: #fff;
+}
+
+.btn-dark:hover {
+  background: var(--ink-700);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(22, 32, 44, 0.28);
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.6);
   transform: translateY(-2px);
 }
 
@@ -195,6 +228,31 @@ button {
 .btn-outline:hover {
   border-color: var(--brand-primary);
   color: var(--brand-primary);
+}
+
+.btn-sm {
+  padding: 9px 18px;
+  font-size: 0.88rem;
+}
+
+.btn-lg {
+  padding: 16px 34px;
+  font-size: 1.05rem;
+}
+
+.btn-block {
+  display: flex;
+  width: 100%;
+}
+
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+.btn-dark:focus-visible,
+.btn-ghost:focus-visible,
+.btn-outline:focus-visible,
+.cta-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--bg-page), 0 0 0 6px var(--brand-primary);
 }
 
 button:disabled,
@@ -237,7 +295,7 @@ input:focus,
 textarea:focus {
   outline: none;
   border-color: var(--brand-primary);
-  box-shadow: 0 0 0 4px rgba(127, 90, 240, 0.14);
+  box-shadow: 0 0 0 4px rgba(176, 141, 87, 0.14);
 }
 
 input.is-invalid {
@@ -260,7 +318,7 @@ input.is-invalid {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(127, 90, 240, 0.45);
+  background: rgba(176, 141, 87, 0.55);
   border-radius: 5px;
 }
 

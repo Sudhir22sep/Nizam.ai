@@ -102,12 +102,12 @@
 }
 
 .payment-note {
-  background: rgba(72, 191, 227, 0.08);
-  border: 1px solid rgba(72, 191, 227, 0.25);
+  background: rgba(92, 107, 115, 0.08);
+  border: 1px solid rgba(92, 107, 115, 0.25);
   border-radius: 14px;
   padding: 14px 16px;
   margin-bottom: 20px;
-  color: #1d4f68;
+  color: #394A5C;
   font-size: 0.92rem;
 }
 
