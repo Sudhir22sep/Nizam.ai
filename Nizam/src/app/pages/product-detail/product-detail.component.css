@@ -39,7 +39,7 @@
   object-fit: cover;
   object-position: center top;
   border-radius: 28px;
-  background: #f1eefb;
+  background: #F1EEE8;
   box-shadow: var(--shadow-card);
 }
 
@@ -58,7 +58,7 @@
   overflow: hidden;
   border: 2px solid transparent;
   cursor: pointer;
-  background: #f1eefb;
+  background: #F1EEE8;
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
@@ -383,7 +383,7 @@
   aspect-ratio: 3 / 4;
   object-fit: cover;
   object-position: center top;
-  background: #f1eefb;
+  background: #F1EEE8;
 }
 
 .related-card h4 {

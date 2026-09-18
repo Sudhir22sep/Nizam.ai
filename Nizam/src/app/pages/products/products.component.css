@@ -3,9 +3,9 @@
   margin: 0 auto;
   padding: 0 24px 96px;
   background:
-    radial-gradient(640px 320px at 92% 4%, rgba(176, 141, 87, 0.12), transparent 60%),
-    radial-gradient(560px 300px at 4% 62%, rgba(180, 89, 63, 0.09), transparent 60%),
-    linear-gradient(180deg, rgba(176, 141, 87, 0.05) 0%, rgba(246, 245, 251, 0) 420px);
+    radial-gradient(640px 320px at 92% 4%, rgba(201, 167, 107, 0.14), transparent 60%),
+    radial-gradient(560px 300px at 4% 62%, rgba(180, 89, 63, 0.07), transparent 60%),
+    linear-gradient(180deg, rgba(176, 141, 87, 0.05) 0%, rgba(241, 238, 232, 0) 420px);
   border-radius: 0 0 40px 40px;
 }
 
@@ -71,7 +71,7 @@
   width: 100%;
   aspect-ratio: 3 / 4;
   overflow: hidden;
-  background: #f1eefb;
+  background: #F1EEE8;
 }
 
 .product-image img {
