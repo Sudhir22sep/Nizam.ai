@@ -12,7 +12,12 @@
     "name": "Satin Slip Dress",
     "description": "A sleek silhouette in satin with a delicate cowl neckline, perfect for evening outings and warm-weather style.",
     "price": 84.99,
-    "image": "images/products/satin-slip-dress.jpeg",
+    "images": [
+      "images/products/slip-dress.jpeg",
+      "images/products/satin.jpg",
+      "images/products/satin-slip-dress.jpeg"
+    ],
+    "image": "images/products/slip-dress.jpeg",
     "category": "Women"
   },
   {
