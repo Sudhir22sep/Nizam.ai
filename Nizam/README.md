@@ -54,6 +54,16 @@ ng e2e
 
 Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
 
+## Importing the public Myntra catalog
+
+The project includes a CSV importer for the public CC0 [Myntra Fashion Products Kaggle dataset](https://www.kaggle.com/datasets/nirokey/myntra-fashion-products). Download and unzip the dataset, then import a curated number of in-stock products:
+
+```bash
+npm run import:myntra -- /path/to/Myntra_fashion_products.csv public/assets/products.json 500
+```
+
+The importer uses the first listed product image, maps Men and Women categories (and accessories/footwear where applicable), and converts the dataset's INR prices to the app's USD-based currency format.
+
 ## Deployment
 
 ### Jenkins

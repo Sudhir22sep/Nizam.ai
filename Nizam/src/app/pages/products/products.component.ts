@@ -1,5 +1,8 @@
-import { Component, OnInit, inject, computed } from '@angular/core';
+import { Component, OnInit, inject, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { PricePipe } from '../../pipes/price.pipe';
+import { ImageFallbackDirective } from '../../directives/image-fallback.directive';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ProductService, Product } from '../../services/product.service';
@@ -32,17 +35,49 @@ export class ProductsComponent implements OnInit {
   private readonly cartService = inject(CartService);
   private readonly wishlistService = inject(WishlistService);
   private readonly toast = inject(ToastService);
+  readonly categories = computed(() =>
+    Array.from(new Set(this.products().map(product => product.category.trim())))
+  );
 
-  ngOnInit() {
-    this.productService.ensureLoaded();
+  readonly filteredProducts = computed(() => {
+    const category = this.normaliseCategory(this.selectedCategory());
+    const products = this.products();
+    if (!category) {
+      return products;
+    }
+    return products.filter(product => this.normaliseCategory(product.category) === category);
+  });
+
+  constructor(
+    private productService: ProductService,
+    private cartService: CartService,
+    private route: ActivatedRoute,
+    private router: Router
+  ) {
+    this.products = this.productService.getProducts();
+    this.route.queryParamMap.subscribe(params => {
+      this.selectedCategory.set(params.get('category') ?? '');
+    });
   }
 
+ngOnInit() {
+    this.productService.ensureLoaded();
+}
+
   filterByCategory(category: string) {
-    this.selectedCategory = category;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { category },
+      queryParamsHandling: 'merge'
+    });
   }
 
   resetFilter() {
-    this.selectedCategory = '';
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { category: null },
+      queryParamsHandling: 'merge'
+    });
   }
 
   addToCart(product: Product) {
@@ -80,7 +115,13 @@ export class ProductsComponent implements OnInit {
     return product.id;
   }
 
-  primaryImage(product: Product): string {
+  private normaliseCategory(category: string): string {
+    return category.trim().toLocaleLowerCase();
+  }
+
+ primaryImage(product: Product): string {
     return product.images[0] ?? '';
   }
+
+  // image fallback handled by ImageFallbackDirective
 }
