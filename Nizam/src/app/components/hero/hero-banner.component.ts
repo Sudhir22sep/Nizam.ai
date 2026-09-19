@@ -1,5 +1,6 @@
 import { Component, Input, OnInit, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 
 /**
  * HeroBannerComponent — Amma Wears hero with guaranteed text readability.
@@ -23,7 +24,7 @@ import { CommonModule } from '@angular/common';
 @Component({
   selector: 'app-hero-banner',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   template: `
     <section class="hero" [class.hero--has-image]="imageUrl">
       <!-- Layer 1: Background image -->

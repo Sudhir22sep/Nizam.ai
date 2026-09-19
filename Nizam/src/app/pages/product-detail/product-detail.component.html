@@ -5,14 +5,43 @@
     <div class="product-image">
       <img [src]="selectedImage(product)" [alt]="product.name" appImageFallback>
       <div class="product-thumbnails" *ngIf="galleryImages(product).length > 1">
-        <button
-          type="button"
+        <div
           *ngFor="let image of galleryImages(product); let imageIndex = index; trackBy: trackByImage"
           class="product-thumbnail"
-          [class.active]="imageIndex === selectedImageIndex"
-          (click)="selectImage(imageIndex)"
-          [attr.aria-label]="'View image ' + (imageIndex + 1) + ' of ' + product.name">
-          <img [src]="image" [alt]="product.name + ' view ' + (imageIndex + 1)" appImageFallback>
+          [class.active]="imageIndex === selectedImageIndex">
+          <button
+            type="button"
+            class="thumbnail-select"
+            (click)="selectImage(imageIndex)"
+            [attr.aria-label]="'View image ' + (imageIndex + 1) + ' of ' + product.name">
+            <img [src]="image" [alt]="product.name + ' view ' + (imageIndex + 1)" appImageFallback>
+          </button>
+          <button
+            type="button"
+            class="thumbnail-remove"
+            (click)="removeImageFromGallery(imageIndex); $event.stopPropagation()"
+            [attr.aria-label]="'Remove image ' + (imageIndex + 1)">
+            ×
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="image-upload-panel" *ngIf="product">
+      <h4>Manage Images</h4>
+      <div class="upload-row">
+        <input
+          type="text"
+          placeholder="/images/products/my-image.jpg or https://example.com/image.jpg"
+          [(ngModel)]="uploadMessage"
+          (keyup.enter)="addImageToGallery(uploadMessage)"
+          class="upload-input"
+          [disabled]="isUploading">
+        <button
+          (click)="addImageToGallery(uploadMessage)"
+          class="btn-upload-image"
+          [disabled]="isUploading || !uploadMessage?.trim()">
+          {{ isUploading ? 'Adding…' : '+ Add Image' }}
         </button>
       </div>
     </div>

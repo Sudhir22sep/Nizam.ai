@@ -99,7 +99,9 @@ export class ProductService {
 
       // Always try to fetch from API first, fallback to JSON if needed
       try {
-        const apiUrl = isPlatformServer(this.platformId) ? 'http://localhost:4000' : '';
+        const apiUrl = isPlatformServer(this.platformId)
+          ? `http://localhost:${typeof process !== 'undefined' ? process.env['PORT'] || 4000 : 4000}`
+          : '';
         const response = await this.http.get<{ success: boolean; products: Product[] }>(`${apiUrl}/api/products`).toPromise();
         if (response?.success) {
           data = response.products.map((p: any) => ({
@@ -171,5 +173,29 @@ export class ProductService {
 
   getCategories(): string[] {
     return Array.from(new Set(this.productsSignal().map(p => p.category)));
+  }
+
+    private get apiUrl(): string {
+    return isPlatformServer(this.platformId) ? 'http://localhost:4000' : '';
+  }
+
+  /** Add an image URL to a product's gallery */
+  async addProductImage(productId: string, imageUrl: string): Promise<void> {
+    try {
+      await this.http.post(`${this.apiUrl}/api/products/${productId}/images`, { image: imageUrl }).toPromise();
+    } catch (error) {
+      console.error('Error adding product image:', error);
+      throw error;
+    }
+  }
+
+  /** Remove an image at the given index from a product's gallery */
+  async removeProductImage(productId: string, index: number): Promise<void> {
+    try {
+      await this.http.delete(`${this.apiUrl}/api/products/${productId}/images/${index}`).toPromise();
+    } catch (error) {
+      console.error('Error removing product image:', error);
+      throw error;
+    }
   }
 }

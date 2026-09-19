@@ -7,12 +7,13 @@ import { CartService } from '../../services/cart.service';
 import { WishlistService } from '../../services/wishlist.service';
 import { ToastService } from '../../services/toast.service';
 import { ImageFallbackDirective } from '../../directives/image-fallback.directive';
+import { PricePipe } from '../../pipes/price.pipe';
 import { EmptyStateComponent } from '../../components/empty-state/empty-state.component';
 
 @Component({
   selector: 'app-products',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, ImageFallbackDirective, EmptyStateComponent],
+  imports: [CommonModule, RouterLink, FormsModule, PricePipe, ImageFallbackDirective, EmptyStateComponent],
   templateUrl: './products.component.html',
   styleUrl: './products.component.css'
 })
