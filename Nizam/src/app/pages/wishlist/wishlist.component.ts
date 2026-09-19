@@ -2,6 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { WishlistService } from '../../services/wishlist.service';
 import { ToastService } from '../../services/toast.service';
 import { EmptyStateComponent } from '../../components/empty-state/empty-state.component';
@@ -9,7 +10,7 @@ import { EmptyStateComponent } from '../../components/empty-state/empty-state.co
 @Component({
   selector: 'app-wishlist',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, EmptyStateComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, EmptyStateComponent],
   templateUrl: './wishlist.component.html',
   styleUrls: ['./wishlist.component.css']
 })

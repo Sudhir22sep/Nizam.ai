@@ -118,6 +118,68 @@ function loadBundledCatalog(): Record<string, any>[] {
   return [];
 }
 
+/**
+ * Resolves the public info (name, price, image, category) for a wishlist item.
+ *
+ * Wishlist items may reference either a Mongo product document or a bundled
+ * catalog entry (products.json ids are numeric, e.g. "100000", and are NOT
+ * Mongo ObjectIds). Both sources are consulted so the wishlist page can render
+ * real product details instead of "Product #0".
+ */
+async function lookupWishlistProductInfo(productId: unknown): Promise<Record<string, any> | null> {
+  const idText = productId === null || productId === undefined ? '' : String(productId);
+  if (!idText) {
+    return null;
+  }
+
+  // 1. Try MongoDB when the id is a valid ObjectId.
+  if (ObjectId.isValid(idText)) {
+    try {
+      const productsCollection = await getProductsCollection();
+      const product: any = await productsCollection.findOne({ _id: new ObjectId(idText) });
+      if (product) {
+        return toPublicProduct({
+          ...product,
+          basePrice: product?.basePrice ?? product?.price ?? 0,
+          currency: product?.currency ?? 'USD',
+          images: Array.isArray(product?.images) ? product.images : (product?.image ? [product.image] : []),
+        });
+      }
+    } catch (error) {
+      console.warn('Wishlist product lookup (Mongo) failed:', error instanceof Error ? error.message : error);
+    }
+  }
+
+  // 2. Fall back to the bundled catalog by its plain id.
+  const asNumber = Number(idText);
+  const bundled = loadBundledCatalog().find(candidate =>
+    String(candidate?.id) === idText ||
+    (Number.isFinite(asNumber) && Number(candidate?.id) === asNumber)
+  );
+  if (bundled) {
+    return toPublicCatalogProduct(bundled);
+  }
+
+  return null;
+}
+
+/** Attaches product info (name/price/image/category) to each wishlist item. */
+async function withProductInfo(items: any[]): Promise<any[]> {
+  return Promise.all((items ?? []).map(async (item: any) => {
+    const info = await lookupWishlistProductInfo(item.productId);
+    return {
+      ...item,
+      productId: item.productId?.toString?.() ?? String(item.productId ?? ''),
+      variantId: item.variantId ? item.variantId.toString() : null,
+      productName: info?.name ?? item.productName ?? null,
+      productPrice: info?.basePrice ?? item.productPrice ?? null,
+      productCurrency: info?.currency ?? item.productCurrency ?? 'USD',
+      productImage: (Array.isArray(info?.images) && info.images[0]) ?? item.productImage ?? null,
+      productCategory: info?.category ?? item.productCategory ?? null,
+    };
+  }));
+}
+
 // Load Angular SSR manifests (only available in production build)
 async function loadAngularManifests(): Promise<void> {
   try {
@@ -2767,17 +2829,13 @@ const userId = req.user?.userId;
     
     const wishlists = await wishlistsCollection.find({ userId: new (require("mongodb")).ObjectId(userId) }).toArray();
     
-    // Convert ObjectId to string for frontend
-    const wishlistsWithStringIds = wishlists.map(wishlist => ({
+    // Convert ObjectId to string for frontend and attach product info
+    const wishlistsWithStringIds = await Promise.all(wishlists.map(async wishlist => ({
       ...wishlist,
       _id: wishlist._id.toString(),
       userId: wishlist.userId.toString(),
-      items: wishlist.items.map((item: any) => ({
-          ...item,
-          productId: item.productId.toString(),
-          variantId: item.variantId ? item.variantId.toString() : null
-        }))
-    }));
+      items: await withProductInfo(wishlist.items)
+    })));
     
     res.json({ success: true, wishlists: wishlistsWithStringIds });
   } catch (error) {
@@ -2839,16 +2897,12 @@ app.get('/api/wishlist/:id', authenticateJwt, async (req, res) => {
       return res.status(404).json({ success: false, message: "Wishlist not found" });
     }
     
-    // Convert ObjectId to string for frontend
+    // Convert ObjectId to string for frontend and attach product info
     const wishlistWithStringIds = {
       ...wishlist,
       _id: wishlist._id.toString(),
       userId: wishlist.userId.toString(),
-      items: wishlist.items.map((item: any) => ({
-        ...item,
-        productId: item.productId.toString(),
-        variantId: item.variantId ? item.variantId.toString() : null
-      }))
+      items: await withProductInfo(wishlist.items)
     };
     
     return res.json({ success: true, wishlist: wishlistWithStringIds });
@@ -2864,44 +2918,75 @@ app.post('/api/wishlist/:id/items', authenticateJwt, async (req, res) => {
     const wishlistId = req.params.id;
     const userId = req.user?.userId;
     const { productId, variantId = null, notes = "" } = req.body;
-    
+
+    if (!productId || (typeof productId !== 'string' && typeof productId !== 'number')) {
+      return res.status(400).json({ success: false, message: "Product ID is required" });
+    }
+
     if (!require("mongodb").ObjectId.isValid(wishlistId)) {
       return res.status(400).json({ success: false, message: "Invalid wishlist ID" });
     }
-    
-    if (!require("mongodb").ObjectId.isValid(productId)) {
+
+    // Bundled-catalog products (products.json) use plain numeric ids (e.g.
+    // "100000"), which are NOT Mongo ObjectIds. Only enforce the ObjectId
+    // format for ids that are clearly intended to be Mongo ids (24 hex chars).
+    const productIdText = String(productId);
+    const isMongoProductId = /^[0-9a-f]{24}$/i.test(productIdText);
+    if (isMongoProductId && !require("mongodb").ObjectId.isValid(productIdText)) {
       return res.status(400).json({ success: false, message: "Invalid product ID" });
     }
-    
+
     if (variantId !== null && !require("mongodb").ObjectId.isValid(variantId)) {
       return res.status(400).json({ success: false, message: "Invalid variant ID" });
     }
-    
+
     // Check if wishlist exists and belongs to user
     const wishlist = await wishlistsCollection.findOne({
       _id: new (require("mongodb")).ObjectId(wishlistId),
       userId: new (require("mongodb")).ObjectId(userId)
     });
-    
+
     if (!wishlist) {
       return res.status(404).json({ success: false, message: "Wishlist not found" });
     }
-    
-    // Check if item already exists in wishlist
-    const itemExists = wishlist.items.some((item: any) => 
-      item.productId.equals(new (require("mongodb")).ObjectId(productId)) &&
-      ((variantId === null && !item.variantId) || (item.variantId && item.variantId.equals(new (require("mongodb")).ObjectId(variantId))))
-    );
-    
+
+    // Check if item already exists in wishlist (compare by string form so
+    // bundled numeric ids and ObjectIds are handled the same way).
+    const itemExists = wishlist.items.some((item: any) => {
+      const existingId = item.productId?.toString?.() ?? String(item.productId ?? '');
+      if (existingId !== productIdText) {
+        return false;
+      }
+      if (variantId === null) {
+        return !item.variantId;
+      }
+      return item.variantId !== null && item.variantId !== undefined &&
+        item.variantId.toString() === String(variantId);
+    });
+
     if (itemExists) {
       return res.status(409).json({ success: false, message: "Item already exists in wishlist" });
     }
-    
+
+    // Snapshot the product info so the wishlist page can show the name, price
+    // and image even if the catalog entry changes or disappears later.
+    let productInfo: Record<string, any> | null = null;
+    try {
+      productInfo = await lookupWishlistProductInfo(productIdText);
+    } catch (error) {
+      console.warn('Wishlist product snapshot failed:', error instanceof Error ? error.message : error);
+    }
+
     const newItem: any = {
-      productId: new (require("mongodb")).ObjectId(productId),
+      productId: isMongoProductId ? new (require("mongodb")).ObjectId(productIdText) : productIdText,
       variantId: variantId ? new (require("mongodb")).ObjectId(variantId) : null,
       addedAt: new Date(),
-      notes: notes || ""
+      notes: notes || "",
+      productName: productInfo?.name ?? null,
+      productPrice: productInfo?.basePrice ?? null,
+      productCurrency: productInfo?.currency ?? 'USD',
+      productImage: (Array.isArray(productInfo?.images) && productInfo.images[0]) || null,
+      productCategory: productInfo?.category ?? null,
     };
     
     await wishlistsCollection.updateOne(
@@ -2945,16 +3030,21 @@ async function removeWishlistItem(req: Request, res: Response) {
     // For removal, we'll accept productId and variantId in the body to identify the item
     const { productId, variantId } = req.body;
     
-    if (!productId || !require("mongodb").ObjectId.isValid(productId)) {
+    // Bundled-catalog products use plain numeric ids, so only treat 24-hex-char
+    // ids as Mongo ObjectIds; anything else is matched by its string form.
+    const productIdText = String(productId ?? '');
+    if (!productIdText) {
       return res.status(400).json({ success: false, message: "Product ID is required" });
     }
+    const isMongoProductId = /^[0-9a-f]{24}$/i.test(productIdText) && require("mongodb").ObjectId.isValid(productIdText);
     
     // Pull the item first so modifiedCount reports whether anything was removed,
     // then touch updatedAt separately (otherwise updatedAt alone would always
     // mark the document as modified and hide "item not found").
+    const productIdSpec: any = isMongoProductId ? new (require("mongodb")).ObjectId(productIdText) : productIdText;
     const pullSpec: any = variantId && require("mongodb").ObjectId.isValid(variantId)
-      ? { items: { productId: new (require("mongodb")).ObjectId(productId), variantId: new (require("mongodb")).ObjectId(variantId) } }
-      : { items: { productId: new (require("mongodb")).ObjectId(productId) } };
+      ? { items: { productId: productIdSpec, variantId: new (require("mongodb")).ObjectId(variantId) } }
+      : { items: { productId: productIdSpec } };
 
     const result = await wishlistsCollection.updateOne(
       { _id: new (require("mongodb")).ObjectId(wishlistId), userId: new (require("mongodb")).ObjectId(userId) },

@@ -75,8 +75,14 @@
 
          <div class="wishlist-items" *ngIf="wishlist.items && wishlist.items.length > 0">
            <div class="wishlist-item" *ngFor="let item of wishlist.items; let i = index">
+             <img *ngIf="item.productImage" [src]="item.productImage" [alt]="item.productName || 'Product image'" class="item-image" loading="lazy" />
              <div class="item-info">
-               <h4>{{ item.productName || 'Product #' + i }}</h4>
+               <h4>
+                 <a [routerLink]="['/product', item.productId]">{{ item.productName || 'Product #' + (i + 1) }}</a>
+               </h4>
+               <p *ngIf="item.productPrice !== null && item.productPrice !== undefined" class="item-price">
+                 {{ item.productCurrency === 'INR' ? '₹' : '$' }}{{ item.productPrice | number: '1.2-2' }}
+               </p>
                <p *ngIf="item.notes" class="item-notes">{{ item.notes }}</p>
              </div>
              <div class="item-actions">

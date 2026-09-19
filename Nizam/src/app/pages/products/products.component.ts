@@ -85,7 +85,7 @@ export class ProductsComponent implements OnInit {
               if (response.success && response.wishlist) {
                 this.wishlistService.addItemToWishlist(response.wishlist._id, product.id).subscribe({
                   next: () => this.toast.success(`${product.name} added to wishlist.`),
-                  error: () => this.toast.error('Failed to add to wishlist. Try again.')
+                  error: (error) => this.handleAddToWishlistError(error, product.name)
                 });
               }
             },
@@ -94,12 +94,22 @@ export class ProductsComponent implements OnInit {
         } else {
           this.wishlistService.addItemToWishlist(wishlists[0]._id, product.id).subscribe({
             next: () => this.toast.success(`${product.name} added to wishlist.`),
-            error: () => this.toast.error('Failed to add to wishlist. Try again.')
+            error: (error) => this.handleAddToWishlistError(error, product.name)
           });
         }
       },
       error: () => this.toast.error('Could not access wishlists. Try again.')
     });
+  }
+
+  /** Surfaces the server's reason (e.g. duplicate item) instead of a generic failure. */
+  private handleAddToWishlistError(error: { status?: number; error?: { message?: string } }, productName: string) {
+    const message = error?.error?.message;
+    if (error?.status === 409 || message?.toLowerCase().includes('already exists')) {
+      this.toast.info(`${productName} is already in your wishlist.`);
+      return;
+    }
+    this.toast.error(`Failed to add ${productName} to wishlist. Try again.`);
   }
 
   trackByProductId(index: number, product: Product) {

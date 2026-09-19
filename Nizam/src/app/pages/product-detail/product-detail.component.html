@@ -1,4 +1,4 @@
-<div *ngIf="isLoading" class="loading-state" role="status" aria-live="polite">
+<div *ngIf="isLoading()" class="loading-state" role="status" aria-live="polite">
   <div class="loading-card">
     <div class="loading-line loading-line--title"></div>
     <div class="loading-line"></div>
@@ -7,28 +7,28 @@
   </div>
 </div>
 
-<div *ngIf="!isLoading && loadError" class="not-found" role="alert">
-  <p>{{ loadError }}</p>
+<div *ngIf="!isLoading() && loadError()" class="not-found" role="alert">
+  <p>{{ loadError() }}</p>
   <a routerLink="/products" class="back-link">Back to Shop</a>
 </div>
 
-<div *ngIf="!isLoading && product" class="product-detail-container">
+<div *ngIf="!isLoading() && product()" class="product-detail-container">
   <a routerLink="/products" class="back-link">← Back to Shop</a>
 
   <div class="product-detail">
     <div class="product-image">
-      <img [src]="selectedImage(product)" [alt]="product.name" appImageFallback>
-      <div class="product-thumbnails" *ngIf="galleryImages(product).length > 1">
+      <img [src]="selectedImage(product())" [alt]="product()?.name" appImageFallback>
+      <div class="product-thumbnails" *ngIf="galleryImages(product()).length > 1">
         <div
-          *ngFor="let image of galleryImages(product); let imageIndex = index; trackBy: trackByImage"
+          *ngFor="let image of galleryImages(product()); let imageIndex = index; trackBy: trackByImage"
           class="product-thumbnail"
-          [class.active]="imageIndex === selectedImageIndex">
+          [class.active]="imageIndex === selectedImageIndex()">
           <button
             type="button"
             class="thumbnail-select"
             (click)="selectImage(imageIndex)"
-            [attr.aria-label]="'View image ' + (imageIndex + 1) + ' of ' + product.name">
-            <img [src]="image" [alt]="product.name + ' view ' + (imageIndex + 1)" appImageFallback>
+            [attr.aria-label]="'View image ' + (imageIndex + 1) + ' of ' + product()?.name">
+            <img [src]="image" [alt]="product()?.name + ' view ' + (imageIndex + 1)" appImageFallback>
           </button>
           <button
             type="button"
@@ -41,30 +41,31 @@
       </div>
     </div>
 
-    <div class="image-upload-panel" *ngIf="product">
+    <div class="image-upload-panel" *ngIf="product()">
       <h4>Manage Images</h4>
       <p class="upload-hint">Paste a public image URL or a root-relative app path such as <code>/images/products/my-image.jpg</code>.</p>
       <div class="upload-row">
         <input
           type="text"
           placeholder="/images/products/my-image.jpg or https://example.com/image.jpg"
-          [(ngModel)]="uploadImageUrl"
-          (keyup.enter)="addImageToGallery(uploadImageUrl)"
+          [ngModel]="uploadImageUrl()"
+          (ngModelChange)="uploadImageUrl.set($event)"
+          (keyup.enter)="addImageToGallery(uploadImageUrl())"
           class="upload-input"
-          [disabled]="isUploading">
+          [disabled]="isUploading()">
         <button
-          (click)="addImageToGallery(uploadImageUrl)"
+          (click)="addImageToGallery(uploadImageUrl())"
           class="btn-upload-image"
-          [disabled]="isUploading || !uploadImageUrl?.trim()">
-          {{ isUploading ? 'Adding…' : '+ Add Image' }}
+          [disabled]="isUploading() || !uploadImageUrl().trim()">
+          {{ isUploading() ? 'Adding…' : '+ Add Image' }}
         </button>
       </div>
-      <p class="upload-message" *ngIf="uploadMessage" role="status">{{ uploadMessage }}</p>
+      <p class="upload-message" *ngIf="uploadMessage()" role="status">{{ uploadMessage() }}</p>
     </div>
 
     <div class="product-details">
-      <h1>{{ product.name }}</h1>
-      <p class="category-tag">{{ product.category }}</p>
+      <h1>{{ product()?.name }}</h1>
+      <p class="category-tag">{{ product()?.category }}</p>
       
       <div class="rating">
         <span class="stars" [attr.aria-label]="ratingValue !== null ? ('Rated ' + ratingValue + ' out of 5') : 'Not yet rated'">{{ ratingStars }}</span>
@@ -74,7 +75,7 @@
         </ng-template>
       </div>
 
-      <p class="description">{{ product.description }}</p>
+      <p class="description">{{ product()?.description }}</p>
 
       <div class="price-section">
         <span class="price">{{ displayPrice | price }}</span>
@@ -86,8 +87,8 @@
       <div class="size-section" *ngIf="availableSizes.length > 0">
         <div class="size-header">
           <label>Size:</label>
-          <span class="selected-size" *ngIf="selectedSize">{{ selectedSize }}</span>
-          <span class="selected-size size-required" *ngIf="!selectedSize">Please select a size</span>
+          <span class="selected-size" *ngIf="selectedSize()">{{ selectedSize() }}</span>
+          <span class="selected-size size-required" *ngIf="!selectedSize()">Please select a size</span>
         </div>
         <div class="size-options" role="radiogroup" aria-label="Choose a size">
           <button
@@ -95,8 +96,8 @@
             type="button"
             class="size-btn"
             role="radio"
-            [attr.aria-checked]="selectedSize === size"
-            [class.active]="selectedSize === size"
+            [attr.aria-checked]="selectedSize() === size"
+            [class.active]="selectedSize() === size"
             (click)="selectSize(size)">
             {{ size }}
           </button>
@@ -107,7 +108,7 @@
         <label>Quantity:</label>
         <div class="quantity-control">
           <button (click)="decrementQuantity()" class="qty-btn">−</button>
-          <input type="number" [value]="quantity" readonly class="qty-input">
+          <input type="number" [value]="quantity()" readonly class="qty-input">
           <button (click)="incrementQuantity()" class="qty-btn">+</button>
         </div>
       </div>
@@ -118,14 +119,14 @@
           <h3>Augmented reality preview</h3>
         </div>
 
-        <p class="arkit-description" *ngIf="product.arPreviewAvailable; else arComingSoon">
+        <p class="arkit-description" *ngIf="product()?.arPreviewAvailable; else arComingSoon">
           Preview this product in AR on supported iOS devices when ARKit support is available.
         </p>
 
         <a
-          *ngIf="product.arPreviewAvailable && product.arModelUrl"
+          *ngIf="product()?.arPreviewAvailable && product()?.arModelUrl"
           class="btn-arkit"
-          [href]="product.arModelUrl"
+          [href]="product()?.arModelUrl"
           rel="ar"
           target="_blank"
         >
@@ -157,9 +158,9 @@
       <div class="product-details-info">
         <h3>Product details</h3>
         <ul>
-          <li><strong>Category:</strong> {{ product.category }}</li>
-          <li *ngIf="product.tags.length > 0"><strong>Tags:</strong> {{ product.tags.join(', ') }}</li>
-          <li><strong>Currency:</strong> {{ product.currency }}</li>
+          <li><strong>Category:</strong> {{ product()?.category }}</li>
+          <li *ngIf="(product()?.tags?.length ?? 0) > 0"><strong>Tags:</strong> {{ product()?.tags?.join(', ') }}</li>
+          <li><strong>Currency:</strong> {{ product()?.currency }}</li>
           <li *ngIf="availableSizes.length > 0"><strong>Available sizes:</strong> {{ availableSizes.join(', ') }}</li>
           <li>Seasonal design with premium craftsmanship.</li>
           <li>Lightweight, breathable materials for day-long comfort.</li>
@@ -170,27 +171,27 @@
     </div>
   </div>
 
-  <section class="related-products" *ngIf="relatedProducts.length > 0">
+  <section class="related-products" *ngIf="relatedProducts().length > 0">
     <h2>More styles you’ll love</h2>
     <div class="related-grid">
       <a 
-        *ngFor="let product of relatedProducts; trackBy: trackByProductId" 
-        [routerLink]="['/product', product.id]"
+        *ngFor="let related of relatedProducts(); trackBy: trackByProductId" 
+        [routerLink]="['/product', related.id]"
         class="related-card">
-        <img [src]="primaryImage(product)" [alt]="product.name" appImageFallback>
-        <h4>{{ product.name }}</h4>
-        <p class="price">{{ product.basePrice | price }}</p>
+        <img [src]="primaryImage(related)" [alt]="related.name" appImageFallback>
+        <h4>{{ related.name }}</h4>
+        <p class="price">{{ related.basePrice | price }}</p>
       </a>
     </div>
   </section>
 </div>
 
-<div *ngIf="!isLoading && loadError" class="not-found" role="alert">
-  <p>{{ loadError }}</p>
+<div *ngIf="!isLoading() && loadError()" class="not-found" role="alert">
+  <p>{{ loadError() }}</p>
   <a routerLink="/products" class="back-link">Back to Shop</a>
 </div>
 
-<div *ngIf="!isLoading && !loadError && !product" class="not-found">
+<div *ngIf="!isLoading() && !loadError() && !product()" class="not-found">
   <p>Product not found</p>
   <a routerLink="/products" class="back-link">Back to Shop</a>
 </div>
