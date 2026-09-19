@@ -1,16 +1,18 @@
-import { Component, effect, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PricePipe } from '../../pipes/price.pipe';
 import { ImageFallbackDirective } from '../../directives/image-fallback.directive';
 import { ProductService, Product, primaryProductImage } from '../../services/product.service';
 import { CartService } from '../../services/cart.service';
 import { WishlistService } from '../../services/wishlist.service';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-product-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, PricePipe, ImageFallbackDirective],
+  imports: [CommonModule, FormsModule, RouterLink, PricePipe, ImageFallbackDirective],
   templateUrl: './product-detail.component.html',
   styleUrl: './product-detail.component.css'
 })
@@ -19,43 +21,41 @@ export class ProductDetailComponent implements OnInit {
   private productService = inject(ProductService);
   private cartService = inject(CartService);
   private wishlistService = inject(WishlistService);
+  private readonly toast = inject(ToastService);
 
   product: Product | undefined;
   relatedProducts: Product[] = [];
   quantity: number = 1;
   selectedImageIndex = 0;
-  private productId: string | null = null;
-
-  constructor() {
-    effect(async () => {
-      if (this.productId !== null) {
-        // Ensure products are loaded before accessing
-        await this.productService.ensureLoaded();
-        
-        const products = this.productService.getProducts();
-        if (products().length > 0) {
-          const product = this.productService.getProductById(this.productId);
-          if (product) {
-            this.product = product;
-            this.selectedImageIndex = 0;
-            this.relatedProducts = this.productService
-              .getProductsByCategory(product.category)
-              .filter(p => p.id !== product.id)
-              .slice(0, 3);
-          } else {
-            this.product = undefined;
-            this.selectedImageIndex = 0;
-            this.relatedProducts = [];
-          }
-        }
-      }
-    });
-  }
+  isUploading = false;
+  uploadMessage = '';
 
   ngOnInit() {
     this.route.params.subscribe(params => {
-      this.productId = params['id'];
+      void this.loadProduct(params['id'] ?? null);
     });
+  }
+
+  private async loadProduct(productId: string | null): Promise<void> {
+    this.product = undefined;
+    this.relatedProducts = [];
+    this.selectedImageIndex = 0;
+
+    if (productId === null) {
+      return;
+    }
+
+    await this.productService.ensureLoaded();
+    const product = this.productService.getProductById(productId);
+    if (!product) {
+      return;
+    }
+
+    this.product = product;
+    this.relatedProducts = this.productService
+      .getProductsByCategory(product.category)
+      .filter(relatedProduct => relatedProduct.id !== product.id)
+      .slice(0, 3);
   }
 
   incrementQuantity() {
@@ -108,7 +108,7 @@ export class ProductDetailComponent implements OnInit {
       return;
     }
     this.cartService.addToCart(this.product, this.quantity);
-    alert(`${this.quantity} ${this.product.name} item(s) added to cart.`);
+    this.toast.success(`${this.quantity} ${this.product.name} item(s) added to cart.`);
   }
 
   addToWishlist() {
@@ -137,7 +137,7 @@ export class ProductDetailComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading wishlists:', error);
-        alert('Unable to access wishlists. Please try again.');
+        this.toast.error('Unable to access wishlists. Please try again.');
       }
     });
   }
@@ -153,17 +153,69 @@ export class ProductDetailComponent implements OnInit {
     ).subscribe({
       next: (response) => {
         if (response.success) {
-          alert('Product added to wishlist!');
+          this.toast.success('Product added to wishlist!');
         } else {
-          alert('Failed to add product to wishlist.');
+          this.toast.error('Failed to add product to wishlist.');
         }
       },
       error: (error) => {
         console.error('Error adding to wishlist:', error);
-        alert('Failed to add product to wishlist.');
+        this.toast.error('Failed to add product to wishlist.');
       }
     });
   }
 
   // image fallback handled by ImageFallbackDirective
+
+  /** Add an image URL to the product gallery */
+  async addImageToGallery(imageUrl: string): Promise<void> {
+    if (!this.product || !this.product.id) {
+      this.toast.error('Cannot add image: product not loaded.');
+      return;
+    }
+
+    if (!imageUrl || !imageUrl.trim()) {
+      this.toast.error('Please enter a valid image URL.');
+      return;
+    }
+
+    this.isUploading = true;
+    this.uploadMessage = '';
+
+    try {
+      await this.productService.addProductImage(this.product.id, imageUrl.trim());
+      this.toast.success('Image added to gallery!');
+      // Refresh product data
+      const refreshed = this.productService.getProductById(this.product.id);
+      if (refreshed) {
+        this.product = refreshed;
+      }
+    } catch (error) {
+      console.error('Error adding image:', error);
+      this.toast.error('Failed to add image. Please try again.');
+    } finally {
+      this.isUploading = false;
+    }
+  }
+
+  /** Remove an image at the given index */
+  async removeImageFromGallery(index: number): Promise<void> {
+    if (!this.product || !this.product.id) {
+      this.toast.error('Cannot remove image: product not loaded.');
+      return;
+    }
+
+    try {
+      await this.productService.removeProductImage(this.product.id, index);
+      this.toast.success('Image removed from gallery.');
+      // Refresh product data
+      const refreshed = this.productService.getProductById(this.product.id);
+      if (refreshed) {
+        this.product = refreshed;
+      }
+    } catch (error) {
+      console.error('Error removing image:', error);
+      this.toast.error('Failed to remove image. Please try again.');
+    }
+  }
 }

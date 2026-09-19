@@ -247,11 +247,9 @@
   transform: translateY(-1px);
 }
 
-.no-products {
+.no-products-wrapper {
   text-align: center;
   padding: 64px 20px;
-  color: var(--text-light);
-  font-size: 1.05rem;
 }
 
 /* Dark header band on the shop page */

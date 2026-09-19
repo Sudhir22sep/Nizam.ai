@@ -8,21 +8,23 @@
   <div class="filters" role="group" aria-label="Filter products by category">
     <button
       class="filter-btn"
-      [class.active]="selectedCategory() === ''"
+      [class.active]="selectedCategory === ''"
       (click)="resetFilter()">
       All
     </button>
-    <button
-      *ngFor="let category of categories()"
-      class="filter-btn"
-      [class.active]="selectedCategory() === category"
-      (click)="filterByCategory(category)">
-      {{ category }}
-    </button>
+    @for (category of categories(); track category) {
+      <button
+        class="filter-btn"
+        [class.active]="selectedCategory === category"
+        (click)="filterByCategory(category)">
+        {{ category }}
+      </button>
+    }
   </div>
 
   <div class="products-grid">
-    <div *ngFor="let product of filteredProducts(); trackBy: trackByProductId" class="product-card">
+    @for (product of filteredProducts(); track product.id) {
+    <div class="product-card">
       <div class="product-media">
         <a [routerLink]="[product.id]" class="product-image" [attr.aria-label]="'View ' + product.name">
           <img [src]="primaryImage(product)" [alt]="product.name" appImageFallback loading="lazy">
@@ -44,9 +46,18 @@
         </div>
       </div>
     </div>
+    }
   </div>
 
-  <div *ngIf="products.length === 0" class="no-products">
-    <p>No products found in this category.</p>
+  @if (filteredProducts().length === 0) {
+  <div class="no-products-wrapper">
+    <app-empty-state
+      variant="no-products"
+      title="No products found"
+      body="Try adjusting your filters or browse a different category."
+      actionLabel="Reset filters"
+      [actionCallback]="resetFilter"
+    ></app-empty-state>
   </div>
+  }
 </div>

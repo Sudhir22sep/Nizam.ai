@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" fill="none" aria-hidden="true">
+  <!-- Open shopping bag -->
+  <path d="M40 58 L30 172 L210 172 L200 58 Z"
+        stroke="#B08D57" stroke-width="2.5" stroke-linejoin="round"/>
+  <!-- Bag opening / fold -->
+  <path d="M40 58 L120 78 L200 58"
+        stroke="#B08D57" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Handle -->
+  <path d="M90 58 Q120 28 150 58"
+        stroke="#96754A" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+  <!-- Empty state "0" badge -->
+  <circle cx="120" cy="122" r="26"
+          stroke="#1E2A38" stroke-width="2" fill="rgba(241,238,232,0.6)"/>
+  <text x="120" y="128" text-anchor="middle"
+        font-family="Inter, -apple-system, sans-serif" font-size="32" font-weight="700"
+        fill="#1E2A38">0</text>
+</svg>

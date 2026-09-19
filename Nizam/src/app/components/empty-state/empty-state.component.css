@@ -1,0 +1,131 @@
+/* ============================================================
+   Empty State Component — Amma Wears Design System
+   ============================================================ */
+
+:root {
+  /* Matches global palette */
+  --empty-icon-fill: rgba(241, 238, 232, 0.45);
+  --empty-accent: #B08D57;
+  --empty-accent-strong: #96754A;
+  --empty-ink: #1E2A38;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 64px 24px;
+  background: var(--surface, #FFFFFF);
+  border: 1px solid var(--border-strong, #D8D2C6);
+  border-radius: 24px;
+  box-shadow: var(--shadow-card, 0 1px 2px rgba(30,42,56,0.05), 0 10px 30px rgba(30,42,56,0.07));
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.empty-state__visual {
+  width: 120px;
+  height: 100px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-state__icon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.empty-state__title {
+  margin: 0 0 8px;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--empty-ink);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.empty-state__body {
+  margin: 0 0 24px;
+  color: var(--text-light, #5C6B73);
+  font-size: 0.95rem;
+  line-height: 1.65;
+  max-width: 320px;
+}
+
+.empty-state__action {
+  margin-top: 4px;
+}
+
+.empty-state__btn {
+  background: var(--empty-accent);
+  color: #fff;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 4px 14px rgba(176,141,87,0.3);
+}
+
+.empty-state__btn:hover {
+  background: var(--empty-accent-strong);
+  transform: translateY(-2px);
+}
+
+/* ---- Variants ---- */
+
+.empty-state--cart {
+  /* Override defaults for cart variant if needed */
+}
+
+.empty-state--wishlist {
+  border-style: dashed;
+  border-color: var(--empty-accent);
+  background: rgba(176,141,87,0.03);
+}
+
+.empty-state--no-products {
+  border-style: solid;
+}
+
+.empty-state--no-reviews {
+  border-style: dashed;
+  border-color: var(--border-color);
+  background: rgba(176,141,87,0.02);
+}
+
+.empty-state--out-of-stock {
+  border-style: dashed;
+  border-color: #e5484d;
+  background: rgba(229,72,77,0.03);
+}
+
+/* ---- Responsive ---- */
+
+@media (max-width: 640px) {
+  .empty-state {
+    padding: 48px 18px;
+    margin-left: 18px;
+    margin-right: 18px;
+    max-width: none;
+  }
+  .empty-state__visual {
+    width: 96px;
+    height: 80px;
+  }
+  .empty-state__title {
+    font-size: 1.2rem;
+  }
+  .empty-state__body {
+    font-size: 0.9rem;
+  }
+}

@@ -142,19 +142,6 @@
   background: rgba(229, 72, 77, 0.16);
 }
 
-.empty-state {
-  text-align: center;
-  padding: 64px 24px;
-  background: var(--surface);
-  border: 1px dashed var(--border-strong);
-  border-radius: 24px;
-}
-
-.empty-state p {
-  color: var(--text-light);
-  margin-bottom: 16px;
-}
-
 .loading-indicator {
   text-align: center;
   padding: 48px;

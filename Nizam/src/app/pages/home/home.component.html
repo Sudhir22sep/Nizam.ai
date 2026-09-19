@@ -3,47 +3,24 @@
     <p><span class="promo-pill">New</span> Winter edit live — 15% off with free shipping on orders over ₹2999 · COD available</p>
   </div>
 
-  <section class="hero">
-    <div class="hero-glow hero-glow-one"></div>
-    <div class="hero-glow hero-glow-two"></div>
-    <div class="hero-inner">
-      <div class="hero-copy">
-        <span class="eyebrow">Limited drop</span>
-        <h1>Everyday luxury for <em>modern wardrobes</em></h1>
-        <p>Discover premium apparel, effortless layering pieces, and curated essentials designed for style, comfort, and confidence.</p>
-
-        <div class="hero-actions">
-          <a routerLink="/products" class="cta-button">Shop the collection</a>
-          <a routerLink="/contact" class="hero-ghost-link">Talk to a style advisor</a>
-        </div>
-
-        <div class="hero-highlights">
-          <div>
-            <strong>Fast delivery</strong>
-            <span>Across MENA &amp; India</span>
-          </div>
-          <div>
-            <strong>Easy returns</strong>
-            <span>7-day hassle-free policy</span>
-          </div>
-          <div>
-            <strong>COD available</strong>
-            <span>Pay on delivery, worry free</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="hero-visual">
-        <div class="hero-card">
-          <img src="/images/products/hero.jpg" alt="Fashion collection imagery" appImageFallback>
-        </div>
-        <div class="hero-card-chip">
-          <strong>New season</strong>
-          <span>Premium fabrics, refined fits</span>
-        </div>
-      </div>
-    </div>
-  </section>
+  <app-hero-banner
+    imageUrl="/images/products/hero.jpg"
+    imageAlt="Fashion collection imagery"
+    eyebrow="Limited drop"
+    headline="Everyday luxury for modern wardrobes"
+    subtitle="Discover premium apparel, effortless layering pieces, and curated essentials designed for style, comfort, and confidence."
+    ctaPrimary="Shop the collection"
+    [ctaPrimaryUrl]="'/products'"
+    ctaSecondary="Talk to a style advisor"
+    [ctaSecondaryUrl]="'/contact'"
+    [heroHighlights]="[
+      { label: 'Fast delivery', sub: 'Across MENA & India' },
+      { label: 'Easy returns',  sub: '7-day hassle-free policy' },
+      { label: 'COD available', sub: 'Pay on delivery, worry free' }
+    ]"
+    chipLabel="New season"
+    chipSub="Premium fabrics, refined fits"
+  ></app-hero-banner>
 
   <section class="featured-categories">
     <div class="section-head">

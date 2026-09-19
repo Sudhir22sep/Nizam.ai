@@ -46,11 +46,12 @@
   </div>
 
   <ng-template #emptyCart>
-    <div class="empty-cart">
-      <span class="empty-icon">🛍️</span>
-      <h2>Your cart is empty</h2>
-      <p>Browse our shop and add an item to get started.</p>
-      <a routerLink="/products" class="btn-primary">Continue shopping</a>
-    </div>
+    <app-empty-state
+      variant="cart"
+      title="Your cart is empty"
+      body="Browse our shop and add an item to get started."
+      actionLabel="Continue shopping"
+      [actionCallback]="goToProducts"
+    ></app-empty-state>
   </ng-template>
 </div>

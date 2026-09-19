@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { PricePipe } from '../../pipes/price.pipe';
+import { ToastService } from '../../services/toast.service';
 import { CurrencyService } from '../../services/currency.service';
 import { CartService } from '../../services/cart.service';
 import { environment } from '../../../environments/environment';
@@ -22,7 +23,7 @@ export class CheckoutComponent {
   orderConfirmed = false;
   confirmationReference = '';
 
-  constructor(public cartService: CartService, private currency: CurrencyService) {}
+  constructor(public cartService: CartService, private currency: CurrencyService, private toast: ToastService) {}
 
   get items() {
     return this.cartService.getItems();
@@ -34,12 +35,12 @@ export class CheckoutComponent {
 
   async submitOrder() {
     if (!this.name || !this.email || !this.address) {
-      alert('Please complete name, email and shipping address.');
+      this.toast.warning('Please complete name, email and shipping address.');
       return;
     }
 
     if (this.cartService.getItemCount() === 0) {
-      alert('Your cart is empty. Add items before checking out.');
+      this.toast.warning('Your cart is empty. Add items before checking out.');
       return;
     }
 
@@ -79,7 +80,7 @@ export class CheckoutComponent {
 
       if (!response.ok || !result.success) {
         console.error('Order creation failed:', result);
-        alert(result.message || 'Unable to complete order. Please try again.');
+        this.toast.error(result.message || 'Unable to complete order. Please try again.');
         return;
       }
 
@@ -92,14 +93,14 @@ export class CheckoutComponent {
 
       // Razorpay payment
       if (!result.orderId || !result.keyId) {
-        alert(result.message || 'Unable to start Razorpay payment.');
+        this.toast.error(result.message || 'Unable to start Razorpay payment.');
         return;
       }
 
       await this.openRazorpayCheckout(result);
     } catch (error) {
       console.error('Create payment session failed', error);
-      alert('Unable to complete checkout at this time. Please try again later.');
+      this.toast.error('Unable to complete checkout at this time. Please try again later.');
     }
   }
 
@@ -107,7 +108,7 @@ export class CheckoutComponent {
     try {
       const RazorpayConstructor = (window as any).Razorpay;
       if (!RazorpayConstructor) {
-        alert('Razorpay SDK is not loaded. Please refresh the page and try again.');
+        this.toast.error('Razorpay SDK is not loaded. Please refresh the page and try again.');
         return;
       }
 
@@ -141,7 +142,7 @@ export class CheckoutComponent {
         modal: {
           ondismiss: () => {
             console.log('Payment modal dismissed by user');
-            alert('Payment popup was closed. You can retry the payment from checkout.');
+            this.toast.info('Payment popup was closed. You can retry the payment from checkout.');
           },
         },
         theme: {
@@ -153,7 +154,7 @@ export class CheckoutComponent {
       rzp.open();
     } catch (error) {
       console.error('Error opening Razorpay checkout:', error);
-      alert('Unable to open payment window. Please try again or contact support.');
+      this.toast.error('Unable to open payment window. Please try again or contact support.');
     }
   }
 
@@ -186,17 +187,17 @@ export class CheckoutComponent {
 
       if (!res.ok || !data.success) {
         console.error('Payment confirmation failed:', data);
-        alert(data.message || 'Unable to confirm payment. Please contact support if the issue persists.');
+        this.toast.error(data.message || 'Unable to confirm payment. Please contact support if the issue persists.');
         return;
       }
 
       this.orderConfirmed = true;
       this.confirmationReference = data.orderReference || '';
       this.cartService.clearCart();
-      alert(`Payment confirmed successfully! Order reference: ${this.confirmationReference}`);
+      this.toast.success(`Payment confirmed successfully! Order reference: ${this.confirmationReference}`);
     } catch (error) {
       console.error('Razorpay confirmation failed', error);
-      alert('Unable to confirm payment after Razorpay checkout. Please contact support.');
+      this.toast.error('Unable to confirm payment after Razorpay checkout. Please contact support.');
     }
   }
 }
