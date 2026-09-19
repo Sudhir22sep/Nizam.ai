@@ -7,7 +7,7 @@
     "module": "ES2020",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "moduleResolution": "bundler",
+    "moduleResolution": "bundler"
   },
   "files": [
     "src/main.ts"

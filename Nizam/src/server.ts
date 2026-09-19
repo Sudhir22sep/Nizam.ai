@@ -2490,7 +2490,7 @@ app.get('/api/products/', async (req, res) => {
       }
     }
 
-    res.json({ success: true, products, total: totalCount, page: Number(page), limit: Number(limit) });
+    return res.json({ success: true, products, total: totalCount, page: Number(page), limit: Number(limit) });
   } catch (error) {
     console.error("Get products error:", error);
     // MongoDB unavailable: fall back to the bundled catalog so shoppers can still
@@ -2506,7 +2506,7 @@ app.get('/api/products/', async (req, res) => {
         source: 'bundled',
       });
     }
-    res.status(500).json({ success: false, message: "Failed to fetch products" });
+    return res.status(500).json({ success: false, message: "Failed to fetch products" });
   }
 });
 

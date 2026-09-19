@@ -8,14 +8,14 @@
   <div class="filters" role="group" aria-label="Filter products by category">
     <button
       class="filter-btn"
-      [class.active]="selectedCategory === ''"
+      [class.active]="selectedCategory() === ''"
       (click)="resetFilter()">
       All
     </button>
     @for (category of categories(); track category) {
       <button
         class="filter-btn"
-        [class.active]="selectedCategory === category"
+        [class.active]="selectedCategory() === category"
         (click)="filterByCategory(category)">
         {{ category }}
       </button>
