@@ -4,6 +4,7 @@ import { RouterLink, Router } from '@angular/router';
 import { PricePipe } from '../../pipes/price.pipe';
 import { ImageFallbackDirective } from '../../directives/image-fallback.directive';
 import { CartService } from '../../services/cart.service';
+import { CartItem } from '../../services/cart.service';
 import { primaryProductImage } from '../../services/product.service';
 import { EmptyStateComponent } from '../../components/empty-state/empty-state.component';
 
@@ -28,8 +29,8 @@ export class CartComponent {
     return this.cartService.getTotalAmount();
   }
 
-  removeItem(productId: string) {
-    this.cartService.removeFromCart(productId);
+  removeItem(productId: string, size?: string) {
+    this.cartService.removeFromCart(productId, size);
   }
 
   goToProducts(): void {
@@ -40,7 +41,7 @@ export class CartComponent {
     return primaryProductImage(product?.images, product?.image, product?.name);
   }
 
-  trackByCartItem(_: number, item: { product: { id: string } }) {
-    return item.product.id;
+  trackByCartItem(_: number, item: CartItem) {
+    return `${item.product.id}::${item.size ?? ''}`;
   }
 }

@@ -2,7 +2,7 @@ import { Component, OnInit, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { ProductService, Product } from '../../services/product.service';
+import { ProductService, Product, primaryProductImage } from '../../services/product.service';
 import { CartService } from '../../services/cart.service';
 import { WishlistService } from '../../services/wishlist.service';
 import { ToastService } from '../../services/toast.service';
@@ -81,6 +81,6 @@ export class ProductsComponent implements OnInit {
   }
 
   primaryImage(product: Product): string {
-    return product.images[0] ?? '';
+    return primaryProductImage(product.images, undefined, product.name);
   }
 }

@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PricePipe } from '../../pipes/price.pipe';
 import { ImageFallbackDirective } from '../../directives/image-fallback.directive';
-import { ProductService, Product, primaryProductImage } from '../../services/product.service';
+import { ProductService, Product, primaryProductImage, productSizes, variantPrice } from '../../services/product.service';
 import { CartService } from '../../services/cart.service';
 import { WishlistService } from '../../services/wishlist.service';
 import { ToastService } from '../../services/toast.service';
@@ -27,7 +27,11 @@ export class ProductDetailComponent implements OnInit {
   relatedProducts: Product[] = [];
   quantity: number = 1;
   selectedImageIndex = 0;
+  selectedSize: string | null = null;
+  isLoading = true;
+  loadError: string | null = null;
   isUploading = false;
+  uploadImageUrl = '';
   uploadMessage = '';
 
   ngOnInit() {
@@ -40,22 +44,42 @@ export class ProductDetailComponent implements OnInit {
     this.product = undefined;
     this.relatedProducts = [];
     this.selectedImageIndex = 0;
+    this.selectedSize = null;
+    this.quantity = 1;
+    this.uploadImageUrl = '';
+    this.uploadMessage = '';
+    this.isLoading = true;
+    this.loadError = null;
 
     if (productId === null) {
+      this.isLoading = false;
+      this.loadError = 'No product was selected.';
       return;
     }
 
-    await this.productService.ensureLoaded();
-    const product = this.productService.getProductById(productId);
-    if (!product) {
-      return;
-    }
+    try {
+      await this.productService.ensureLoaded();
+      const product =
+        this.productService.getProductById(productId) ??
+        (await this.productService.fetchProductById(productId));
+      if (!product) {
+        this.loadError = 'We could not find that product. It may have been removed.';
+        return;
+      }
 
-    this.product = product;
-    this.relatedProducts = this.productService
-      .getProductsByCategory(product.category)
-      .filter(relatedProduct => relatedProduct.id !== product.id)
-      .slice(0, 3);
+      this.product = product;
+      const sizes = this.availableSizes;
+      this.selectedSize = sizes.length === 1 ? sizes[0] : null;
+      this.relatedProducts = this.productService
+        .getProductsByCategory(product.category)
+        .filter(relatedProduct => relatedProduct.id !== product.id)
+        .slice(0, 3);
+    } catch (error) {
+      console.error('Failed to load product details:', error);
+      this.loadError = 'Product details are temporarily unavailable. Please try again.';
+    } finally {
+      this.isLoading = false;
+    }
   }
 
   incrementQuantity() {
@@ -70,6 +94,10 @@ export class ProductDetailComponent implements OnInit {
 
   trackByProductId(_: number, product: Product) {
     return product.id;
+  }
+
+  trackBySize(_: number, size: string) {
+    return size;
   }
 
   trackByImage(_: number, image: string) {
@@ -107,8 +135,18 @@ export class ProductDetailComponent implements OnInit {
     if (!this.product) {
       return;
     }
-    this.cartService.addToCart(this.product, this.quantity);
-    this.toast.success(`${this.quantity} ${this.product.name} item(s) added to cart.`);
+    if (this.availableSizes.length > 0 && !this.selectedSize) {
+      this.toast.warning('Please choose a size before adding this item to your cart.');
+      return;
+    }
+    this.cartService.addToCart(
+      this.product,
+      this.quantity,
+      this.selectedSize ?? undefined,
+      this.displayPrice
+    );
+    const sizeLabel = this.selectedSize ? ` in size ${this.selectedSize}` : '';
+    this.toast.success(`${this.quantity} ${this.product.name}${sizeLabel} item(s) added to cart.`);
   }
 
   addToWishlist() {
@@ -167,6 +205,72 @@ export class ProductDetailComponent implements OnInit {
 
   // image fallback handled by ImageFallbackDirective
 
+  /** Sizes available for the loaded product, including category defaults. */
+  get availableSizes(): string[] {
+    return productSizes(this.product);
+  }
+
+  /** Active unit price for the currently selected size/variant. */
+  get displayPrice(): number {
+    return variantPrice(this.product, this.selectedSize);
+  }
+
+  /** Compare-at price for the discount badge, when one is available. */
+  get compareAtPrice(): number | null {
+    const value = this.product?.originalPrice ?? null;
+    return typeof value === 'number' && Number.isFinite(value) && value > this.displayPrice
+      ? value
+      : null;
+  }
+
+  get discountPercent(): number | null {
+    if (this.compareAtPrice === null) {
+      return null;
+    }
+    return Math.round((1 - this.displayPrice / (this.compareAtPrice as number)) * 100);
+  }
+
+  get ratingValue(): number | null {
+    const rating = this.product?.rating ?? null;
+    return typeof rating === 'number' && Number.isFinite(rating)
+      ? Math.max(0, Math.min(5, rating))
+      : null;
+  }
+
+  get reviewCount(): number {
+    return this.product?.reviewCount ?? 0;
+  }
+
+  get ratingStars(): string {
+    if (this.ratingValue === null) {
+      return '★★★★★';
+    }
+    const full = Math.round(this.ratingValue);
+    return '★'.repeat(full).padEnd(5, '☆');
+  }
+
+  get stockLabel(): { text: string; inStock: boolean } {
+    const stock = this.product?.stock ?? null;
+    if (stock === null) {
+      return { text: '✓ In Stock', inStock: true };
+    }
+    if (stock <= 0) {
+      return { text: 'Out of stock', inStock: false };
+    }
+    if (stock <= 3) {
+      return { text: `Only ${stock} left in stock`, inStock: true };
+    }
+    return { text: '✓ In Stock', inStock: true };
+  }
+
+  get isOutOfStock(): boolean {
+    return !this.stockLabel.inStock;
+  }
+
+  selectSize(size: string): void {
+    this.selectedSize = size;
+  }
+
   /** Add an image URL to the product gallery */
   async addImageToGallery(imageUrl: string): Promise<void> {
     if (!this.product || !this.product.id) {
@@ -185,8 +289,9 @@ export class ProductDetailComponent implements OnInit {
     try {
       await this.productService.addProductImage(this.product.id, imageUrl.trim());
       this.toast.success('Image added to gallery!');
-      // Refresh product data
-      const refreshed = this.productService.getProductById(this.product.id);
+      this.uploadImageUrl = '';
+      // Refresh product data from the server so variant/image changes appear.
+      const refreshed = await this.productService.fetchProductById(this.product.id);
       if (refreshed) {
         this.product = refreshed;
       }
@@ -208,10 +313,11 @@ export class ProductDetailComponent implements OnInit {
     try {
       await this.productService.removeProductImage(this.product.id, index);
       this.toast.success('Image removed from gallery.');
-      // Refresh product data
-      const refreshed = this.productService.getProductById(this.product.id);
+      // Refresh product data from the server so the gallery updates reliably.
+      const refreshed = await this.productService.fetchProductById(this.product.id);
       if (refreshed) {
         this.product = refreshed;
+        this.selectedImageIndex = Math.min(this.selectedImageIndex, Math.max(0, this.galleryImages(refreshed).length - 1));
       }
     } catch (error) {
       console.error('Error removing image:', error);

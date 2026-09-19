@@ -6,7 +6,7 @@ import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import { resolve } from 'path';
 import { join } from 'path';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { writeResponseToNodeResponse } from '@angular/ssr/node';
 import { isMainModule } from '@angular/ssr/node';
 import { Db, MongoClient, ObjectId } from 'mongodb';
@@ -58,6 +58,65 @@ if (!process.env['NG_TRUST_PROXY_HEADERS']) {
 // Browser distribution folder for SSR
 // In production build, __dirname is dist/Nizam/server/, so browser is at ../browser
 const browserDistFolder = resolve(__dirname, '../browser');
+
+// ─── Owner-only product fields & bundled catalog ──────────────────────────────
+
+/**
+ * Owner-only product fields. They must never reach a shopper-facing response:
+ * every public catalog endpoint strips them and an admin-only endpoint serves
+ * the purchase link instead.
+ */
+const OWNER_ONLY_PRODUCT_FIELDS = ['buyUrl', 'supplier'] as const;
+
+/** Removes owner-only fields from a product document. */
+function toPublicProduct(product: Record<string, any>): Record<string, any> {
+  const clone: Record<string, any> = { ...product };
+  for (const field of OWNER_ONLY_PRODUCT_FIELDS) {
+    delete clone[field];
+  }
+  return clone;
+}
+
+/** Normalizes a catalog entry and strips owner-only fields in one step. */
+function toPublicCatalogProduct(product: any): Record<string, any> {
+  return toPublicProduct({
+    ...product,
+    basePrice: product?.basePrice ?? product?.price ?? 0,
+    currency: product?.currency ?? 'USD',
+    images: Array.isArray(product?.images) ? product.images : (product?.image ? [product.image] : []),
+    variants: product?.variants ?? [],
+    tags: product?.tags ?? [],
+    isActive: product?.isActive ?? true,
+    createdAt: product?.createdAt ? new Date(product.createdAt) : new Date(),
+    updatedAt: product?.updatedAt ? new Date(product.updatedAt) : new Date(),
+  });
+}
+
+/**
+ * The storefront ships a bundled catalog (public/assets/products.json) that also
+ * carries owner-only purchase links. It is used whenever MongoDB is unreachable
+ * so browsing, prices, sizes and owner tooling keep working.
+ */
+function loadBundledCatalog(): Record<string, any>[] {
+  const candidates = [
+    resolve(browserDistFolder, 'assets/products.json'),
+    resolve(process.cwd(), 'public/assets/products.json'),
+    resolve(__dirname, '../public/assets/products.json'),
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      if (!existsSync(candidate)) {
+        continue;
+      }
+      const parsed = JSON.parse(readFileSync(candidate, 'utf8'));
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.warn('Failed to read bundled catalog:', candidate, error instanceof Error ? error.message : error);
+    }
+  }
+  return [];
+}
 
 // Load Angular SSR manifests (only available in production build)
 async function loadAngularManifests(): Promise<void> {
@@ -319,6 +378,10 @@ interface ProductCreateDto {
   variants?: Array<{ id?: string; name?: string; price?: number }>;
   tags?: string[];
   isActive?: boolean;
+  /** Owner-only supplier checkout link; stripped from public responses. */
+  buyUrl?: string;
+  /** Owner-only supplier reference; stripped from public responses. */
+  supplier?: string;
 }
 
 interface WishlistItem {
@@ -351,6 +414,10 @@ interface ProductDocument {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  /** Owner-only supplier checkout link. Never returned by public endpoints. */
+  buyUrl?: string;
+  /** Owner-only supplier reference. Never returned by public endpoints. */
+  supplier?: string;
 }
 
 //const stripeSecret = process.env['environment'] === 'production' ? process.env['STRIPE_SECRET_KEY'] : process.env['STRIPE_TEST_SECRET_KEY'];
@@ -2410,21 +2477,35 @@ app.get('/api/products/', async (req, res) => {
       productsCollection.countDocuments(filter)
     ]);
 
-    const products = rawProducts.map(p => ({
-      ...p,
-      basePrice: p.basePrice ?? p.price ?? 0,
-      currency: p.currency ?? 'USD',
-      images: Array.isArray(p.images) ? p.images : (p.image ? [p.image] : []),
-      variants: p.variants ?? [],
-      tags: p.tags ?? [],
-      isActive: p.isActive ?? true,
-      createdAt: p.createdAt ? new Date(p.createdAt) : new Date(),
-      updatedAt: p.updatedAt ? new Date(p.updatedAt) : new Date(),
-    }));
+    let products = rawProducts.map(toPublicCatalogProduct);
+    let totalCount = total;
 
-    res.json({ success: true, products, total, page: Number(page), limit: Number(limit) });
+    if (products.length === 0) {
+      // MongoDB resolved but holds no products (for example an unseeded
+      // environment): serve the bundled catalog so the shop still works.
+      const bundled = loadBundledCatalog();
+      if (bundled.length > 0) {
+        products = bundled.map(toPublicCatalogProduct);
+        totalCount = bundled.length;
+      }
+    }
+
+    res.json({ success: true, products, total: totalCount, page: Number(page), limit: Number(limit) });
   } catch (error) {
     console.error("Get products error:", error);
+    // MongoDB unavailable: fall back to the bundled catalog so shoppers can still
+    // browse real products, prices and sizes. Owner-only fields stay stripped.
+    const bundled = loadBundledCatalog();
+    if (bundled.length > 0) {
+      return res.json({
+        success: true,
+        products: bundled.map(toPublicCatalogProduct),
+        total: bundled.length,
+        page: 1,
+        limit: bundled.length,
+        source: 'bundled',
+      });
+    }
     res.status(500).json({ success: false, message: "Failed to fetch products" });
   }
 });
@@ -2434,6 +2515,11 @@ app.get('/api/products/:id/', async (req: Request, res: Response) => {
     const { id } = req.params;
 
     if (!ObjectId.isValid(id)) {
+      // Bundled catalog ids (for example "0") are not Mongo ObjectIds.
+      const bundled = loadBundledCatalog().find(candidate => String(candidate.id) === id);
+      if (bundled) {
+        return res.json({ success: true, product: toPublicCatalogProduct(bundled), source: 'bundled' });
+      }
       return res.status(400).json({ success: false, message: "Invalid product id" });
     }
 
@@ -2444,7 +2530,8 @@ app.get('/api/products/:id/', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
     
-    return res.json({ success: true, product });
+    // Owner-only fields (buyUrl/supplier) never leave the server here.
+    return res.json({ success: true, product: toPublicProduct(product) });
   } catch (error) {
     console.error("Get product by ID error:", error);
     return res.status(500).json({ success: false, message: "Failed to fetch product" });
@@ -2454,7 +2541,7 @@ app.get('/api/products/:id/', async (req: Request, res: Response) => {
 app.post('/api/products/', async (req: Request & { body: ProductCreateDto }, res: Response) => {
   try {
     const productsCollection = await getProductsCollection();
-    const { name, description, basePrice, currency, category, images, variants, tags, isActive } = req.body;
+    const { name, description, basePrice, currency, category, images, variants, tags, isActive, buyUrl, supplier } = req.body;
     
     if (!name || !description || !basePrice || !currency || !category) {
       return res.status(400).json({ success: false, message: "Name, description, basePrice, currency, and category are required" });
@@ -2474,6 +2561,14 @@ app.post('/api/products/', async (req: Request & { body: ProductCreateDto }, res
       createdAt: new Date(),
       updatedAt: new Date()
     };
+
+    // Owner-only fields are persisted but never returned by public endpoints.
+    if (typeof buyUrl === 'string') {
+      product.buyUrl = buyUrl;
+    }
+    if (typeof supplier === 'string') {
+      product.supplier = supplier;
+    }
     
     const result = await productsCollection.insertOne(product);
     product._id = result.insertedId;
@@ -2488,7 +2583,7 @@ app.post('/api/products/', async (req: Request & { body: ProductCreateDto }, res
 app.put('/api/products/:id/', async (req: Request, res: Response) => {
   try {
     const productsCollection = await getProductsCollection();
-    const { name, description, basePrice, currency, category, images, variants, tags, isActive } = req.body;
+    const { name, description, basePrice, currency, category, images, variants, tags, isActive, buyUrl, supplier } = req.body;
     
     const updateData: any = {};
     
@@ -2501,6 +2596,9 @@ app.put('/api/products/:id/', async (req: Request, res: Response) => {
     if (variants !== undefined) updateData.variants = variants;
     if (tags !== undefined) updateData.tags = tags;
     if (isActive !== undefined) updateData.isActive = isActive;
+    // Owner-only fields (never returned by public endpoints).
+    if (buyUrl !== undefined) updateData.buyUrl = buyUrl;
+    if (supplier !== undefined) updateData.supplier = supplier;
     
     updateData.updatedAt = new Date();
     
@@ -2594,6 +2692,50 @@ app.delete('/api/products/:id/images/:index', async (req: Request, res: Response
   } catch (error) {
     console.error('Remove product image error:', error);
     return res.status(500).json({ success: false, message: 'Failed to remove image from product' });
+  }
+});
+
+/**
+ * Owner/backend-only purchase link for a product.
+ *
+ * `buyUrl` and `supplier` are stripped from every shopper-facing product
+ * response, so the purchase link is only reachable here, behind an
+ * authenticated admin token (or the development sandbox user).
+ */
+app.get('/api/admin/products/:id/purchase-link', authenticateJwt, async (req: Request & { user?: any }, res: Response) => {
+  try {
+    const isAdmin = req.user?.role === 'admin';
+    const isLocalDev = req.user?.isDev === true && process.env['NODE_ENV'] !== 'production';
+
+    if (!isAdmin && !isLocalDev) {
+      return res.status(403).json({ success: false, message: 'Admin access required' });
+    }
+
+    const { id } = req.params;
+    let product: Record<string, any> | null = null;
+
+    if (ObjectId.isValid(id)) {
+      const productsCollection = await getProductsCollection();
+      product = await productsCollection.findOne({ _id: new ObjectId(id) });
+    } else {
+      product = loadBundledCatalog().find(candidate => String(candidate.id) === id) ?? null;
+    }
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    return res.json({
+      success: true,
+      productId: product._id?.toString?.() ?? String(product.id ?? id),
+      name: product.name ?? null,
+      sku: product.sku ?? null,
+      supplier: product.supplier ?? null,
+      buyUrl: product.buyUrl ?? null,
+    });
+  } catch (error) {
+    console.error('Get product purchase link error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to load purchase link' });
   }
 });
 

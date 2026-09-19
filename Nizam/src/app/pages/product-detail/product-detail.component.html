@@ -1,4 +1,18 @@
-<div *ngIf="product" class="product-detail-container">
+<div *ngIf="isLoading" class="loading-state" role="status" aria-live="polite">
+  <div class="loading-card">
+    <div class="loading-line loading-line--title"></div>
+    <div class="loading-line"></div>
+    <div class="loading-line loading-line--short"></div>
+    <p>Loading product details…</p>
+  </div>
+</div>
+
+<div *ngIf="!isLoading && loadError" class="not-found" role="alert">
+  <p>{{ loadError }}</p>
+  <a routerLink="/products" class="back-link">Back to Shop</a>
+</div>
+
+<div *ngIf="!isLoading && product" class="product-detail-container">
   <a routerLink="/products" class="back-link">← Back to Shop</a>
 
   <div class="product-detail">
@@ -29,21 +43,23 @@
 
     <div class="image-upload-panel" *ngIf="product">
       <h4>Manage Images</h4>
+      <p class="upload-hint">Paste a public image URL or a root-relative app path such as <code>/images/products/my-image.jpg</code>.</p>
       <div class="upload-row">
         <input
           type="text"
           placeholder="/images/products/my-image.jpg or https://example.com/image.jpg"
-          [(ngModel)]="uploadMessage"
-          (keyup.enter)="addImageToGallery(uploadMessage)"
+          [(ngModel)]="uploadImageUrl"
+          (keyup.enter)="addImageToGallery(uploadImageUrl)"
           class="upload-input"
           [disabled]="isUploading">
         <button
-          (click)="addImageToGallery(uploadMessage)"
+          (click)="addImageToGallery(uploadImageUrl)"
           class="btn-upload-image"
-          [disabled]="isUploading || !uploadMessage?.trim()">
+          [disabled]="isUploading || !uploadImageUrl?.trim()">
           {{ isUploading ? 'Adding…' : '+ Add Image' }}
         </button>
       </div>
+      <p class="upload-message" *ngIf="uploadMessage" role="status">{{ uploadMessage }}</p>
     </div>
 
     <div class="product-details">
@@ -51,15 +67,40 @@
       <p class="category-tag">{{ product.category }}</p>
       
       <div class="rating">
-        <span class="stars">★★★★★</span>
-        <span class="review-count">(254 reviews)</span>
+        <span class="stars" [attr.aria-label]="ratingValue !== null ? ('Rated ' + ratingValue + ' out of 5') : 'Not yet rated'">{{ ratingStars }}</span>
+        <span class="review-count" *ngIf="reviewCount > 0; else noReviews">({{ reviewCount }} review{{ reviewCount === 1 ? '' : 's' }})</span>
+        <ng-template #noReviews>
+          <span class="review-count">No reviews yet</span>
+        </ng-template>
       </div>
 
       <p class="description">{{ product.description }}</p>
 
       <div class="price-section">
-        <span class="price">{{ product.basePrice | price }}</span>
-        <span class="availability">✓ In Stock</span>
+        <span class="price">{{ displayPrice | price }}</span>
+        <span class="compare-price" *ngIf="compareAtPrice !== null">{{ compareAtPrice | price }}</span>
+        <span class="discount-badge" *ngIf="discountPercent !== null">−{{ discountPercent }}%</span>
+        <span class="availability" [class.out-of-stock]="isOutOfStock">{{ stockLabel.text }}</span>
+      </div>
+
+      <div class="size-section" *ngIf="availableSizes.length > 0">
+        <div class="size-header">
+          <label>Size:</label>
+          <span class="selected-size" *ngIf="selectedSize">{{ selectedSize }}</span>
+          <span class="selected-size size-required" *ngIf="!selectedSize">Please select a size</span>
+        </div>
+        <div class="size-options" role="radiogroup" aria-label="Choose a size">
+          <button
+            *ngFor="let size of availableSizes; trackBy: trackBySize"
+            type="button"
+            class="size-btn"
+            role="radio"
+            [attr.aria-checked]="selectedSize === size"
+            [class.active]="selectedSize === size"
+            (click)="selectSize(size)">
+            {{ size }}
+          </button>
+        </div>
       </div>
 
       <div class="quantity-section">
@@ -102,7 +143,7 @@
       </div>
 
       <div class="action-buttons">
-        <button (click)="addToCart()" class="btn-add-cart">
+        <button (click)="addToCart()" class="btn-add-cart" [disabled]="isOutOfStock">
           🛒 Add to Cart
         </button>
         <button routerLink="/checkout" class="btn-checkout">
@@ -116,6 +157,10 @@
       <div class="product-details-info">
         <h3>Product details</h3>
         <ul>
+          <li><strong>Category:</strong> {{ product.category }}</li>
+          <li *ngIf="product.tags.length > 0"><strong>Tags:</strong> {{ product.tags.join(', ') }}</li>
+          <li><strong>Currency:</strong> {{ product.currency }}</li>
+          <li *ngIf="availableSizes.length > 0"><strong>Available sizes:</strong> {{ availableSizes.join(', ') }}</li>
           <li>Seasonal design with premium craftsmanship.</li>
           <li>Lightweight, breathable materials for day-long comfort.</li>
           <li>Structured fit that works for both casual and formal styling.</li>
@@ -140,7 +185,12 @@
   </section>
 </div>
 
-<div *ngIf="!product" class="not-found">
+<div *ngIf="!isLoading && loadError" class="not-found" role="alert">
+  <p>{{ loadError }}</p>
+  <a routerLink="/products" class="back-link">Back to Shop</a>
+</div>
+
+<div *ngIf="!isLoading && !loadError && !product" class="not-found">
   <p>Product not found</p>
   <a routerLink="/products" class="back-link">Back to Shop</a>
 </div>

@@ -128,6 +128,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
+  flex-wrap: wrap;
   padding: 18px 22px;
   background: var(--surface);
   border: 1px solid var(--border-color);
@@ -145,6 +146,134 @@
   color: #2b7d64;
   font-weight: 700;
   font-size: 0.92rem;
+}
+
+.availability.out-of-stock {
+  color: #b3261e;
+}
+
+.compare-price {
+  color: var(--text-faint);
+  text-decoration: line-through;
+  font-weight: 600;
+  font-size: 1.02rem;
+}
+
+.discount-badge {
+  background: #2b7d64;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.size-section {
+  margin-bottom: 24px;
+}
+
+.size-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-weight: 700;
+  color: var(--brand-dark);
+}
+
+.selected-size {
+  font-weight: 600;
+  color: var(--text-light);
+}
+
+.selected-size.size-required {
+  color: #b3261e;
+}
+
+.size-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.size-btn {
+  min-width: 52px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--brand-dark);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+
+.size-btn:hover {
+  transform: translateY(-1px);
+}
+
+.size-btn.active {
+  border-color: var(--brand-primary);
+  background: var(--brand-dark);
+  color: #fff;
+}
+
+.loading-state {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 96px 24px;
+}
+
+.loading-card {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  padding: 32px;
+  color: var(--text-light);
+}
+
+.loading-line {
+  height: 14px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #eee 25%, #f7f7f7 50%, #eee 75%);
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.4s infinite;
+  margin-bottom: 12px;
+}
+
+.loading-line--title {
+  height: 22px;
+  width: 42%;
+}
+
+.loading-line--short {
+  width: 30%;
+}
+
+.upload-hint {
+  color: var(--text-light);
+  font-size: 0.85rem;
+  margin: 0 0 10px;
+}
+
+.upload-hint code {
+  font-family: inherit;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+
+.upload-message {
+  color: var(--text-light);
+  font-size: 0.85rem;
+  margin: 10px 0 0;
+}
+
+@keyframes loading-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .quantity-section {

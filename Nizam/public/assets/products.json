@@ -4,140 +4,797 @@
     "name": "Premium Messi Jersey",
     "description": "A high-quality replica of the iconic Messi jersey, crafted with breathable fabric for comfort and performance.",
     "price": 15.75,
-    "image": "images/products/premium-messi-jersey.jpeg",
-    "category": "Men"
+    "originalPrice": 22.5,
+    "category": "Men",
+    "image": "premium-messi-jersey.jpeg",
+    "images": [
+      "premium-messi-jersey.jpeg",
+      "Tshirt.jpeg",
+      "Prium-sudhir.jpeg"
+    ],
+    "variants": [
+      {
+        "name": "S",
+        "sku": "AMW-MEN-0001-S",
+        "price": 15.75
+      },
+      {
+        "name": "M",
+        "sku": "AMW-MEN-0001-M",
+        "price": 15.75
+      },
+      {
+        "name": "L",
+        "sku": "AMW-MEN-0001-L",
+        "price": 15.75
+      },
+      {
+        "name": "XL",
+        "sku": "AMW-MEN-0001-XL",
+        "price": 15.75
+      },
+      {
+        "name": "XXL",
+        "sku": "AMW-MEN-0001-XXL",
+        "price": 15.75
+      }
+    ],
+    "tags": [
+      "men",
+      "apparel"
+    ],
+    "rating": 4.6,
+    "reviewCount": 128,
+    "stock": 24,
+    "sku": "AMW-MEN-0001",
+    "supplier": "AmmaWears Sourcing Desk",
+    "buyUrl": "https://supplier.ammawears.com/purchase/AMW-MEN-0001"
   },
   {
     "id": 1,
     "name": "Satin Slip Dress",
     "description": "A sleek silhouette in satin with a delicate cowl neckline, perfect for evening outings and warm-weather style.",
     "price": 84.99,
+    "originalPrice": 109.99,
+    "category": "Women",
+    "image": "slip-dress.jpeg",
     "images": [
-      "images/products/slip-dress.jpeg",
-      "images/products/satin.jpg",
-      "images/products/satin-slip-dress.jpeg"
+      "slip-dress.jpeg",
+      "satin.jpg",
+      "satin-slip-dress.jpeg"
     ],
-    "image": "images/products/slip-dress.jpeg",
-    "category": "Women"
+    "variants": [
+      {
+        "name": "XS",
+        "sku": "AMW-WOM-0002-XS",
+        "price": 84.99
+      },
+      {
+        "name": "S",
+        "sku": "AMW-WOM-0002-S",
+        "price": 84.99
+      },
+      {
+        "name": "M",
+        "sku": "AMW-WOM-0002-M",
+        "price": 84.99
+      },
+      {
+        "name": "L",
+        "sku": "AMW-WOM-0002-L",
+        "price": 84.99
+      }
+    ],
+    "tags": [
+      "women",
+      "apparel"
+    ],
+    "rating": 4.8,
+    "reviewCount": 96,
+    "stock": 12,
+    "sku": "AMW-WOM-0002",
+    "supplier": "AmmaWears Sourcing Desk",
+    "buyUrl": "https://supplier.ammawears.com/purchase/AMW-WOM-0002"
   },
   {
     "id": 2,
     "name": "Denim Trucker Jacket",
     "description": "A modern take on a classic trucker jacket with structured shoulders and a comfortable vintage wash.",
     "price": 119.99,
-    "image": "images/products/denim-trucker-jacket.jpeg",
-    "category": "Men"
+    "originalPrice": 149.99,
+    "category": "Men",
+    "image": "denim-trucker-jacket.jpeg",
+    "images": [
+      "denim-trucker-jacket.jpeg",
+      "denim-trucker-jeans2.jpeg",
+      "denim-trucker-jacket.svg"
+    ],
+    "variants": [
+      {
+        "name": "S",
+        "sku": "AMW-MEN-0003-S",
+        "price": 119.99
+      },
+      {
+        "name": "M",
+        "sku": "AMW-MEN-0003-M",
+        "price": 119.99
+      },
+      {
+        "name": "L",
+        "sku": "AMW-MEN-0003-L",
+        "price": 119.99
+      },
+      {
+        "name": "XL",
+        "sku": "AMW-MEN-0003-XL",
+        "price": 119.99
+      },
+      {
+        "name": "XXL",
+        "sku": "AMW-MEN-0003-XXL",
+        "price": 119.99
+      }
+    ],
+    "tags": [
+      "men",
+      "apparel"
+    ],
+    "rating": 4.7,
+    "reviewCount": 74,
+    "stock": 9,
+    "sku": "AMW-MEN-0003",
+    "supplier": "AmmaWears Sourcing Desk",
+    "buyUrl": "https://supplier.ammawears.com/purchase/AMW-MEN-0003"
   },
   {
     "id": 3,
-    "name": "Premium Slim Tee",
-    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
-    "price": 11.0,
-    "image": "images/products/premium-shirt.jpeg",
-    "category": "Men"
+    "name": "Premium Slim Tee - Coastal",
+    "description": "Slim-fit tee in coastal tones with a lightweight, breathable cotton blend.",
+    "price": 11,
+    "originalPrice": 16,
+    "category": "Men",
+    "image": "premium-shirt.jpeg",
+    "images": [
+      "premium-shirt.jpeg",
+      "Tshirt.jpeg"
+    ],
+    "variants": [
+      {
+        "name": "S",
+        "sku": "AMW-MEN-0004-S",
+        "price": 11
+      },
+      {
+        "name": "M",
+        "sku": "AMW-MEN-0004-M",
+        "price": 11
+      },
+      {
+        "name": "L",
+        "sku": "AMW-MEN-0004-L",
+        "price": 11
+      },
+      {
+        "name": "XL",
+        "sku": "AMW-MEN-0004-XL",
+        "price": 11
+      },
+      {
+        "name": "XXL",
+        "sku": "AMW-MEN-0004-XXL",
+        "price": 11
+      }
+    ],
+    "tags": [
+      "men",
+      "apparel"
+    ],
+    "rating": 4.4,
+    "reviewCount": 210,
+    "stock": 60,
+    "sku": "AMW-MEN-0004",
+    "supplier": "AmmaWears Sourcing Desk",
+    "buyUrl": "https://supplier.ammawears.com/purchase/AMW-MEN-0004"
   },
   {
     "id": 4,
-    "name": "Premium Slim Tee",
-    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
-    "price": 5.0,
-    "image": "images/products/Tshirt.jpeg",
-    "category": "Men"
+    "name": "Premium Slim Tee - Classic",
+    "description": "Everyday slim-fit tee with a clean neckline and soft hand feel.",
+    "price": 12,
+    "originalPrice": 18,
+    "category": "Men",
+    "image": "Tshirt.jpeg",
+    "images": [
+      "Tshirt.jpeg",
+      "Tshirt2.jpeg"
+    ],
+    "variants": [
+      {
+        "name": "S",
+        "sku": "AMW-MEN-0005-S",
+        "price": 12
+      },
+      {
+        "name": "M",
+        "sku": "AMW-MEN-0005-M",
+        "price": 12
+      },
+      {
+        "name": "L",
+        "sku": "AMW-MEN-0005-L",
+        "price": 12
+      },
+      {
+        "name": "XL",
+        "sku": "AMW-MEN-0005-XL",
+        "price": 12
+      },
+      {
+        "name": "XXL",
+        "sku": "AMW-MEN-0005-XXL",
+        "price": 12
+      }
+    ],
+    "tags": [
+      "men",
+      "apparel"
+    ],
+    "rating": 4.3,
+    "reviewCount": 341,
+    "stock": 120,
+    "sku": "AMW-MEN-0005",
+    "supplier": "AmmaWears Sourcing Desk",
+    "buyUrl": "https://supplier.ammawears.com/purchase/AMW-MEN-0005"
   },
   {
     "id": 5,
-    "name": "Premium Slim Tee",
-    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
-    "price": 5.0,
-    "image": "images/products/Tshirt2.jpeg",
-    "category": "Men"
+    "name": "Premium Slim Tee - Graphic",
+    "description": "Graphic slim-fit tee with a durable print and an easy, modern cut.",
+    "price": 14,
+    "originalPrice": 19,
+    "category": "Men",
+    "image": "Tshirt2.jpeg",
+    "images": [
+      "Tshirt2.jpeg",
+      "Tshirt.jpeg"
+    ],
+    "variants": [
+      {
+        "name": "S",
+        "sku": "AMW-MEN-0006-S",
+        "price": 14
+      },
+      {
+        "name": "M",
+        "sku": "AMW-MEN-0006-M",
+        "price": 14
+      },
+      {
+        "name": "L",
+        "sku": "AMW-MEN-0006-L",
+        "price": 14
+      },
+      {
+        "name": "XL",
+        "sku": "AMW-MEN-0006-XL",
+        "price": 14
+      },
+      {
+        "name": "XXL",
+        "sku": "AMW-MEN-0006-XXL",
+        "price": 14
+      }
+    ],
+    "tags": [
+      "men",
+      "apparel"
+    ],
+    "rating": 4.2,
+    "reviewCount": 98,
+    "stock": 45,
+    "sku": "AMW-MEN-0006",
+    "supplier": "AmmaWears Sourcing Desk",
+    "buyUrl": "https://supplier.ammawears.com/purchase/AMW-MEN-0006"
   },
   {
     "id": 6,
-    "name": "Premium Slim Tee",
-    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
-    "price": 5.0,
-    "image": "images/products/hoody.jpeg",
-    "category": "Men"
+    "name": "Premium Travel Hoodie",
+    "description": "Brushed-back fleece hoodie with a relaxed fit and a soft interior for travel days.",
+    "price": 39.99,
+    "originalPrice": 54.99,
+    "category": "Men",
+    "image": "hoody.jpeg",
+    "images": [
+      "hoody.jpeg",
+      "hoody2.jpeg"
+    ],
+    "variants": [
+      {
+        "name": "S",
+        "sku": "AMW-MEN-0007-S",
+        "price": 39.99
+      },
+      {
+        "name": "M",
+        "sku": "AMW-MEN-0007-M",
+        "price": 39.99
+      },
+      {
+        "name": "L",
+        "sku": "AMW-MEN-0007-L",
+        "price": 39.99
+      },
+      {
+        "name": "XL",
+        "sku": "AMW-MEN-0007-XL",
+        "price": 39.99
+      },
+      {
+        "name": "XXL",
+        "sku": "AMW-MEN-0007-XXL",
+        "price": 39.99
+      }
+    ],
+    "tags": [
+      "men",
+      "apparel"
+    ],
+    "rating": 4.5,
+    "reviewCount": 167,
+    "stock": 32,
+    "sku": "AMW-MEN-0007",
+    "supplier": "AmmaWears Sourcing Desk",
+    "buyUrl": "https://supplier.ammawears.com/purchase/AMW-MEN-0007"
   },
   {
     "id": 7,
-    "name": "Satin slip dress",
-    "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
-    "price": 24.0,
-    "image": "images/products/satin.jpg",
-    "category": "Women"
+    "name": "Satin Slip Dress - Midnight",
+    "description": "Midnight satin slip dress with a fluid drape and adjustable straps.",
+    "price": 79.99,
+    "originalPrice": 99.99,
+    "category": "Women",
+    "image": "satin.jpg",
+    "images": [
+      "satin.jpg",
+      "satin-slip-dress.jpeg",
+      "slip-dress.jpeg"
+    ],
+    "variants": [
+      {
+        "name": "XS",
+        "sku": "AMW-WOM-0008-XS",
+        "price": 79.99
+      },
+      {
+        "name": "S",
+        "sku": "AMW-WOM-0008-S",
+        "price": 79.99
+      },
+      {
+        "name": "M",
+        "sku": "AMW-WOM-0008-M",
+        "price": 79.99
+      },
+      {
+        "name": "L",
+        "sku": "AMW-WOM-0008-L",
+        "price": 79.99
+      }
+    ],
+    "tags": [
+      "women",
+      "apparel"
+    ],
+    "rating": 4.7,
+    "reviewCount": 58,
+    "stock": 18,
+    "sku": "AMW-WOM-0008",
+    "supplier": "AmmaWears Sourcing Desk",
+    "buyUrl": "https://supplier.ammawears.com/purchase/AMW-WOM-0008"
   },
   {
     "id": 8,
     "name": "Leather Tote Bag",
     "description": "A supple leather tote with clean lines and interior pockets for everyday essentials.",
-    "price": 138.0,
-    "image": "images/products/leather-tote-bag.svg",
-    "category": "Accessories"
+    "price": 138,
+    "originalPrice": 169,
+    "category": "Accessories",
+    "image": "leather-tote-bag.svg",
+    "images": [
+      "leather-tote-bag.svg"
+    ],
+    "variants": [
+      {
+        "name": "One Size",
+        "sku": "AMW-ACC-0009-OneSize",
+        "price": 138
+      }
+    ],
+    "tags": [
+      "accessories",
+      "apparel"
+    ],
+    "rating": 4.9,
+    "reviewCount": 42,
+    "stock": 15,
+    "sku": "AMW-ACC-0009",
+    "supplier": "AmmaWears Accessories Partner",
+    "buyUrl": "https://supplier.ammawears.com/purchase/AMW-ACC-0009"
   },
   {
     "id": 9,
     "name": "Linen Relaxed Shirt",
     "description": "Breathable linen in a relaxed fit, designed for effortless layering and refined casual dressing.",
     "price": 79.5,
-    "image": "images/products/linen-relaxed-shirt.svg",
-    "category": "Men"
+    "originalPrice": 99,
+    "category": "Men",
+    "image": "linen-relaxed-shirt.svg",
+    "images": [
+      "linen-relaxed-shirt.svg"
+    ],
+    "variants": [
+      {
+        "name": "S",
+        "sku": "AMW-MEN-0010-S",
+        "price": 79.5
+      },
+      {
+        "name": "M",
+        "sku": "AMW-MEN-0010-M",
+        "price": 79.5
+      },
+      {
+        "name": "L",
+        "sku": "AMW-MEN-0010-L",
+        "price": 79.5
+      },
+      {
+        "name": "XL",
+        "sku": "AMW-MEN-0010-XL",
+        "price": 79.5
+      },
+      {
+        "name": "XXL",
+        "sku": "AMW-MEN-0010-XXL",
+        "price": 79.5
+      }
+    ],
+    "tags": [
+      "men",
+      "apparel"
+    ],
+    "rating": 4.5,
+    "reviewCount": 63,
+    "stock": 27,
+    "sku": "AMW-MEN-0010",
+    "supplier": "AmmaWears Sourcing Desk",
+    "buyUrl": "https://supplier.ammawears.com/purchase/AMW-MEN-0010"
   },
   {
     "id": 10,
     "name": "Silk Scarf",
     "description": "A timeless silk scarf featuring an elegant print to elevate any outfit.",
     "price": 49.95,
-    "image": "images/products/silk-scarf.svg",
-    "category": "Accessories"
+    "originalPrice": 64,
+    "category": "Accessories",
+    "image": "silk-scarf.svg",
+    "images": [
+      "silk-scarf.svg"
+    ],
+    "variants": [
+      {
+        "name": "One Size",
+        "sku": "AMW-ACC-0011-OneSize",
+        "price": 49.95
+      }
+    ],
+    "tags": [
+      "accessories",
+      "apparel"
+    ],
+    "rating": 4.6,
+    "reviewCount": 31,
+    "stock": 40,
+    "sku": "AMW-ACC-0011",
+    "supplier": "AmmaWears Accessories Partner",
+    "buyUrl": "https://supplier.ammawears.com/purchase/AMW-ACC-0011"
   },
   {
     "id": 11,
     "name": "Stitched Leather Sneakers",
     "description": "Minimal leather sneakers with cushioned comfort and polished details for everyday wear.",
-    "price": 112.0,
-    "image": "images/products/leather-sneakers.svg",
-    "category": "Footwear"
+    "price": 112,
+    "originalPrice": 139,
+    "category": "Footwear",
+    "image": "leather-sneakers.svg",
+    "images": [
+      "leather-sneakers.svg"
+    ],
+    "variants": [
+      {
+        "name": "UK 6",
+        "sku": "AMW-FOO-0012-UK6",
+        "price": 112
+      },
+      {
+        "name": "UK 7",
+        "sku": "AMW-FOO-0012-UK7",
+        "price": 112
+      },
+      {
+        "name": "UK 8",
+        "sku": "AMW-FOO-0012-UK8",
+        "price": 112
+      },
+      {
+        "name": "UK 9",
+        "sku": "AMW-FOO-0012-UK9",
+        "price": 112
+      },
+      {
+        "name": "UK 10",
+        "sku": "AMW-FOO-0012-UK10",
+        "price": 112
+      },
+      {
+        "name": "UK 11",
+        "sku": "AMW-FOO-0012-UK11",
+        "price": 112
+      }
+    ],
+    "tags": [
+      "footwear",
+      "apparel"
+    ],
+    "rating": 4.8,
+    "reviewCount": 88,
+    "stock": 21,
+    "sku": "AMW-FOO-0012",
+    "supplier": "AmmaWears Footwear Partner",
+    "buyUrl": "https://supplier.ammawears.com/purchase/AMW-FOO-0012"
   },
   {
     "id": 12,
     "name": "Cashmere Crewneck",
     "description": "A soft cashmere crewneck with a refined fit and luxurious feel for cozy layering.",
     "price": 149.99,
-    "image": "images/products/cashmere-crewneck.svg",
-    "category": "Women"
+    "originalPrice": 189.99,
+    "category": "Women",
+    "image": "cashmere-crewneck.svg",
+    "images": [
+      "cashmere-crewneck.svg"
+    ],
+    "variants": [
+      {
+        "name": "XS",
+        "sku": "AMW-WOM-0013-XS",
+        "price": 149.99
+      },
+      {
+        "name": "S",
+        "sku": "AMW-WOM-0013-S",
+        "price": 149.99
+      },
+      {
+        "name": "M",
+        "sku": "AMW-WOM-0013-M",
+        "price": 149.99
+      },
+      {
+        "name": "L",
+        "sku": "AMW-WOM-0013-L",
+        "price": 149.99
+      }
+    ],
+    "tags": [
+      "women",
+      "apparel"
+    ],
+    "rating": 4.9,
+    "reviewCount": 55,
+    "stock": 14,
+    "sku": "AMW-WOM-0013",
+    "supplier": "AmmaWears Sourcing Desk",
+    "buyUrl": "https://supplier.ammawears.com/purchase/AMW-WOM-0013"
   },
   {
     "id": 13,
     "name": "Tailored Chinos",
     "description": "Smart casual chinos cut with a tailored silhouette, ready for work or weekend plans.",
-    "price": 89.0,
-    "image": "images/products/tailored-chinos.svg",
-    "category": "Men"
+    "price": 89,
+    "originalPrice": 115,
+    "category": "Men",
+    "image": "tailored-chinos.svg",
+    "images": [
+      "tailored-chinos.svg"
+    ],
+    "variants": [
+      {
+        "name": "S",
+        "sku": "AMW-MEN-0014-S",
+        "price": 89
+      },
+      {
+        "name": "M",
+        "sku": "AMW-MEN-0014-M",
+        "price": 89
+      },
+      {
+        "name": "L",
+        "sku": "AMW-MEN-0014-L",
+        "price": 89
+      },
+      {
+        "name": "XL",
+        "sku": "AMW-MEN-0014-XL",
+        "price": 89
+      },
+      {
+        "name": "XXL",
+        "sku": "AMW-MEN-0014-XXL",
+        "price": 89
+      }
+    ],
+    "tags": [
+      "men",
+      "apparel"
+    ],
+    "rating": 4.4,
+    "reviewCount": 77,
+    "stock": 36,
+    "sku": "AMW-MEN-0014",
+    "supplier": "AmmaWears Sourcing Desk",
+    "buyUrl": "https://supplier.ammawears.com/purchase/AMW-MEN-0014"
   },
   {
     "id": 14,
     "name": "MENA Heritage Tee",
     "description": "Premium cotton T-shirt with an elegant MENA-inspired motif.",
-    "price": 25.0,
-    "image": "images/products/mena-heritage-tee.svg",
-    "category": "Men"
+    "price": 25,
+    "originalPrice": 32,
+    "category": "Men",
+    "image": "mena-heritage-tee.svg",
+    "images": [
+      "mena-heritage-tee.svg",
+      "Tshirt.jpeg"
+    ],
+    "variants": [
+      {
+        "name": "S",
+        "sku": "AMW-MEN-0015-S",
+        "price": 25
+      },
+      {
+        "name": "M",
+        "sku": "AMW-MEN-0015-M",
+        "price": 25
+      },
+      {
+        "name": "L",
+        "sku": "AMW-MEN-0015-L",
+        "price": 25
+      },
+      {
+        "name": "XL",
+        "sku": "AMW-MEN-0015-XL",
+        "price": 25
+      },
+      {
+        "name": "XXL",
+        "sku": "AMW-MEN-0015-XXL",
+        "price": 25
+      }
+    ],
+    "tags": [
+      "men",
+      "apparel"
+    ],
+    "rating": 4.7,
+    "reviewCount": 142,
+    "stock": 58,
+    "sku": "AMW-MEN-0015",
+    "supplier": "AmmaWears Sourcing Desk",
+    "buyUrl": "https://supplier.ammawears.com/purchase/AMW-MEN-0015"
   },
   {
     "id": 15,
     "name": "Arabesque Pocket Tee",
     "description": "Comfort-fit tee featuring a subtle arabesque pocket print, breathable and durable.",
     "price": 22.5,
-    "image": "images/products/arabesque-pocket-tee.svg",
-    "category": "Men"
+    "originalPrice": 29,
+    "category": "Men",
+    "image": "arabesque-pocket-tee.svg",
+    "images": [
+      "arabesque-pocket-tee.svg",
+      "Tshirt2.jpeg"
+    ],
+    "variants": [
+      {
+        "name": "S",
+        "sku": "AMW-MEN-0016-S",
+        "price": 22.5
+      },
+      {
+        "name": "M",
+        "sku": "AMW-MEN-0016-M",
+        "price": 22.5
+      },
+      {
+        "name": "L",
+        "sku": "AMW-MEN-0016-L",
+        "price": 22.5
+      },
+      {
+        "name": "XL",
+        "sku": "AMW-MEN-0016-XL",
+        "price": 22.5
+      },
+      {
+        "name": "XXL",
+        "sku": "AMW-MEN-0016-XXL",
+        "price": 22.5
+      }
+    ],
+    "tags": [
+      "men",
+      "apparel"
+    ],
+    "rating": 4.5,
+    "reviewCount": 113,
+    "stock": 64,
+    "sku": "AMW-MEN-0016",
+    "supplier": "AmmaWears Sourcing Desk",
+    "buyUrl": "https://supplier.ammawears.com/purchase/AMW-MEN-0016"
   },
   {
     "id": 16,
     "name": "Gulf Coast Slim Tee",
     "description": "Slim-fit tee inspired by Gulf coastal colors and lightweight fabric.",
-    "price": 24.0,
-    "image": "images/products/gulf-coast-slim-tee.svg",
-    "category": "Men"
+    "price": 24,
+    "originalPrice": 30,
+    "category": "Men",
+    "image": "gulf-coast-slim-tee.svg",
+    "images": [
+      "gulf-coast-slim-tee.svg",
+      "Tshirt.jpeg"
+    ],
+    "variants": [
+      {
+        "name": "S",
+        "sku": "AMW-MEN-0017-S",
+        "price": 24
+      },
+      {
+        "name": "M",
+        "sku": "AMW-MEN-0017-M",
+        "price": 24
+      },
+      {
+        "name": "L",
+        "sku": "AMW-MEN-0017-L",
+        "price": 24
+      },
+      {
+        "name": "XL",
+        "sku": "AMW-MEN-0017-XL",
+        "price": 24
+      },
+      {
+        "name": "XXL",
+        "sku": "AMW-MEN-0017-XXL",
+        "price": 24
+      }
+    ],
+    "tags": [
+      "men",
+      "apparel"
+    ],
+    "rating": 4.6,
+    "reviewCount": 129,
+    "stock": 52,
+    "sku": "AMW-MEN-0017",
+    "supplier": "AmmaWears Sourcing Desk",
+    "buyUrl": "https://supplier.ammawears.com/purchase/AMW-MEN-0017"
   }
 ]

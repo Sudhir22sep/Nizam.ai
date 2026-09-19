@@ -1,4 +1,7 @@
 import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { normalizeProductImages, normalizeProductVariants, primaryProductImage, productSizes, variantPrice } from './product.service';
 import { ProductService } from './product.service';
 import { Product } from './product.service';
 
@@ -53,7 +56,7 @@ describe('ProductService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [ProductService]
+      providers: [ProductService, provideHttpClient(), provideHttpClientTesting()]
     });
     service = TestBed.inject(ProductService);
   });
@@ -140,4 +143,31 @@ describe('ProductService', () => {
   // CSR differences
   // and file system/network calls. These are better tested with integration tests.
   // For unit tests, we focus on the public methods that don't have complex side effects.
+
+  describe('normalizeProductVariants()/productSizes()/variantPrice()', () => {
+    it('should normalize named variants and resolve variant prices', () => {
+      const variants = normalizeProductVariants([
+        { name: 'M', price: 42 },
+        { size: 'L' },
+        { name: '', price: null }
+      ]);
+      expect(variants).toEqual([
+        { id: undefined, name: 'M', price: 42 },
+        { id: undefined, name: 'L', price: null }
+      ]);
+      expect(variantPrice({ basePrice: 40, variants }, 'M')).toBe(42);
+      expect(variantPrice({ basePrice: 40, variants }, 'L')).toBe(40);
+    });
+
+    it('should fall back to category sizes when variants are absent', () => {
+      expect(productSizes({ category: 'Men', variants: [] })).toEqual(['XS', 'S', 'M', 'L', 'XL', 'XXL']);
+      expect(productSizes({ category: 'Footwear', variants: [] })).toEqual(['UK 6', 'UK 7', 'UK 8', 'UK 9', 'UK 10', 'UK 11']);
+      expect(productSizes({ category: 'Accessories', variants: [] })).toEqual(['One Size']);
+    });
+
+    it('should keep image paths root-relative on nested detail routes', () => {
+      expect(primaryProductImage(['images/products/tee.jpeg'], undefined, 'Tee')).toBe('/images/products/tee.jpeg');
+      expect(normalizeProductImages([], undefined, 'Tee')).toEqual([]);
+    });
+  });
 });

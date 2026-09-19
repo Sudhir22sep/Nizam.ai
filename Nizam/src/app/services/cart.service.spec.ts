@@ -129,6 +129,28 @@ describe('CartService', () => {
     });
   });
 
+  describe('size-aware cart lines', () => {
+    it('should keep different sizes as separate cart lines', () => {
+      service.addToCart(testProduct, 1, 'M', 100);
+      service.addToCart(testProduct, 2, 'L', 120);
+
+      const items = service.getItems();
+      expect(items.length).toBe(2);
+      expect(service.getTotalAmount()).toBe(340);
+    });
+
+    it('should remove only the selected size line', () => {
+      service.addToCart(testProduct, 1, 'M', 100);
+      service.addToCart(testProduct, 1, 'L', 120);
+      service.removeFromCart(testProduct.id, 'M');
+
+      const items = service.getItems();
+      expect(items.length).toBe(1);
+      expect(items[0].size).toBe('L');
+      expect(service.getTotalAmount()).toBe(120);
+    });
+  });
+
   describe('getters', () => {
     it('getItems() should return cart items', () => {
       service.addToCart(testProduct, 1);
@@ -136,6 +158,8 @@ describe('CartService', () => {
       expect(items.length).toBe(1);
       expect(items[0].product).toEqual(testProduct);
       expect(items[0].quantity).toBe(1);
+      expect(items[0].size).toBeUndefined();
+      expect(items[0].unitPrice).toBe(100);
     });
 
     it('getItemCount() should return total quantity', () => {
