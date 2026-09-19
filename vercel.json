@@ -1,5 +1,8 @@
 {
-  "outputDirectory": "dist/Nizam/browser",
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "cd Nizam && npm ci",
+  "buildCommand": "cd Nizam && npm run build",
+  "outputDirectory": "Nizam/dist/Nizam/browser",
   "rewrites": [
     {
       "source": "/(.*)",

@@ -1,24 +1,11 @@
-// {
-// 	"extends": "./tsconfig.base.json",
-// 	"compilerOptions": {
-// 		"target": "ES2020",
-// 		"module": "CommonJS",
-// 		"lib": ["ES2020"],
-// 		"moduleResolution": "node",
-// 		"esModuleInterop": true,
-// 		"forceConsistentCasingInFileNames": true,
-// 		"strict": true,
-// 		"skipLibCheck": true,
-// 		"resolveJsonModule": true,
-// 		"noImplicitReturns": true,
-// 		"noFallthroughCasesInSwitch": true,
-// 		"outDir": "./dist/server",
-// 		"types": ["node"]
-// 	},
-// 	"include": ["server/**/*", "src/server/**/*", "next-env.d.ts"],
-// 	"exclude": ["node_modules", "dist", "client", "**/*.test.ts", "**/*.spec.ts"]
-// }
-
+/**
+ * Standalone type-check config for the Express/Angular SSR server entry.
+ *
+ * `ng build` compiles `src/server.ts` through `tsconfig.app.json`; this config
+ * exists so the server can also be checked on its own with
+ * `tsc -p tsconfig.server.json`. It includes the whole `src` tree because
+ * `src/middleware/auth.ts` augments Express' `Request` with `user`.
+ */
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
@@ -26,6 +13,6 @@
     "types": ["node"]
   },
   "include": [
-    "src/server.ts"
+    "src/**/*.ts"
   ]
 }

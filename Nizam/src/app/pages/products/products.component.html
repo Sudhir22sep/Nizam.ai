@@ -8,14 +8,14 @@
   <div class="filters" role="group" aria-label="Filter products by category">
     <button
       class="filter-btn"
-      [class.active]="selectedCategory === ''"
+      [class.active]="selectedCategory() === ''"
       (click)="resetFilter()">
       All
     </button>
     @for (category of categories(); track category) {
       <button
         class="filter-btn"
-        [class.active]="selectedCategory === category"
+        [class.active]="selectedCategory() === category"
         (click)="filterByCategory(category)">
         {{ category }}
       </button>
@@ -26,7 +26,7 @@
     @for (product of filteredProducts(); track product.id) {
     <div class="product-card">
       <div class="product-media">
-        <a [routerLink]="[product.id]" class="product-image" [attr.aria-label]="'View ' + product.name">
+        <a [routerLink]="['/product', product.id]" class="product-image" [attr.aria-label]="'View ' + product.name">
           <img [src]="primaryImage(product)" [alt]="product.name" appImageFallback loading="lazy">
         </a>
         <span class="product-overlay">

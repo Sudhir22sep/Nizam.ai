@@ -11,12 +11,13 @@
         <div class="item-details">
           <h2>{{ item.product.name }}</h2>
           <p>{{ item.product.description }}</p>
+          <p class="item-size" *ngIf="item.size">Size: {{ item.size }}</p>
           <div class="item-meta">
-            <span>{{ item.quantity }} × {{ item.product.basePrice | price }}</span>
-            <strong>{{ (item.product.basePrice * item.quantity) | price }}</strong>
+            <span>{{ item.quantity }} × {{ item.unitPrice | price }}</span>
+            <strong>{{ (item.unitPrice * item.quantity) | price }}</strong>
           </div>
         </div>
-        <button class="btn-remove" (click)="removeItem(item.product.id)" aria-label="Remove item">
+        <button class="btn-remove" (click)="removeItem(item.product.id, item.size)" aria-label="Remove item">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M3 6h18" />
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />

@@ -6,7 +6,7 @@ import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import { resolve } from 'path';
 import { join } from 'path';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { writeResponseToNodeResponse } from '@angular/ssr/node';
 import { isMainModule } from '@angular/ssr/node';
 import { Db, MongoClient, ObjectId } from 'mongodb';
@@ -58,6 +58,127 @@ if (!process.env['NG_TRUST_PROXY_HEADERS']) {
 // Browser distribution folder for SSR
 // In production build, __dirname is dist/Nizam/server/, so browser is at ../browser
 const browserDistFolder = resolve(__dirname, '../browser');
+
+// ─── Owner-only product fields & bundled catalog ──────────────────────────────
+
+/**
+ * Owner-only product fields. They must never reach a shopper-facing response:
+ * every public catalog endpoint strips them and an admin-only endpoint serves
+ * the purchase link instead.
+ */
+const OWNER_ONLY_PRODUCT_FIELDS = ['buyUrl', 'supplier'] as const;
+
+/** Removes owner-only fields from a product document. */
+function toPublicProduct(product: Record<string, any>): Record<string, any> {
+  const clone: Record<string, any> = { ...product };
+  for (const field of OWNER_ONLY_PRODUCT_FIELDS) {
+    delete clone[field];
+  }
+  return clone;
+}
+
+/** Normalizes a catalog entry and strips owner-only fields in one step. */
+function toPublicCatalogProduct(product: any): Record<string, any> {
+  return toPublicProduct({
+    ...product,
+    basePrice: product?.basePrice ?? product?.price ?? 0,
+    currency: product?.currency ?? 'USD',
+    images: Array.isArray(product?.images) ? product.images : (product?.image ? [product.image] : []),
+    variants: product?.variants ?? [],
+    tags: product?.tags ?? [],
+    isActive: product?.isActive ?? true,
+    createdAt: product?.createdAt ? new Date(product.createdAt) : new Date(),
+    updatedAt: product?.updatedAt ? new Date(product.updatedAt) : new Date(),
+  });
+}
+
+/**
+ * The storefront ships a bundled catalog (public/assets/products.json) that also
+ * carries owner-only purchase links. It is used whenever MongoDB is unreachable
+ * so browsing, prices, sizes and owner tooling keep working.
+ */
+function loadBundledCatalog(): Record<string, any>[] {
+  const candidates = [
+    resolve(browserDistFolder, 'assets/products.json'),
+    resolve(process.cwd(), 'public/assets/products.json'),
+    resolve(__dirname, '../public/assets/products.json'),
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      if (!existsSync(candidate)) {
+        continue;
+      }
+      const parsed = JSON.parse(readFileSync(candidate, 'utf8'));
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.warn('Failed to read bundled catalog:', candidate, error instanceof Error ? error.message : error);
+    }
+  }
+  return [];
+}
+
+/**
+ * Resolves the public info (name, price, image, category) for a wishlist item.
+ *
+ * Wishlist items may reference either a Mongo product document or a bundled
+ * catalog entry (products.json ids are numeric, e.g. "100000", and are NOT
+ * Mongo ObjectIds). Both sources are consulted so the wishlist page can render
+ * real product details instead of "Product #0".
+ */
+async function lookupWishlistProductInfo(productId: unknown): Promise<Record<string, any> | null> {
+  const idText = productId === null || productId === undefined ? '' : String(productId);
+  if (!idText) {
+    return null;
+  }
+
+  // 1. Try MongoDB when the id is a valid ObjectId.
+  if (ObjectId.isValid(idText)) {
+    try {
+      const productsCollection = await getProductsCollection();
+      const product: any = await productsCollection.findOne({ _id: new ObjectId(idText) });
+      if (product) {
+        return toPublicProduct({
+          ...product,
+          basePrice: product?.basePrice ?? product?.price ?? 0,
+          currency: product?.currency ?? 'USD',
+          images: Array.isArray(product?.images) ? product.images : (product?.image ? [product.image] : []),
+        });
+      }
+    } catch (error) {
+      console.warn('Wishlist product lookup (Mongo) failed:', error instanceof Error ? error.message : error);
+    }
+  }
+
+  // 2. Fall back to the bundled catalog by its plain id.
+  const asNumber = Number(idText);
+  const bundled = loadBundledCatalog().find(candidate =>
+    String(candidate?.id) === idText ||
+    (Number.isFinite(asNumber) && Number(candidate?.id) === asNumber)
+  );
+  if (bundled) {
+    return toPublicCatalogProduct(bundled);
+  }
+
+  return null;
+}
+
+/** Attaches product info (name/price/image/category) to each wishlist item. */
+async function withProductInfo(items: any[]): Promise<any[]> {
+  return Promise.all((items ?? []).map(async (item: any) => {
+    const info = await lookupWishlistProductInfo(item.productId);
+    return {
+      ...item,
+      productId: item.productId?.toString?.() ?? String(item.productId ?? ''),
+      variantId: item.variantId ? item.variantId.toString() : null,
+      productName: info?.name ?? item.productName ?? null,
+      productPrice: info?.basePrice ?? item.productPrice ?? null,
+      productCurrency: info?.currency ?? item.productCurrency ?? 'USD',
+      productImage: (Array.isArray(info?.images) && info.images[0]) ?? item.productImage ?? null,
+      productCategory: info?.category ?? item.productCategory ?? null,
+    };
+  }));
+}
 
 // Load Angular SSR manifests (only available in production build)
 async function loadAngularManifests(): Promise<void> {
@@ -319,6 +440,10 @@ interface ProductCreateDto {
   variants?: Array<{ id?: string; name?: string; price?: number }>;
   tags?: string[];
   isActive?: boolean;
+  /** Owner-only supplier checkout link; stripped from public responses. */
+  buyUrl?: string;
+  /** Owner-only supplier reference; stripped from public responses. */
+  supplier?: string;
 }
 
 interface WishlistItem {
@@ -351,6 +476,10 @@ interface ProductDocument {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  /** Owner-only supplier checkout link. Never returned by public endpoints. */
+  buyUrl?: string;
+  /** Owner-only supplier reference. Never returned by public endpoints. */
+  supplier?: string;
 }
 
 //const stripeSecret = process.env['environment'] === 'production' ? process.env['STRIPE_SECRET_KEY'] : process.env['STRIPE_TEST_SECRET_KEY'];
@@ -2410,22 +2539,36 @@ app.get('/api/products/', async (req, res) => {
       productsCollection.countDocuments(filter)
     ]);
 
-    const products = rawProducts.map(p => ({
-      ...p,
-      basePrice: p.basePrice ?? p.price ?? 0,
-      currency: p.currency ?? 'USD',
-      images: Array.isArray(p.images) ? p.images : (p.image ? [p.image] : []),
-      variants: p.variants ?? [],
-      tags: p.tags ?? [],
-      isActive: p.isActive ?? true,
-      createdAt: p.createdAt ? new Date(p.createdAt) : new Date(),
-      updatedAt: p.updatedAt ? new Date(p.updatedAt) : new Date(),
-    }));
+    let products = rawProducts.map(toPublicCatalogProduct);
+    let totalCount = total;
 
-    res.json({ success: true, products, total, page: Number(page), limit: Number(limit) });
+    if (products.length === 0) {
+      // MongoDB resolved but holds no products (for example an unseeded
+      // environment): serve the bundled catalog so the shop still works.
+      const bundled = loadBundledCatalog();
+      if (bundled.length > 0) {
+        products = bundled.map(toPublicCatalogProduct);
+        totalCount = bundled.length;
+      }
+    }
+
+    return res.json({ success: true, products, total: totalCount, page: Number(page), limit: Number(limit) });
   } catch (error) {
     console.error("Get products error:", error);
-    res.status(500).json({ success: false, message: "Failed to fetch products" });
+    // MongoDB unavailable: fall back to the bundled catalog so shoppers can still
+    // browse real products, prices and sizes. Owner-only fields stay stripped.
+    const bundled = loadBundledCatalog();
+    if (bundled.length > 0) {
+      return res.json({
+        success: true,
+        products: bundled.map(toPublicCatalogProduct),
+        total: bundled.length,
+        page: 1,
+        limit: bundled.length,
+        source: 'bundled',
+      });
+    }
+    return res.status(500).json({ success: false, message: "Failed to fetch products" });
   }
 });
 
@@ -2434,6 +2577,11 @@ app.get('/api/products/:id/', async (req: Request, res: Response) => {
     const { id } = req.params;
 
     if (!ObjectId.isValid(id)) {
+      // Bundled catalog ids (for example "0") are not Mongo ObjectIds.
+      const bundled = loadBundledCatalog().find(candidate => String(candidate.id) === id);
+      if (bundled) {
+        return res.json({ success: true, product: toPublicCatalogProduct(bundled), source: 'bundled' });
+      }
       return res.status(400).json({ success: false, message: "Invalid product id" });
     }
 
@@ -2444,7 +2592,8 @@ app.get('/api/products/:id/', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
     
-    return res.json({ success: true, product });
+    // Owner-only fields (buyUrl/supplier) never leave the server here.
+    return res.json({ success: true, product: toPublicProduct(product) });
   } catch (error) {
     console.error("Get product by ID error:", error);
     return res.status(500).json({ success: false, message: "Failed to fetch product" });
@@ -2454,7 +2603,7 @@ app.get('/api/products/:id/', async (req: Request, res: Response) => {
 app.post('/api/products/', async (req: Request & { body: ProductCreateDto }, res: Response) => {
   try {
     const productsCollection = await getProductsCollection();
-    const { name, description, basePrice, currency, category, images, variants, tags, isActive } = req.body;
+    const { name, description, basePrice, currency, category, images, variants, tags, isActive, buyUrl, supplier } = req.body;
     
     if (!name || !description || !basePrice || !currency || !category) {
       return res.status(400).json({ success: false, message: "Name, description, basePrice, currency, and category are required" });
@@ -2474,6 +2623,14 @@ app.post('/api/products/', async (req: Request & { body: ProductCreateDto }, res
       createdAt: new Date(),
       updatedAt: new Date()
     };
+
+    // Owner-only fields are persisted but never returned by public endpoints.
+    if (typeof buyUrl === 'string') {
+      product.buyUrl = buyUrl;
+    }
+    if (typeof supplier === 'string') {
+      product.supplier = supplier;
+    }
     
     const result = await productsCollection.insertOne(product);
     product._id = result.insertedId;
@@ -2488,7 +2645,7 @@ app.post('/api/products/', async (req: Request & { body: ProductCreateDto }, res
 app.put('/api/products/:id/', async (req: Request, res: Response) => {
   try {
     const productsCollection = await getProductsCollection();
-    const { name, description, basePrice, currency, category, images, variants, tags, isActive } = req.body;
+    const { name, description, basePrice, currency, category, images, variants, tags, isActive, buyUrl, supplier } = req.body;
     
     const updateData: any = {};
     
@@ -2501,6 +2658,9 @@ app.put('/api/products/:id/', async (req: Request, res: Response) => {
     if (variants !== undefined) updateData.variants = variants;
     if (tags !== undefined) updateData.tags = tags;
     if (isActive !== undefined) updateData.isActive = isActive;
+    // Owner-only fields (never returned by public endpoints).
+    if (buyUrl !== undefined) updateData.buyUrl = buyUrl;
+    if (supplier !== undefined) updateData.supplier = supplier;
     
     updateData.updatedAt = new Date();
     
@@ -2597,6 +2757,50 @@ app.delete('/api/products/:id/images/:index', async (req: Request, res: Response
   }
 });
 
+/**
+ * Owner/backend-only purchase link for a product.
+ *
+ * `buyUrl` and `supplier` are stripped from every shopper-facing product
+ * response, so the purchase link is only reachable here, behind an
+ * authenticated admin token (or the development sandbox user).
+ */
+app.get('/api/admin/products/:id/purchase-link', authenticateJwt, async (req: Request & { user?: any }, res: Response) => {
+  try {
+    const isAdmin = req.user?.role === 'admin';
+    const isLocalDev = req.user?.isDev === true && process.env['NODE_ENV'] !== 'production';
+
+    if (!isAdmin && !isLocalDev) {
+      return res.status(403).json({ success: false, message: 'Admin access required' });
+    }
+
+    const { id } = req.params;
+    let product: Record<string, any> | null = null;
+
+    if (ObjectId.isValid(id)) {
+      const productsCollection = await getProductsCollection();
+      product = await productsCollection.findOne({ _id: new ObjectId(id) });
+    } else {
+      product = loadBundledCatalog().find(candidate => String(candidate.id) === id) ?? null;
+    }
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    return res.json({
+      success: true,
+      productId: product._id?.toString?.() ?? String(product.id ?? id),
+      name: product.name ?? null,
+      sku: product.sku ?? null,
+      supplier: product.supplier ?? null,
+      buyUrl: product.buyUrl ?? null,
+    });
+  } catch (error) {
+    console.error('Get product purchase link error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to load purchase link' });
+  }
+});
+
 
 app.delete('/api/products/:id/', async (req: Request, res: Response) => {
   try {
@@ -2625,17 +2829,13 @@ const userId = req.user?.userId;
     
     const wishlists = await wishlistsCollection.find({ userId: new (require("mongodb")).ObjectId(userId) }).toArray();
     
-    // Convert ObjectId to string for frontend
-    const wishlistsWithStringIds = wishlists.map(wishlist => ({
+    // Convert ObjectId to string for frontend and attach product info
+    const wishlistsWithStringIds = await Promise.all(wishlists.map(async wishlist => ({
       ...wishlist,
       _id: wishlist._id.toString(),
       userId: wishlist.userId.toString(),
-      items: wishlist.items.map((item: any) => ({
-          ...item,
-          productId: item.productId.toString(),
-          variantId: item.variantId ? item.variantId.toString() : null
-        }))
-    }));
+      items: await withProductInfo(wishlist.items)
+    })));
     
     res.json({ success: true, wishlists: wishlistsWithStringIds });
   } catch (error) {
@@ -2697,16 +2897,12 @@ app.get('/api/wishlist/:id', authenticateJwt, async (req, res) => {
       return res.status(404).json({ success: false, message: "Wishlist not found" });
     }
     
-    // Convert ObjectId to string for frontend
+    // Convert ObjectId to string for frontend and attach product info
     const wishlistWithStringIds = {
       ...wishlist,
       _id: wishlist._id.toString(),
       userId: wishlist.userId.toString(),
-      items: wishlist.items.map((item: any) => ({
-        ...item,
-        productId: item.productId.toString(),
-        variantId: item.variantId ? item.variantId.toString() : null
-      }))
+      items: await withProductInfo(wishlist.items)
     };
     
     return res.json({ success: true, wishlist: wishlistWithStringIds });
@@ -2722,44 +2918,75 @@ app.post('/api/wishlist/:id/items', authenticateJwt, async (req, res) => {
     const wishlistId = req.params.id;
     const userId = req.user?.userId;
     const { productId, variantId = null, notes = "" } = req.body;
-    
+
+    if (!productId || (typeof productId !== 'string' && typeof productId !== 'number')) {
+      return res.status(400).json({ success: false, message: "Product ID is required" });
+    }
+
     if (!require("mongodb").ObjectId.isValid(wishlistId)) {
       return res.status(400).json({ success: false, message: "Invalid wishlist ID" });
     }
-    
-    if (!require("mongodb").ObjectId.isValid(productId)) {
+
+    // Bundled-catalog products (products.json) use plain numeric ids (e.g.
+    // "100000"), which are NOT Mongo ObjectIds. Only enforce the ObjectId
+    // format for ids that are clearly intended to be Mongo ids (24 hex chars).
+    const productIdText = String(productId);
+    const isMongoProductId = /^[0-9a-f]{24}$/i.test(productIdText);
+    if (isMongoProductId && !require("mongodb").ObjectId.isValid(productIdText)) {
       return res.status(400).json({ success: false, message: "Invalid product ID" });
     }
-    
+
     if (variantId !== null && !require("mongodb").ObjectId.isValid(variantId)) {
       return res.status(400).json({ success: false, message: "Invalid variant ID" });
     }
-    
+
     // Check if wishlist exists and belongs to user
     const wishlist = await wishlistsCollection.findOne({
       _id: new (require("mongodb")).ObjectId(wishlistId),
       userId: new (require("mongodb")).ObjectId(userId)
     });
-    
+
     if (!wishlist) {
       return res.status(404).json({ success: false, message: "Wishlist not found" });
     }
-    
-    // Check if item already exists in wishlist
-    const itemExists = wishlist.items.some((item: any) => 
-      item.productId.equals(new (require("mongodb")).ObjectId(productId)) &&
-      ((variantId === null && !item.variantId) || (item.variantId && item.variantId.equals(new (require("mongodb")).ObjectId(variantId))))
-    );
-    
+
+    // Check if item already exists in wishlist (compare by string form so
+    // bundled numeric ids and ObjectIds are handled the same way).
+    const itemExists = wishlist.items.some((item: any) => {
+      const existingId = item.productId?.toString?.() ?? String(item.productId ?? '');
+      if (existingId !== productIdText) {
+        return false;
+      }
+      if (variantId === null) {
+        return !item.variantId;
+      }
+      return item.variantId !== null && item.variantId !== undefined &&
+        item.variantId.toString() === String(variantId);
+    });
+
     if (itemExists) {
       return res.status(409).json({ success: false, message: "Item already exists in wishlist" });
     }
-    
+
+    // Snapshot the product info so the wishlist page can show the name, price
+    // and image even if the catalog entry changes or disappears later.
+    let productInfo: Record<string, any> | null = null;
+    try {
+      productInfo = await lookupWishlistProductInfo(productIdText);
+    } catch (error) {
+      console.warn('Wishlist product snapshot failed:', error instanceof Error ? error.message : error);
+    }
+
     const newItem: any = {
-      productId: new (require("mongodb")).ObjectId(productId),
+      productId: isMongoProductId ? new (require("mongodb")).ObjectId(productIdText) : productIdText,
       variantId: variantId ? new (require("mongodb")).ObjectId(variantId) : null,
       addedAt: new Date(),
-      notes: notes || ""
+      notes: notes || "",
+      productName: productInfo?.name ?? null,
+      productPrice: productInfo?.basePrice ?? null,
+      productCurrency: productInfo?.currency ?? 'USD',
+      productImage: (Array.isArray(productInfo?.images) && productInfo.images[0]) || null,
+      productCategory: productInfo?.category ?? null,
     };
     
     await wishlistsCollection.updateOne(
@@ -2803,16 +3030,21 @@ async function removeWishlistItem(req: Request, res: Response) {
     // For removal, we'll accept productId and variantId in the body to identify the item
     const { productId, variantId } = req.body;
     
-    if (!productId || !require("mongodb").ObjectId.isValid(productId)) {
+    // Bundled-catalog products use plain numeric ids, so only treat 24-hex-char
+    // ids as Mongo ObjectIds; anything else is matched by its string form.
+    const productIdText = String(productId ?? '');
+    if (!productIdText) {
       return res.status(400).json({ success: false, message: "Product ID is required" });
     }
+    const isMongoProductId = /^[0-9a-f]{24}$/i.test(productIdText) && require("mongodb").ObjectId.isValid(productIdText);
     
     // Pull the item first so modifiedCount reports whether anything was removed,
     // then touch updatedAt separately (otherwise updatedAt alone would always
     // mark the document as modified and hide "item not found").
+    const productIdSpec: any = isMongoProductId ? new (require("mongodb")).ObjectId(productIdText) : productIdText;
     const pullSpec: any = variantId && require("mongodb").ObjectId.isValid(variantId)
-      ? { items: { productId: new (require("mongodb")).ObjectId(productId), variantId: new (require("mongodb")).ObjectId(variantId) } }
-      : { items: { productId: new (require("mongodb")).ObjectId(productId) } };
+      ? { items: { productId: productIdSpec, variantId: new (require("mongodb")).ObjectId(variantId) } }
+      : { items: { productId: productIdSpec } };
 
     const result = await wishlistsCollection.updateOne(
       { _id: new (require("mongodb")).ObjectId(wishlistId), userId: new (require("mongodb")).ObjectId(userId) },

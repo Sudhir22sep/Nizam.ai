@@ -90,6 +90,33 @@
   margin-bottom: 2px;
 }
 
+.item-info h4 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.item-info h4 a:hover {
+  text-decoration: underline;
+  color: var(--brand-primary-strong, inherit);
+}
+
+.item-image {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  flex-shrink: 0;
+  background: var(--surface);
+}
+
+.item-price {
+  color: var(--brand-dark, inherit);
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
 .item-notes {
   color: var(--text-light);
   font-size: 0.85rem;
