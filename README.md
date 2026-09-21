@@ -1,3 +1,3 @@
 # Nizam.ai
-Fashion stor for the AmmaWears.com , online clothing toer, buy clothes, donate clothes to the needful.
+Fashion store for the AmmaWears.com , online clothing store, buy clothes, donate clothes to the needful.
 https://ammawears.com, 
