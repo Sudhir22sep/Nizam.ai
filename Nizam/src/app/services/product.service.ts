@@ -190,6 +190,34 @@ export interface Product {
 }
 
 /**
+ * Removes a duplicated brand prefix from product names, e.g.
+ * "DKNY DKNY Unisex Black Trolley Bag" → "DKNY Unisex Black Trolley Bag".
+ *
+ * The bundled catalog was imported from a CSV whose `name` column already
+ * started with the `brand` column, and the importer prepended the brand
+ * again, so many catalog names repeat the brand twice. This collapses any
+ * leading word sequence that immediately repeats itself (comparing
+ * whitespace-split words, so "Raymond Raymonds" is not collapsed).
+ * Runtime safety net: data from MongoDB or future imports can never render
+ * doubled names.
+ */
+export function cleanProductName(name: unknown): string {
+  if (typeof name !== 'string') {
+    return 'Untitled product';
+  }
+  const trimmed = name.trim();
+  const words = trimmed.split(/\s+/);
+  for (let take = Math.floor(words.length / 2); take >= 1; take -= 1) {
+    const first = words.slice(0, take).join(' ').toLowerCase();
+    const second = words.slice(take, take * 2).join(' ').toLowerCase();
+    if (first.length > 0 && first === second) {
+      return words.slice(take).join(' ');
+    }
+  }
+  return trimmed;
+}
+
+/**
  * Maps a catalog document (MongoDB product or bundled products.json entry) into
  * the UI product shape. Both shapes are accepted so prices, sizes, ratings and
  * stock are available no matter which source answered first.
@@ -199,7 +227,7 @@ export function normalizeCatalogProduct(raw: any): Product {
 
   return {
     id: mongoId ?? String(raw?.id ?? raw?.sku ?? ''),
-    name: raw?.name ?? 'Untitled product',
+    name: cleanProductName(raw?.name),
     description: raw?.description ?? '',
     basePrice: Number(raw?.basePrice ?? raw?.price ?? 0) || 0,
     originalPrice: toOptionalNumber(raw?.originalPrice ?? raw?.compareAtPrice ?? raw?.mrp),

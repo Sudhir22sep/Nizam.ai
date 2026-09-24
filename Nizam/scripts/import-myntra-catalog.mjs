@@ -76,15 +76,25 @@ const products = rows
   }))
   .filter(product => product.name && product.description && Number.isFinite(product.priceInInr) && product.priceInInr > 0 && product.image)
   .slice(0, limit)
-  .map((product, index) => ({
-    id: 100000 + index,
-    name: product.brand ? `${product.brand} ${product.name}` : product.name,
-    description: product.description,
-    // Product prices are stored in USD because CurrencyService converts from USD.
-    price: Number((product.priceInInr / 82.5).toFixed(2)),
-    image: product.image,
-    category: product.category
-  }));
+  .map((product, index) => {
+    // Myntra `name` values already start with the brand (e.g. "DKNY Unisex …").
+    // Strip that prefix first so `${brand} ${name}` cannot render it twice.
+    const brand = product.brand.trim();
+    const brandPattern = brand
+      ? new RegExp(`^${brand.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\s+`, 'i')
+      : null;
+    const title = brandPattern ? product.name.replace(brandPattern, '') : product.name;
+
+    return {
+      id: 100000 + index,
+      name: brand ? `${brand} ${title}`.trim() : title,
+      description: product.description,
+      // Product prices are stored in USD because CurrencyService converts from USD.
+      price: Number((product.priceInInr / 82.5).toFixed(2)),
+      image: product.image,
+      category: product.category
+    };
+  });
 
 await writeFile(outputPath, `${JSON.stringify(products, null, 2)}\n`);
 console.log(`Imported ${products.length} Myntra products into ${outputPath}.`);
