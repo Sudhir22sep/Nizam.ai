@@ -4,11 +4,13 @@ This project was generated using [Angular CLI](https://github.com/angular/angula
 
 ## Development server
 
-To start a local development server, run:
+To start the full local application with the API and Angular dev server together, run:
 
 ```bash
-ng serve
+npm run dev:full
 ```
+
+This builds the SSR server, starts the API on port `4000`, and starts Angular with `/api` requests proxied to that server. If you only run `ng serve` or `npm start`, the frontend will load but API calls will fail because the backend is not running.
 
 Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
 

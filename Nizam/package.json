@@ -5,6 +5,8 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "dev:api": "npm run build && node dist/Nizam/server/main.server.mjs",
+    "dev:full": "npm run build && (node dist/Nizam/server/main.server.mjs & ng serve --proxy-config proxy.conf.json)",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
