@@ -17,6 +17,7 @@
       <li><a routerLink="/wishlist" routerLinkActive="active" (click)="closeMenu()">Wishlist</a></li>
       <li><a routerLink="/about" routerLinkActive="active" (click)="closeMenu()">About</a></li>
       <li><a routerLink="/contact" routerLinkActive="active" (click)="closeMenu()">Contact</a></li>
+      <li *ngIf="isLoggedIn"><a routerLink="/orders" routerLinkActive="active" (click)="closeMenu()">My orders</a></li>
     </ul>
 
     <div class="navbar-icons">
@@ -34,7 +35,12 @@
         <option value="AED">AED</option>
         <option value="SAR">SAR</option>
       </select>
-      <a routerLink="/login" class="btn-nav-cta" (click)="closeMenu()">Sign in</a>
+      <a *ngIf="!isLoggedIn" routerLink="/login" class="btn-nav-cta" (click)="closeMenu()">Sign in</a>
+
+      <ng-container *ngIf="isLoggedIn">
+        <span class="nav-user">{{ greeting }}</span>
+        <button type="button" class="btn-nav-cta btn-signout" (click)="signOut()">Sign out</button>
+      </ng-container>
     </div>
   </div>
 </nav>

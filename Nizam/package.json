@@ -8,6 +8,7 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "seed:products": "node scripts/seed-products.mjs",
     "serve:ssr:Nizam": "node --inspect dist/Nizam/server/main.server.mjs",
     "dev:ssr": "npm run build && npm run serve:ssr:Nizam",
     "dev": "npm run build && npm run serve:ssr:Nizam"
@@ -36,6 +37,7 @@
     "mongoose": "^9.9.2",
     "razorpay": "^2.9.8",
     "rxjs": "~7.8.0",
+    "stripe": "^22.6.2",
     "tslib": "^2.3.0",
     "zone.js": "^0.16.2"
   },

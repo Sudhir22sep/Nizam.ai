@@ -1,0 +1,41 @@
+<div class="orders-page">
+  <header class="page-header">
+    <span class="eyebrow">Your account</span>
+    <h1>My orders</h1>
+    <p class="page-subtitle">Every order placed with this account, newest first.</p>
+  </header>
+
+  <div *ngIf="isLoading" class="state-card" role="status">Loading your orders…</div>
+
+  <div *ngIf="!isLoading && errorMessage" class="state-card state-card--error" role="alert">
+    <p>{{ errorMessage }}</p>
+    <button type="button" class="btn-secondary" (click)="loadOrders()">Try again</button>
+  </div>
+
+  <div *ngIf="!isLoading && !errorMessage && orders.length === 0" class="state-card">
+    <p>You have not placed any orders yet.</p>
+    <a routerLink="/products" class="btn-primary">Start shopping</a>
+  </div>
+
+  <ul class="order-list" *ngIf="!isLoading && !errorMessage && orders.length > 0">
+    <li class="order-card" *ngFor="let order of orders; trackBy: trackByReference">
+      <div class="order-head">
+        <div>
+          <p class="order-ref">{{ order.orderReference }}</p>
+          <p class="order-meta">
+            {{ order.createdAt | date: 'mediumDate' }} · {{ order.paymentMethod }} · {{ itemCount(order) }} item(s)
+          </p>
+        </div>
+        <span class="order-status" [ngClass]="'order-status--' + order.status">{{ order.status }}</span>
+      </div>
+
+      <ul class="order-items">
+        <li *ngFor="let item of order.items">
+          {{ item.quantity }} × {{ item.product?.name || 'Item' }}<span *ngIf="item.size"> (size {{ item.size }})</span>
+        </li>
+      </ul>
+
+      <p class="order-total">Total: <strong>{{ formatTotal(order) }}</strong></p>
+    </li>
+  </ul>
+</div>

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { catchError, tap } from 'rxjs/operators';
 import { BehaviorSubject, Observable, of } from 'rxjs';
@@ -11,18 +11,42 @@ export class AuthService {
   private apiUrl = '/api/auth';
   private currentUserSubject = new BehaviorSubject<any>(null);
   public currentUser: Observable<any> = this.currentUserSubject.asObservable();
-  
+
+  /**
+   * Signal mirror of `currentUser`, used by templates (navbar sign-in/sign-out
+   * state). Templates need a synchronous, SSR-safe read of the session; the
+   * subject alone cannot be read without subscribing.
+   */
+  private readonly currentUserSignal = signal<any>(null);
+  readonly user = this.currentUserSignal.asReadonly();
+
   // Store the URL the user was trying to access before being redirected to login
   redirectUrl: string | null = null;
+
+  /**
+   * localStorage does not exist during SSR. The navbar is rendered on the
+   * server and reads the session state, so every access goes through this
+   * guard; an unguarded `localStorage.getItem` throws a ReferenceError and
+   * breaks server rendering for every route.
+   */
+  private static get storage(): Storage | null {
+    return typeof localStorage === 'undefined' ? null : localStorage;
+  }
+
+  /** Keeps the observable and signal views of the session in sync. */
+  private setCurrentUser(user: any): void {
+    this.currentUserSubject.next(user);
+    this.currentUserSignal.set(user);
+  }
 
   constructor(
     private http: HttpClient,
     private router: Router
   ) {
     // Try to get user from localStorage on init
-    const userJson = localStorage.getItem('currentUser');
+    const userJson = AuthService.storage?.getItem('currentUser');
     if (userJson) {
-      this.currentUserSubject.next(JSON.parse(userJson));
+      this.setCurrentUser(JSON.parse(userJson));
     }
   }
 
@@ -40,8 +64,8 @@ export class AuthService {
       tap((response: any) => {
         // Store user info in localStorage
         if (response.success && response.user) {
-          localStorage.setItem('currentUser', JSON.stringify(response.user));
-          this.currentUserSubject.next(response.user);
+          AuthService.storage?.setItem('currentUser', JSON.stringify(response.user));
+          this.setCurrentUser(response.user);
         }
       })
     );
@@ -58,9 +82,37 @@ export class AuthService {
       tap((response: any) => {
         // Store user info and token in localStorage
         if (response.success && response.token && response.user) {
-          localStorage.setItem('currentUser', JSON.stringify(response.user));
-          localStorage.setItem('token', response.token);
-          this.currentUserSubject.next(response.user);
+          AuthService.storage?.setItem('currentUser', JSON.stringify(response.user));
+          AuthService.storage?.setItem('token', response.token);
+          this.setCurrentUser(response.user);
+        }
+      })
+    );
+  }
+
+  /**
+   * Request a password reset link.
+   *
+   * The server always answers with success so this endpoint cannot be used to
+   * discover which email addresses have accounts.
+   */
+  forgotPassword(email: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/forgot-password`, {
+      email: email.toLowerCase().trim()
+    });
+  }
+
+  /**
+   * Complete a password reset with the token from the emailed link.
+   *
+   * A successful reset invalidates every existing session, so the stale token
+   * in localStorage is discarded.
+   */
+  resetPassword(token: string, password: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/reset-password`, { token, password }).pipe(
+      tap((response: any) => {
+        if (response?.success) {
+          this.clearSession();
         }
       })
     );
@@ -83,9 +135,9 @@ export class AuthService {
    * rotated JWT_SECRET) so the app does not keep retrying with a dead token.
    */
   private clearSession(): void {
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('token');
-    this.currentUserSubject.next(null);
+    AuthService.storage?.removeItem('currentUser');
+    AuthService.storage?.removeItem('token');
+    this.setCurrentUser(null);
   }
 
   /**
@@ -96,7 +148,8 @@ export class AuthService {
    * localStorage, so it is no longer sent on subsequent requests.
    */
   handleUnauthorized(): void {
-    const hadSession = !!localStorage.getItem('token') || !!localStorage.getItem('currentUser');
+    const hadSession =
+      !!AuthService.storage?.getItem('token') || !!AuthService.storage?.getItem('currentUser');
     this.clearSession();
 
     // Only bounce the user to the login page when a session actually existed;
@@ -111,21 +164,22 @@ export class AuthService {
    * Check if user is logged in
    */
   isLoggedIn(): boolean {
-    return !!localStorage.getItem('token');
+    return !!AuthService.storage?.getItem('token');
   }
 
   /**
    * Get current user token
    */
   getToken(): string | null {
-    return localStorage.getItem('token');
+    return AuthService.storage?.getItem('token') ?? null;
   }
 
   /**
    * Get current user data
    */
   getCurrentUser(): any {
-    return localStorage.getItem('currentUser') ? JSON.parse(localStorage.getItem('currentUser')!) : null;
+    const userJson = AuthService.storage?.getItem('currentUser');
+    return userJson ? JSON.parse(userJson) : null;
   }
 
   /**
@@ -150,8 +204,8 @@ export class AuthService {
       tap((response: any) => {
         if (response.success && response.user) {
           // Update localStorage with fresh user data
-          localStorage.setItem('currentUser', JSON.stringify(response.user));
-          this.currentUserSubject.next(response.user);
+          AuthService.storage?.setItem('currentUser', JSON.stringify(response.user));
+          this.setCurrentUser(response.user);
         }
       }),
       catchError(() => {

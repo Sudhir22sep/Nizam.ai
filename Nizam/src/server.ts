@@ -11,6 +11,7 @@ import { writeResponseToNodeResponse } from '@angular/ssr/node';
 import { isMainModule } from '@angular/ssr/node';
 import { Db, MongoClient, ObjectId } from 'mongodb';
 import Razorpay from 'razorpay';
+import Stripe from 'stripe';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import { AngularNodeAppEngine } from '@angular/ssr/node';
 import { ɵsetAngularAppManifest, ɵsetAngularAppEngineManifest } from '@angular/ssr';
@@ -445,6 +446,10 @@ interface OrderDocument {
   status: string;
   razorpayPaymentId?: string;
   razorpayOrderId?: string;
+  /** Stripe Checkout Session id (international card payments in USD). */
+  stripeSessionId?: string;
+  /** Stripe PaymentIntent id, recorded once the session is paid. */
+  stripePaymentIntentId?: string;
   // Fulfillment tracking fields
   fulfillmentService?: 'qikink' | 'printful' | 'manual';
   fulfillmentStatus?: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
@@ -509,8 +514,16 @@ interface ProductDocument {
   supplier?: string;
 }
 
-//const stripeSecret = process.env['environment'] === 'production' ? process.env['STRIPE_SECRET_KEY'] : process.env['STRIPE_TEST_SECRET_KEY'];
-//const stripe = stripeSecret ? new Stripe(stripeSecret, { apiVersion: '2022-11-15' }) : null;
+// Stripe powers the international (USD) card payments. Razorpay remains the
+// domestic (INR) gateway; both flows re-price the order through the same
+// catalog helpers and store an identical order document.
+const stripeSecretKey = process.env['STRIPE_SECRET_KEY'] || process.env['STRIPE_TEST_SECRET_KEY'];
+const stripePublishableKey =
+  process.env['STRIPE_PUBLISHABLE_KEY'] || process.env['STRIPE_TEST_PUBLISHABLE_KEY'] || '';
+const stripeWebhookSecret = process.env['STRIPE_WEBHOOK_SECRET'] || '';
+const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
+console.log('Stripe secret key:', stripeSecretKey ? 'SET' : 'NOT SET');
+console.log('Stripe instance:', stripe ? 'CREATED' : 'NULL');
 
 const razorpayKeyId = process.env['RAZORPAY_KEY_ID'] || process.env['RAZORPAY_TEST_KEY_ID'];
 const razorpayKeySecret = process.env['RAZORPAY_KEY_SECRET'] || process.env['RAZORPAY_TEST_KEY_SECRET'];
@@ -600,6 +613,11 @@ interface UserDocument {
   lastLogin?: Date;
   isActive: boolean;
   role: 'user' | 'admin';
+  /** SHA-256 hash of the active password-reset token (the raw token is only emailed). */
+  passwordResetTokenHash?: string | null;
+  /** Reset link expiry; links are valid for 30 minutes. */
+  passwordResetExpiresAt?: Date | null;
+  updatedAt?: Date;
 }
 
 // Use import.meta.dirname directly - it will resolve correctly both in dev (src/) and production (dist/Nizam/server/)
@@ -608,6 +626,8 @@ interface UserDocument {
 // IMPORTANT: Razorpay webhook needs raw body for signature verification
 // Register raw body parser for webhook BEFORE express.json()
 app.use('/api/razorpay-webhook', express.raw({ type: 'application/json' }));
+// Stripe signs its webhook payloads the same way, so it also needs the raw body.
+app.use('/api/stripe-webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
 // CORS configuration for Vercel frontend → Render backend
@@ -1492,6 +1512,58 @@ function buildOrderConfirmationMessage(params: {
   };
 }
 
+// ---- Password reset --------------------------------------------------------
+
+/** Reset links stay valid for 30 minutes after they are requested. */
+const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000;
+
+/** Hashes a reset token; only the digest is ever stored in MongoDB. */
+function hashPasswordResetToken(token: string): string {
+  const crypto = require('crypto');
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+/**
+ * Absolute base URL for links inside transactional email.
+ *
+ * APP_URL wins (that is what production sets); otherwise the incoming request's
+ * own host is used so links also work on Codespaces/preview deployments.
+ */
+function resolveAppBaseUrl(req?: Request): string {
+  if (process.env['APP_URL']) {
+    return process.env['APP_URL'].replace(/\/+$/, '');
+  }
+  const host = req?.get('host');
+  if (host) {
+    return `${req!.protocol}://${host}`;
+  }
+  return appUrl.replace(/\/+$/, '');
+}
+
+/** Customer-facing password reset email. */
+function buildPasswordResetMessage(params: { firstName?: string; resetUrl: string }) {
+  const { firstName, resetUrl } = params;
+  const greeting = firstName?.trim() ? `Hi ${firstName.trim()},` : 'Hi,';
+  return {
+    subject: 'Reset your Amma Wears password',
+    text: `${greeting}\n\nWe received a request to reset your Amma Wears password. Open the link below to choose a new one:\n\n${resetUrl}\n\nThis link expires in 30 minutes. If you did not request a reset you can safely ignore this email - your password will stay unchanged.`,
+    html: `<p>${escapeEmailHtml(greeting)}</p>
+      <p>We received a request to reset your Amma Wears password. Click the button below to choose a new one.</p>
+      <p><a href="${escapeEmailHtml(resetUrl)}" style="display:inline-block;padding:12px 24px;border-radius:999px;background:#B08D57;color:#ffffff;text-decoration:none;font-weight:700;">Reset password</a></p>
+      <p>Or paste this link into your browser:<br>${escapeEmailHtml(resetUrl)}</p>
+      <p>This link expires in 30 minutes. If you did not request a reset you can safely ignore this email - your password will stay unchanged.</p>`,
+  };
+}
+
+/** Confirmation that a password was changed. */
+function buildPasswordChangedMessage() {
+  return {
+    subject: 'Your Amma Wears password was changed',
+    text: 'Your Amma Wears password has been updated successfully. If this was not you, reply to this email immediately so we can secure your account.',
+    html: '<p>Your Amma Wears password has been updated successfully.</p><p>If this was not you, reply to this email immediately so we can secure your account.</p>',
+  };
+}
+
 async function trySendEmail(params: { to: string | string[]; subject: string; text: string; html: string; replyTo?: string }) {
   try {
     await sendEmail(params);
@@ -1731,6 +1803,106 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     return res.status(500).json({ success: false, message: 'Unable to login at this time.' });
+  }
+});
+
+/**
+ * Request a password reset link.
+ *
+ * Always answers 200 with the same message, whether or not the email matches an
+ * account, so the endpoint cannot be used to enumerate registered shoppers.
+ */
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const email = String(req.body?.email ?? '').toLowerCase().trim();
+
+  if (!email) {
+    return res.status(400).json({ success: false, message: 'Email is required.' });
+  }
+
+  try {
+    const usersCollection = await getUsersCollection();
+    const user = await usersCollection.findOne({ email }) as UserDocument | null;
+
+    if (user) {
+      const crypto = require('crypto');
+      const token = crypto.randomBytes(32).toString('hex');
+      const resetUrl = `${resolveAppBaseUrl(req)}/reset-password?token=${token}`;
+
+      await usersCollection.updateOne(
+        { _id: user._id },
+        {
+          $set: {
+            passwordResetTokenHash: hashPasswordResetToken(token),
+            passwordResetExpiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
+            updatedAt: new Date(),
+          },
+        }
+      );
+
+      const mail = buildPasswordResetMessage({ firstName: user.firstName, resetUrl });
+      await trySendEmail({ to: user.email, subject: mail.subject, text: mail.text, html: mail.html });
+    } else {
+      console.log('Password reset requested for an email with no account.');
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'If an account exists for that email, a password reset link is on its way.',
+    });
+  } catch (error) {
+    console.error('forgot-password error', error);
+    return res.status(500).json({ success: false, message: 'Unable to process the request right now.' });
+  }
+});
+
+/**
+ * Complete a password reset with the token from the emailed link.
+ */
+app.post('/api/auth/reset-password', async (req, res) => {
+  const token = String(req.body?.token ?? '').trim();
+  const password = String(req.body?.password ?? '');
+
+  if (!token || !password) {
+    return res.status(400).json({ success: false, message: 'Token and new password are required.' });
+  }
+
+  if (password.length < 8) {
+    return res.status(400).json({ success: false, message: 'Password must be at least 8 characters.' });
+  }
+
+  try {
+    const usersCollection = await getUsersCollection();
+
+    // Match on the hash (never the raw token) and require the link to be valid.
+    const user = await usersCollection.findOne({
+      passwordResetTokenHash: hashPasswordResetToken(token),
+      passwordResetExpiresAt: { $gt: new Date() },
+    }) as UserDocument | null;
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'This reset link is invalid or has expired. Please request a new one.',
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    await usersCollection.updateOne(
+      { _id: user._id },
+      {
+        $set: { passwordHash, updatedAt: new Date() },
+        // Single use: the token is burned as soon as it is redeemed.
+        $unset: { passwordResetTokenHash: '', passwordResetExpiresAt: '' },
+      }
+    );
+
+    const mail = buildPasswordChangedMessage();
+    await trySendEmail({ to: user.email, subject: mail.subject, text: mail.text, html: mail.html });
+
+    return res.status(200).json({ success: true, message: 'Password updated. You can now sign in.' });
+  } catch (error) {
+    console.error('reset-password error', error);
+    return res.status(500).json({ success: false, message: 'Unable to reset the password right now.' });
   }
 });
 
@@ -2508,6 +2680,288 @@ app.post('/api/razorpay-webhook', async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, message: 'Webhook processing failed.' });
   }
 });
+/**
+ * Marks a Stripe order as paid exactly once and sends the customer and merchant
+ * notifications. Shared by the browser return URL and the Stripe webhook, both
+ * of which can arrive for the same payment.
+ */
+async function settleStripeCheckoutSession(
+  session: Stripe.Checkout.Session
+): Promise<{ orderReference: string; duplicate: boolean } | null> {
+  const orderReference = (session.client_reference_id || session.metadata?.['orderReference'] || '').trim();
+  if (!orderReference) {
+    return null;
+  }
+
+  const paymentIntentId =
+    typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
+
+  const ordersCollection = await getOrdersCollection();
+
+  // Guard on status so the return URL and the webhook cannot both send emails.
+  const paidTransition = await ordersCollection.updateOne(
+    { orderReference, status: { $ne: 'paid' } },
+    {
+      $set: {
+        status: 'paid',
+        stripeSessionId: session.id,
+        stripePaymentIntentId: paymentIntentId,
+        updatedAt: new Date(),
+      },
+    }
+  );
+
+  if (paidTransition.modifiedCount === 0) {
+    console.log(`Stripe confirmation: Order ${orderReference} already paid; skipping duplicate notifications.`);
+    return { orderReference, duplicate: true };
+  }
+
+  const order = await ordersCollection.findOne<OrderDocument>({ orderReference });
+  if (order) {
+    const mail = buildOrderConfirmationMessage({
+      name: order.name,
+      email: order.email,
+      items: order.items,
+      total: order.total,
+      currency: order.currency,
+      orderReference,
+      paymentMethod: 'Stripe',
+    });
+    await trySendEmail({ to: order.email, subject: mail.subject, text: mail.text, html: mail.html });
+
+    const merchantMail = buildMerchantOrderNotification({
+      name: order.name,
+      email: order.email,
+      address: order.address,
+      items: order.items,
+      total: order.total,
+      currency: order.currency,
+      orderReference,
+      paymentMethod: 'Stripe',
+      orderStatus: 'paid',
+    });
+    await trySendEmail({
+      to: orderNotificationEmail,
+      replyTo: order.email,
+      subject: merchantMail.subject,
+      text: merchantMail.text,
+      html: merchantMail.html,
+    });
+  }
+
+  return { orderReference, duplicate: false };
+}
+
+/**
+ * Create a Stripe Checkout Session for international (USD) card payments.
+ * Returns a hosted checkout URL, so no card data ever touches this app.
+ */
+app.post('/api/create-stripe-checkout-session', async (req, res) => {
+  if (!stripe) {
+    return res.status(500).json({
+      success: false,
+      message: 'Stripe is not configured. Set STRIPE_SECRET_KEY to accept international payments.',
+    });
+  }
+
+  const { name, email, address, items, total, currency } = req.body;
+
+  if (!name || !email || !Array.isArray(items) || typeof total !== 'number') {
+    return res.status(400).json({ success: false, message: 'Name, email, items, and total are required.' });
+  }
+
+  const frontendCurrency = String(currency || 'USD').toUpperCase();
+
+  // Stripe is the international gateway and always charges in USD; domestic
+  // shoppers pay through Razorpay instead.
+  if (frontendCurrency !== 'USD') {
+    return res.status(400).json({
+      success: false,
+      message: 'International card payments are processed in USD. Please switch the currency to USD.',
+    });
+  }
+
+  // Re-price the order from the catalog so a tampered or stale cart cannot set
+  // the amount Stripe charges.
+  const priced = await priceOrderItems(items);
+  if (!priced.ok) {
+    return res.status(400).json({ success: false, message: priced.message });
+  }
+
+  const resolved = resolveOrderTotal(priced, total, frontendCurrency, '[Stripe]');
+  if (!resolved.ok) {
+    return res.status(400).json({ success: false, message: resolved.message });
+  }
+  const orderTotal = resolved.total;
+  const orderReference = `ORDER-${Date.now()}`;
+
+  try {
+    const baseUrl = resolveAppBaseUrl(req);
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      customer_email: email,
+      client_reference_id: orderReference,
+      line_items: priced.items.map((item) => ({
+        quantity: item.quantity,
+        price_data: {
+          currency: 'usd',
+          unit_amount: Math.round(item.product.price * 100),
+          product_data: {
+            name: item.size ? `${item.product.name} (size ${item.size})` : item.product.name,
+          },
+        },
+      })),
+      metadata: {
+        orderReference,
+        customerName: String(name),
+        customerEmail: String(email),
+        orderTotal: String(orderTotal),
+      },
+      success_url: `${baseUrl}/checkout-success?session_id={CHECKOUT_SESSION_ID}&order=${orderReference}`,
+      cancel_url: `${baseUrl}/checkout?cancelled=${orderReference}`,
+    });
+
+    // Save the order with 'pending' status before returning, exactly like the
+    // Razorpay flow, so the confirmation step has a document to settle.
+    const ordersCollection = await getOrdersCollection();
+    const order: OrderDocument = {
+      orderReference,
+      name,
+      email,
+      address: address || '',
+      items: priced.items,
+      total: orderTotal,
+      currency: frontendCurrency,
+      paymentMethod: 'Stripe',
+      status: 'pending',
+      stripeSessionId: session.id,
+      createdAt: new Date(),
+    };
+    await ordersCollection.insertOne(order);
+
+    console.log(`[Stripe] Session ${session.id} created for ${orderReference} (${orderTotal} USD)`);
+
+    return res.status(200).json({
+      success: true,
+      orderReference,
+      sessionId: session.id,
+      checkoutUrl: session.url,
+      publishableKey: stripePublishableKey,
+      amount: session.amount_total,
+      currency: session.currency,
+    });
+  } catch (error) {
+    console.error('create-stripe-checkout-session error', error);
+    return res.status(500).json({ success: false, message: 'Unable to start the Stripe payment.' });
+  }
+});
+
+/**
+ * Confirm a Stripe payment after the shopper returns from the hosted checkout.
+ */
+app.post('/api/confirm-stripe-payment', async (req, res) => {
+  if (!stripe) {
+    return res.status(500).json({ success: false, message: 'Stripe is not configured.' });
+  }
+
+  const { orderReference, sessionId } = req.body;
+
+  if (!sessionId && !orderReference) {
+    return res.status(400).json({ success: false, message: 'A session id or order reference is required.' });
+  }
+
+  try {
+    let session: Stripe.Checkout.Session | null = null;
+
+    if (sessionId) {
+      session = await stripe.checkout.sessions.retrieve(String(sessionId));
+    } else {
+      // Some browsers return only the order reference.
+      const ordersCollection = await getOrdersCollection();
+      const order = await ordersCollection.findOne<OrderDocument>({ orderReference: String(orderReference) });
+      if (order?.stripeSessionId) {
+        session = await stripe.checkout.sessions.retrieve(order.stripeSessionId);
+      }
+    }
+
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Stripe payment session not found.' });
+    }
+
+    // Never trust the redirect alone: the session is fetched back from Stripe and
+    // must be genuinely paid before the order is released.
+    if (session.payment_status !== 'paid') {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment has not completed yet. If money left your account, contact support with your order reference.',
+      });
+    }
+
+    const settled = await settleStripeCheckoutSession(session);
+    if (!settled) {
+      return res.status(400).json({ success: false, message: 'The payment session is not linked to an order.' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      orderReference: settled.orderReference,
+      duplicate: settled.duplicate,
+    });
+  } catch (error) {
+    console.error('confirm-stripe-payment error', error);
+    return res.status(500).json({ success: false, message: 'Unable to confirm the Stripe payment.' });
+  }
+});
+
+/**
+ * Stripe webhook - server-side payment confirmation (reliable for redirects).
+ * Configure this URL in the Stripe dashboard: https://api.ammawears.com/api/stripe-webhook
+ */
+app.post('/api/stripe-webhook', async (req: Request, res: Response) => {
+  if (!stripe) {
+    console.error('Stripe webhook: Stripe not configured');
+    return res.status(500).json({ success: false, message: 'Stripe is not configured.' });
+  }
+
+  let event: Stripe.Event;
+
+  try {
+    if (stripeWebhookSecret) {
+      const signature = req.headers['stripe-signature'] as string;
+      if (!signature) {
+        return res.status(400).json({ success: false, message: 'Missing Stripe signature.' });
+      }
+      // req.body is a Buffer here because of the express.raw() registration.
+      const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
+      event = stripe.webhooks.constructEvent(rawBody, signature, stripeWebhookSecret);
+    } else {
+      console.warn('Stripe webhook: STRIPE_WEBHOOK_SECRET is not set; skipping signature verification.');
+      event = (Buffer.isBuffer(req.body) ? JSON.parse(req.body.toString('utf8')) : req.body) as Stripe.Event;
+    }
+  } catch (error) {
+    console.error('Stripe webhook signature error', error);
+    return res.status(400).json({ success: false, message: 'Invalid Stripe webhook signature.' });
+  }
+
+  try {
+    if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
+      const session = event.data.object;
+      if (session.payment_status === 'paid') {
+        const settled = await settleStripeCheckoutSession(session);
+        if (settled) {
+          console.log(`Stripe webhook: order ${settled.orderReference} settled`);
+        }
+      }
+    }
+
+    // Always acknowledge receipt so Stripe does not retry indefinitely.
+    return res.status(200).json({ success: true, received: true });
+  } catch (error) {
+    console.error('Stripe webhook error', error);
+    return res.status(500).json({ success: false, message: 'Webhook processing failed.' });
+  }
+});
+
 // Qikink Webhook Handler
 app.post('/api/qikink-webhook', async (req, res) => {
   // Verify Qikink signature if required

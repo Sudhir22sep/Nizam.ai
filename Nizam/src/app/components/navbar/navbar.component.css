@@ -153,6 +153,31 @@
   box-shadow: 0 8px 20px rgba(176, 141, 87, 0.4);
 }
 
+/* Signed-in navbar affordances (name + sign out) */
+.nav-user {
+  display: inline-flex;
+  align-items: center;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.btn-signout {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn-signout:hover {
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: none;
+}
+
 .menu-toggle {
   display: none;
   flex-direction: column;
@@ -218,6 +243,17 @@
   }
 
   .btn-nav-cta {
+    display: none;
+  }
+
+  /* Sign out must stay reachable on small screens, where the CTA is hidden. */
+  .navbar-icons .btn-signout {
+    display: inline-flex;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+  }
+
+  .nav-user {
     display: none;
   }
 
