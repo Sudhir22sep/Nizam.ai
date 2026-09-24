@@ -4,7 +4,7 @@
  * The component class only ever rewrites a handful of custom properties
  * (--rotate-x, --rotate-y, --pointer-x, --pointer-y, --shadow-x/-y,
  * --card-scale, --card-lift). Everything else — depth, easing, colours — is
- * declared here, so the Java/TS side stays free of styling decisions.
+ * declared here, so the TypeScript side stays free of styling decisions.
  *
  * Depth stack (all measured from the card plane, towards the viewer):
  *     info text       translateZ(20px)
