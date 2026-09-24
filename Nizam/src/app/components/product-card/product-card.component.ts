@@ -9,11 +9,12 @@ import {
   Output,
   Renderer2,
   RendererStyleFlags2,
-  inject
+  inject,
+  signal
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { Product, primaryProductImage } from '../../services/product.service';
+import { Product, normalizeProductImages, primaryProductImage } from '../../services/product.service';
 import { ImageFallbackDirective } from '../../directives/image-fallback.directive';
 import { PricePipe } from '../../pipes/price.pipe';
 
@@ -97,6 +98,8 @@ export class ProductCardComponent implements OnDestroy {
   /** Emitted by either heart button with the card's product. */
   @Output() readonly wishlistToggle = new EventEmitter<Product>();
 
+  readonly activeImageIndex = signal(0);
+
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly renderer = inject(Renderer2);
 
@@ -121,9 +124,33 @@ export class ProductCardComponent implements OnDestroy {
     this.stopTilt();
   }
 
-  /** Primary catalog image, normalised the same way every other surface does it. */
+  get images(): string[] {
+    return normalizeProductImages(this.product?.images, undefined, this.product?.name);
+  }
+
+  /** Currently visible product image. */
   get image(): string {
-    return primaryProductImage(this.product?.images, undefined, this.product?.name);
+    return this.images[this.activeImageIndex()] ?? primaryProductImage(undefined, undefined, this.product?.name);
+  }
+
+  selectImage(index: number): void {
+    if (index >= 0 && index < this.images.length) {
+      this.activeImageIndex.set(index);
+    }
+  }
+
+  nextImage(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (this.images.length < 2) return;
+    this.activeImageIndex.update(index => (index + 1) % this.images.length);
+  }
+
+  previousImage(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (this.images.length < 2) return;
+    this.activeImageIndex.update(index => (index - 1 + this.images.length) % this.images.length);
   }
 
   /** Display-only percentage off, derived from the optional compare-at price. */

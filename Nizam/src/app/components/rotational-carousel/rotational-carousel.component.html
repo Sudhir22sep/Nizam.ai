@@ -1,31 +1,39 @@
-<section class="carousel" [attr.aria-label]="'Featured collections'" [style.--ring-radius.px]="ringRadius">
-  <div class="carousel__viewport" [style.--rotation.deg]="rotation">
+<section class="carousel" [attr.aria-label]="'Featured collections'">
+  <div class="carousel__viewport">
     <div class="carousel__ring" role="list">
       @for (collection of collections; track collection.imageUrl; let i = $index) {
         <article
           class="carousel__item"
           role="listitem"
           [class.carousel__item--active]="isActive(i)"
+          [class.carousel__item--mobile-left]="mobilePosition(i) === 'left'"
+          [class.carousel__item--mobile-right]="mobilePosition(i) === 'right'"
           [attr.aria-current]="isActive(i) ? 'true' : null"
           [attr.inert]="isActive(i) ? null : ''"
-          [style.--item-angle.deg]="itemAngle(i)"
+          [style.transform]="itemTransform(i)"
         >
-          @if (collection.href) {
-            <a class="carousel__link" [routerLink]="collection.href">
-              <img class="carousel__image" [src]="collection.imageUrl" [alt]="collection.imageAlt || collection.title" loading="lazy" />
-              <div class="carousel__copy">
-                <h3>{{ collection.title }}</h3>
-                <p>{{ collection.description }}</p>
-              </div>
-            </a>
-          } @else {
-            <div class="carousel__link">
-              <img class="carousel__image" [src]="collection.imageUrl" [alt]="collection.imageAlt || collection.title" loading="lazy" />
-              <div class="carousel__copy">
-                <h3>{{ collection.title }}</h3>
-                <p>{{ collection.description }}</p>
-              </div>
+          <div class="carousel__media">
+            <div class="carousel__image-stack">
+              @for (image of collectionImages(i); track image) {
+                <img
+                  class="carousel__image"
+                  [class.carousel__image--active]="image === collectionImage(i)"
+                  [src]="image"
+                  [alt]="collection.imageAlt || collection.title"
+                  loading="lazy"
+                />
+              }
             </div>
+            @if (collectionImages(i).length > 1) {
+              <span class="carousel__image-count">{{ collectionImagePosition(i) }} / {{ collectionImages(i).length }}</span>
+            }
+          </div>
+          <div class="carousel__copy">
+            <h3>{{ collection.title }}</h3>
+            <p>{{ collection.description }}</p>
+          </div>
+          @if (collection.href) {
+            <a class="carousel__link" [routerLink]="collection.href" [attr.aria-label]="'View ' + collection.title"></a>
           }
         </article>
       } @empty {
@@ -37,8 +45,20 @@
   @if (itemCount > 1) {
     <div class="carousel__controls" aria-label="Carousel controls">
       <button type="button" class="carousel__button" [attr.aria-label]="previousLabel" (click)="prev()">‹</button>
-      <span class="carousel__status" aria-live="polite">{{ activeIndex + 1 }} / {{ itemCount }}</span>
+      <div class="carousel__pagination" role="group" aria-label="Choose collection">
+        @for (collection of collections; track collection.imageUrl; let i = $index) {
+          <button
+            type="button"
+            class="carousel__dot"
+            [class.carousel__dot--active]="isActive(i)"
+            [attr.aria-label]="'Show ' + collection.title"
+            [attr.aria-current]="isActive(i) ? 'true' : null"
+            (click)="goTo(i)"
+          ></button>
+        }
+      </div>
       <button type="button" class="carousel__button" [attr.aria-label]="nextLabel" (click)="next()">›</button>
+      <span class="carousel__status" aria-live="polite">Showing collection {{ activeIndex + 1 }} of {{ itemCount }}</span>
     </div>
   }
 </section>

@@ -35,15 +35,26 @@
 
 .product-detail {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 48px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(32px, 5vw, 64px);
   align-items: start;
   margin-bottom: 96px;
 }
 
 .product-image {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  isolation: isolate;
+  overflow: hidden;
   position: sticky;
   top: 96px;
+}
+
+.product-details {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
 }
 
 .product-image > img,
@@ -59,6 +70,103 @@
   border-radius: 28px;
   background: var(--bg-light);
   box-shadow: var(--shadow-card);
+}
+
+.product-gallery-3d {
+  width: 100%;
+}
+
+.product-gallery-3d__viewport {
+  position: relative;
+  height: clamp(480px, 48vw, 610px);
+  perspective: 1200px;
+  perspective-origin: 50% 48%;
+}
+
+.product-gallery-3d__ring {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+.product-gallery-3d__item {
+  position: absolute;
+  inset: 0;
+  width: min(52%, 360px);
+  height: 100%;
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 28px;
+  background: linear-gradient(145deg, #faf8f4, #eee8de);
+  box-shadow: 0 28px 70px rgb(30 42 56 / 18%);
+  cursor: pointer;
+  transform-style: preserve-3d;
+  opacity: .58;
+  transition: transform 700ms cubic-bezier(.22, .61, .36, 1), opacity 500ms ease, box-shadow 500ms ease;
+}
+
+.product-gallery-3d__item img {
+  width: 100%;
+  height: 100%;
+  padding: 1rem;
+  object-fit: contain;
+  object-position: center;
+}
+
+.product-gallery-3d__item--active {
+  z-index: 2;
+  opacity: 1;
+  box-shadow: 0 35px 90px rgb(30 42 56 / 26%);
+}
+
+.product-gallery-3d--single .product-gallery-3d__item {
+  width: 100%;
+  max-width: 520px;
+  transform: none !important;
+}
+
+.product-gallery-3d__controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .8rem;
+  margin-top: 14px;
+}
+
+.product-gallery-3d__controls > button {
+  display: grid;
+  width: 2.8rem;
+  height: 2.8rem;
+  place-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  color: var(--brand-dark);
+  background: var(--surface);
+  font-size: 1.6rem;
+  cursor: pointer;
+}
+
+.product-gallery-3d__dots {
+  display: flex;
+  gap: .45rem;
+}
+
+.product-gallery-3d__dots button {
+  width: .6rem;
+  height: .6rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--border-strong);
+  cursor: pointer;
+  transition: width 180ms ease, background 180ms ease;
+}
+
+.product-gallery-3d__dots button.active {
+  width: 1.6rem;
+  background: var(--brand-primary);
 }
 
 .product-thumbnails {
@@ -151,8 +259,7 @@
 /* Shared card surface. */
 .price-section,
 .loading-card,
-.product-details-info,
-.related-card {
+.product-details-info {
   background: var(--surface);
   border: 1px solid var(--border-color);
   border-radius: 18px;
@@ -498,21 +605,20 @@
 
 .related-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
+  perspective: 1400px;
 }
 
 .related-card {
   display: block;
-  overflow: hidden;
+  min-width: 0;
+  height: 100%;
+  overflow: visible;
   text-decoration: none;
-  box-shadow: var(--shadow-card);
-  transition: transform .25s, box-shadow .25s;
-}
-
-.related-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-card-hover);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
 }
 
 .related-card img {
@@ -546,13 +652,24 @@
 
 @media (max-width: 900px) {
   .product-detail {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 32px;
     margin-bottom: 64px;
   }
 
+  .product-image,
+  .product-details {
+    grid-column: 1;
+  }
+
   .product-image {
+    grid-row: 1;
     position: static;
+    overflow: visible;
+  }
+
+  .product-details {
+    grid-row: 2;
   }
 
   .product-detail-container {
@@ -566,11 +683,25 @@
   }
 
   .related-grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px;
   }
 }
 
-/* The owner image-management panel lives in src/styles.css. */
+@media (max-width: 640px) {
+  .product-gallery-3d__item {
+    width: min(76%, 280px);
+  }
+
+  .related-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-gallery-3d__item {
+    transition: none;
+  }
+}
 
 

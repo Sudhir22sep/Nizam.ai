@@ -14,22 +14,31 @@
       <a routerLink="/products" class="link-secondary">View all styles</a>
     </div>
 
-    <app-rotational-carousel
-      [collections]="featuredCollections"
-      [ringRadius]="300"
-    />
+    <app-rotational-carousel [collections]="featuredCollections" />
   </section>
 
-  <section class="value-grid">
+  <section class="value-grid" aria-label="Why shop with Amma Wears">
+    <div class="value-grid__intro">
+      <span class="eyebrow">The Amma Wears promise</span>
+      <h2>Everyday pieces,<br><em>made memorable.</em></h2>
+      <p>Thoughtful fabrics, considered details, and silhouettes that move with you.</p>
+      <a routerLink="/about" class="value-grid__link">Our story <span aria-hidden="true">↗</span></a>
+    </div>
     <div class="value-card">
+      <span class="value-card__number">01</span>
+      <span class="value-icon" aria-hidden="true">✦</span>
       <h3>Quality materials</h3>
       <p>Premium fabrics that feel good, wash well, and hold their shape.</p>
     </div>
     <div class="value-card">
+      <span class="value-card__number">02</span>
+      <span class="value-icon" aria-hidden="true">⌁</span>
       <h3>Local delivery</h3>
       <p>Quick fulfillment and tracking for orders across the region.</p>
     </div>
     <div class="value-card">
+      <span class="value-card__number">03</span>
+      <span class="value-icon" aria-hidden="true">◌</span>
       <h3>Styled for comfort</h3>
       <p>Effortless looks engineered for modern everyday wear.</p>
     </div>

@@ -1,10 +1,10 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PricePipe } from '../../pipes/price.pipe';
+import { ProductCardComponent } from '../../components/product-card/product-card.component';
 import { ImageFallbackDirective } from '../../directives/image-fallback.directive';
-import { ProductService, Product, primaryProductImage, productSizes, variantPrice } from '../../services/product.service';
+import { ProductService, Product, normalizeProductImages, primaryProductImage, productSizes, variantPrice } from '../../services/product.service';
 import { CartService } from '../../services/cart.service';
 import { WishlistService } from '../../services/wishlist.service';
 import { ToastService } from '../../services/toast.service';
@@ -12,7 +12,7 @@ import { ToastService } from '../../services/toast.service';
 @Component({
   selector: 'app-product-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, PricePipe, ImageFallbackDirective],
+  imports: [CommonModule, RouterLink, PricePipe, ImageFallbackDirective, ProductCardComponent],
   templateUrl: './product-detail.component.html',
   styleUrl: './product-detail.component.css'
 })
@@ -36,9 +36,6 @@ export class ProductDetailComponent implements OnInit {
   readonly selectedSize = signal<string | null>(null);
   readonly isLoading = signal(true);
   readonly loadError = signal<string | null>(null);
-  readonly isUploading = signal(false);
-  readonly uploadImageUrl = signal('');
-  readonly uploadMessage = signal('');
 
   ngOnInit() {
     this.route.params.subscribe(params => {
@@ -52,8 +49,6 @@ export class ProductDetailComponent implements OnInit {
     this.selectedImageIndex.set(0);
     this.selectedSize.set(null);
     this.quantity.set(1);
-    this.uploadImageUrl.set('');
-    this.uploadMessage.set('');
     this.isLoading.set(true);
     this.loadError.set(null);
 
@@ -117,7 +112,7 @@ export class ProductDetailComponent implements OnInit {
       return [];
     }
 
-    const images = Array.isArray(product.images) ? product.images : [];
+    const images = normalizeProductImages(product.images, undefined, product.name);
     return images.length > 0 ? images : [primaryProductImage(undefined, undefined, product.name)];
   }
 
@@ -131,6 +126,31 @@ export class ProductDetailComponent implements OnInit {
 
   selectImage(index: number) {
     this.selectedImageIndex.set(index);
+  }
+
+  nextImage(): void {
+    const count = this.galleryImages(this.product()).length;
+    if (count > 1) {
+      this.selectedImageIndex.update(index => (index + 1) % count);
+    }
+  }
+
+  previousImage(): void {
+    const count = this.galleryImages(this.product()).length;
+    if (count > 1) {
+      this.selectedImageIndex.update(index => (index - 1 + count) % count);
+    }
+  }
+
+  galleryItemTransform(index: number): string {
+    const images = this.galleryImages(this.product());
+    if (index === this.selectedImageIndex()) return 'translate3d(0, 0, 80px) rotateY(0deg)';
+    const distance = index - this.selectedImageIndex();
+    const wrapped = distance > images.length / 2
+      ? distance - images.length
+      : distance < -images.length / 2 ? distance + images.length : distance;
+    const direction = Math.sign(wrapped) || 1;
+    return `translate3d(${direction * 64}%, 0, -120px) rotateY(${direction * -45}deg) scale(.86)`;
   }
 
   primaryImage(product?: Product): string {
@@ -288,61 +308,5 @@ export class ProductDetailComponent implements OnInit {
     this.selectedSize.set(size);
   }
 
-  /** Add an image URL to the product gallery */
-  async addImageToGallery(imageUrl: string): Promise<void> {
-    const product = this.product();
-    if (!product || !product.id) {
-      this.toast.error('Cannot add image: product not loaded.');
-      return;
-    }
-
-    if (!imageUrl || !imageUrl.trim()) {
-      this.toast.error('Please enter a valid image URL.');
-      return;
-    }
-
-    this.isUploading.set(true);
-    this.uploadMessage.set('');
-
-    try {
-      await this.productService.addProductImage(product.id, imageUrl.trim());
-      this.toast.success('Image added to gallery!');
-      this.uploadImageUrl.set('');
-      // Refresh product data from the server so variant/image changes appear.
-      const refreshed = await this.productService.fetchProductById(product.id);
-      if (refreshed) {
-        this.product.set(refreshed);
-      }
-    } catch (error) {
-      console.error('Error adding image:', error);
-      this.toast.error('Failed to add image. Please try again.');
-    } finally {
-      this.isUploading.set(false);
-    }
-  }
-
-  /** Remove an image at the given index */
-  async removeImageFromGallery(index: number): Promise<void> {
-    const product = this.product();
-    if (!product || !product.id) {
-      this.toast.error('Cannot remove image: product not loaded.');
-      return;
-    }
-
-    try {
-      await this.productService.removeProductImage(product.id, index);
-      this.toast.success('Image removed from gallery.');
-      // Refresh product data from the server so the gallery updates reliably.
-      const refreshed = await this.productService.fetchProductById(product.id);
-      if (refreshed) {
-        this.product.set(refreshed);
-        this.selectedImageIndex.set(
-          Math.min(this.selectedImageIndex(), Math.max(0, this.galleryImages(refreshed).length - 1))
-        );
-      }
-    } catch (error) {
-      console.error('Error removing image:', error);
-      this.toast.error('Failed to remove image. Please try again.');
-    }
-  }
+  /** Gallery selection is shopper-facing; image management is owner tooling. */
 }

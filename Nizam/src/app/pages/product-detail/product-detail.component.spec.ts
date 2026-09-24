@@ -27,7 +27,8 @@ function makeProduct(id: string, name: string, category: string): Product {
 
 const catalog: Product[] = [
   makeProduct('1', 'Linen Shirt', 'Men'),
-  makeProduct('2', 'Silk Saree', 'Women')
+  makeProduct('2', 'Satin Slip Dress', 'Women'),
+  makeProduct('3', 'Everyday Tee', 'Men')
 ];
 
 /**
@@ -150,6 +151,23 @@ describe('ProductDetailComponent (zoneless)', () => {
 
     expect(cartService.addToCart).not.toHaveBeenCalled();
     expect(toastService.warning).toHaveBeenCalledWith('Please choose a size before adding this item to your cart.');
+  });
+
+  it('renders the product gallery as a 3D coverflow when multiple images exist', async () => {
+    const fixture = createComponent('2');
+    resolveCatalog();
+    await flushZonelessScheduler(fixture);
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const items = compiled.querySelectorAll('.product-gallery-3d__item');
+    expect(items.length).toBe(3);
+    expect(items[0].classList).toContain('product-gallery-3d__item--active');
+
+    const nextButton = compiled.querySelectorAll('.product-gallery-3d__controls > button')[1] as HTMLButtonElement;
+    nextButton.click();
+    await flushZonelessScheduler(fixture);
+    expect(fixture.componentInstance.selectedImageIndex()).toBe(1);
+    expect(items[1].classList).toContain('product-gallery-3d__item--active');
   });
 
   it('adds the selected size and unit price to the cart', async () => {

@@ -17,7 +17,40 @@
 
   <div class="product-detail">
     <div class="product-image">
-      <img [src]="selectedImage(product())" [alt]="product()?.name" appImageFallback>
+      <div class="product-gallery-3d" [class.product-gallery-3d--single]="galleryImages(product()).length === 1">
+        <div class="product-gallery-3d__viewport">
+          <div class="product-gallery-3d__ring">
+            @for (image of galleryImages(product()); let imageIndex = $index; track image) {
+              <button
+                type="button"
+                class="product-gallery-3d__item"
+                [class.product-gallery-3d__item--active]="imageIndex === selectedImageIndex()"
+                [style.transform]="galleryItemTransform(imageIndex)"
+                (click)="selectImage(imageIndex)"
+                [attr.aria-label]="'View image ' + (imageIndex + 1) + ' of ' + product()?.name"
+              >
+                <img [src]="image" [alt]="product()?.name + ' view ' + (imageIndex + 1)" appImageFallback>
+              </button>
+            }
+          </div>
+        </div>
+        @if (galleryImages(product()).length > 1) {
+          <div class="product-gallery-3d__controls">
+            <button type="button" (click)="previousImage()" aria-label="Previous product image">‹</button>
+            <div class="product-gallery-3d__dots" role="group" aria-label="Choose product image">
+              @for (image of galleryImages(product()); let imageIndex = $index; track image) {
+                <button
+                  type="button"
+                  [class.active]="imageIndex === selectedImageIndex()"
+                  (click)="selectImage(imageIndex)"
+                  [attr.aria-label]="'Show image ' + (imageIndex + 1)"
+                ></button>
+              }
+            </div>
+            <button type="button" (click)="nextImage()" aria-label="Next product image">›</button>
+          </div>
+        }
+      </div>
       <div class="product-thumbnails" *ngIf="galleryImages(product()).length > 1">
         <div
           *ngFor="let image of galleryImages(product()); let imageIndex = index; trackBy: trackByImage"
@@ -30,37 +63,8 @@
             [attr.aria-label]="'View image ' + (imageIndex + 1) + ' of ' + product()?.name">
             <img [src]="image" [alt]="product()?.name + ' view ' + (imageIndex + 1)" appImageFallback>
           </button>
-          <button
-            type="button"
-            class="thumbnail-remove"
-            (click)="removeImageFromGallery(imageIndex); $event.stopPropagation()"
-            [attr.aria-label]="'Remove image ' + (imageIndex + 1)">
-            ×
-          </button>
         </div>
       </div>
-    </div>
-
-    <div class="image-upload-panel" *ngIf="product()">
-      <h4>Manage Images</h4>
-      <p class="upload-hint">Paste a public image URL or a root-relative app path such as <code>/images/products/my-image.jpg</code>.</p>
-      <div class="upload-row">
-        <input
-          type="text"
-          placeholder="/images/products/my-image.jpg or https://example.com/image.jpg"
-          [ngModel]="uploadImageUrl()"
-          (ngModelChange)="uploadImageUrl.set($event)"
-          (keyup.enter)="addImageToGallery(uploadImageUrl())"
-          class="upload-input"
-          [disabled]="isUploading()">
-        <button
-          (click)="addImageToGallery(uploadImageUrl())"
-          class="btn-upload-image"
-          [disabled]="isUploading() || !uploadImageUrl().trim()">
-          {{ isUploading() ? 'Adding…' : '+ Add Image' }}
-        </button>
-      </div>
-      <p class="upload-message" *ngIf="uploadMessage()" role="status">{{ uploadMessage() }}</p>
     </div>
 
     <div class="product-details">
@@ -179,14 +183,9 @@
   <section class="related-products" *ngIf="relatedProducts().length > 0">
     <h2>More styles you’ll love</h2>
     <div class="related-grid">
-      <a 
-        *ngFor="let related of relatedProducts(); trackBy: trackByProductId" 
-        [routerLink]="['/product', related.id]"
-        class="related-card">
-        <img [src]="primaryImage(related)" [alt]="related.name" appImageFallback>
-        <h4>{{ related.name }}</h4>
-        <p class="price">{{ related.basePrice | price }}</p>
-      </a>
+      @for (related of relatedProducts(); track related.id) {
+        <app-product-card class="related-card" [product]="related" />
+      }
     </div>
   </section>
 </div>

@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { RotationalCarouselComponent, FeaturedCollection } from './rotational-carousel.component';
 
 const collections: FeaturedCollection[] = [
-  { title: 'Summer Linen', description: 'Light layers for warm days.', imageUrl: '/summer.jpg' },
+  { title: 'Summer Linen', description: 'Light layers for warm days.', imageUrl: '/summer.jpg', imageUrls: ['/summer.jpg', '/summer-detail.jpg', '/summer-back.jpg'] },
   { title: 'After Dark', description: 'Polished evening essentials.', imageUrl: '/evening.jpg' },
   { title: 'Everyday Ease', description: 'Comfort-first favourites.', imageUrl: '/everyday.jpg' }
 ];
@@ -36,6 +36,33 @@ describe('RotationalCarouselComponent', () => {
     expect(component.activeIndex).toBe(0);
     component.prev();
     expect(component.activeIndex).toBe(2);
+  });
+
+  it('automatically rotates the image inside every multi-image collection card', () => {
+    expect(fixture.nativeElement.querySelectorAll('.carousel__image').length).toBe(5);
+    const firstCardImages = fixture.nativeElement.querySelectorAll('.carousel__item')[0]
+      .querySelectorAll('.carousel__image');
+    expect(firstCardImages[0].classList).toContain('carousel__image--active');
+
+    vi.useFakeTimers();
+    component['rotateVisibleImages']();
+    vi.useRealTimers();
+    fixture.detectChanges();
+
+    expect(firstCardImages[1].classList).toContain('carousel__image--active');
+    expect(fixture.nativeElement.querySelector('.carousel__image-count')?.textContent).toContain('2 / 3');
+  });
+
+  it('positions side cards in visible 3D coverflow and moves the active card to center', () => {
+    const items = fixture.nativeElement.querySelectorAll('.carousel__item') as NodeListOf<HTMLElement>;
+    expect(items[0].style.transform).toContain('translate3d(0, 0, 90px)');
+    expect(items[1].style.transform).toContain('translate3d(68%');
+    expect(items[1].style.transform).toContain('rotateY(-48deg)');
+
+    const nextButton = fixture.nativeElement.querySelectorAll('.carousel__button')[1] as HTMLButtonElement;
+    nextButton.click();
+    fixture.detectChanges();
+    expect(items[1].style.transform).toContain('translate3d(0, 0, 90px)');
   });
 
   it('uses internal Angular routes for collection links', () => {
