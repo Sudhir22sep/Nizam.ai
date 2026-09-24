@@ -3917,12 +3917,10 @@ app.use((err: any, req: any, res: any, next: any) => {
 
 /**
  * Start the server if this module is the main entry point, or it is ran via PM2.
- * In development, also start the server when PORT is set (for Angular CLI dev servers).
- * The server listens on the port defined by the `PORT` environment variable, or defaults to 4000.
- */ 
-
-
-if (isMainModule(import.meta.url) || process.env['pm_id'] || (process.env['NODE_ENV'] !== 'production' && process.env['PORT'])) {
+ * In production, the standalone server owns PORT. During `ng serve`, this
+ * module is imported for SSR and must not start a second API listener.
+ */
+if (isMainModule(import.meta.url) || process.env['pm_id'] || process.env['NODE_ENV'] === 'production') {
   const port = process.env['PORT'] || 4000;
 
   // Start the server immediately - don't wait for MongoDB
