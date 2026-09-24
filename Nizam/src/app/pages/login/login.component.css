@@ -5,7 +5,7 @@
   justify-content: center;
   padding: 48px 20px;
   background:
-    radial-gradient(640px 320px at 15% 0%, rgba(176, 141, 87, 0.1), transparent 60%),
+    radial-gradient(640px 320px at 15% 0%, rgba(122, 96, 56, 0.08), transparent 60%),
     radial-gradient(640px 320px at 85% 100%, rgba(180, 89, 63, 0.08), transparent 60%);
 }
 
@@ -74,12 +74,12 @@
 .btn-primary {
   background: var(--gradient-brand);
   color: white;
-  box-shadow: 0 10px 24px rgba(176, 141, 87, 0.28);
+  box-shadow: 0 10px 24px rgba(98, 74, 43, 0.24);
 }
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 16px 34px rgba(176, 141, 87, 0.36);
+  box-shadow: 0 16px 34px rgba(98, 74, 43, 0.3);
 }
 
 .btn-primary:disabled {

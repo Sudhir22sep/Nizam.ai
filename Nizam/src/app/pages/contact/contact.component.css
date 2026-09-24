@@ -45,13 +45,13 @@ button[type='submit'] {
   font-weight: 800;
   font-size: 0.97rem;
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(176, 141, 87, 0.28);
+  box-shadow: 0 10px 24px rgba(98, 74, 43, 0.24);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 button[type='submit']:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 16px 34px rgba(176, 141, 87, 0.36);
+  box-shadow: 0 16px 34px rgba(98, 74, 43, 0.3);
 }
 
 button[type='submit']:disabled {
@@ -67,8 +67,8 @@ button[type='submit']:disabled {
 .contact-details {
   margin-top: 24px;
   padding: 28px;
-  background: rgba(176, 141, 87, 0.05);
-  border: 1px solid rgba(176, 141, 87, 0.14);
+  background: rgba(122, 96, 56, 0.05);
+  border: 1px solid rgba(122, 96, 56, 0.14);
   border-radius: 20px;
 }
 

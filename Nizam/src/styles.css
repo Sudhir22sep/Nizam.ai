@@ -2,34 +2,34 @@
    Amma Wears — Global Design System
    ========================================================================== */
 :root {
-  /* Brand palette — Midnight Slate / Warm Ivory / Antique Brass */
-  --ink-900: #1E2A38;
-  --ink-800: #1E2A38;
-  --ink-700: #2C3B4D;
-  --ink-600: #3C4C5E;
-  --brand-primary: #B08D57;      /* Antique Brass — interactive accent   */
-  --brand-primary-strong: #96754A;
-  --brand-secondary: #5C6B73;    /* Storm Grey — secondary text          */
-  --brand-tertiary: #B08D57;
-  --brand-dark: #1E2A38;
+  /* Brand palette — Forest Charcoal / Warm Pearl / Champagne Bronze */
+  --ink-900: #20231F;
+  --ink-800: #20231F;
+  --ink-700: #30342F;
+  --ink-600: #484C46;
+  --brand-primary: #7A6038;      /* Muted bronze — accessible text/interaction */
+  --brand-primary-strong: #624A2B;
+  --brand-secondary: #62665F;    /* Soft graphite — secondary text           */
+  --brand-tertiary: #9A7B4B;
+  --brand-dark: #20231F;
   --accent-cyan: #4A6B57;
 
   /* Neutrals */
-  --text-color: #3C4C5E;
-  --text-light: #5C6B73;
-  --text-faint: #8A94A0;
-  --bg-page: #F7F5F1;            /* Warm Ivory canvas                    */
-  --bg-light: #F1EEE8;
-  --surface: #FFFFFF;
-  --border-color: #E6E1D8;
-  --border-strong: #D8D2C6;
+  --text-color: #484C46;
+  --text-light: #62665F;
+  --text-faint: #7D817A;
+  --bg-page: #F5F2EA;            /* Soft ivory canvas                       */
+  --bg-light: #ECE8DE;
+  --surface: #FFFCF7;             /* Warm pearl instead of stark white        */
+  --border-color: #DDD8CC;
+  --border-strong: #C9C2B3;
 
   /* Shadows */
-  --shadow: 0 2px 10px rgba(30, 42, 56, 0.08);
-  --shadow-lg: 0 24px 70px rgba(30, 42, 56, 0.16);
-  --brand-shadow: 0 12px 34px rgba(30, 42, 56, 0.1), 0 2px 8px rgba(30, 42, 56, 0.06);
-  --shadow-card: 0 1px 2px rgba(30, 42, 56, 0.05), 0 10px 30px rgba(30, 42, 56, 0.07);
-  --shadow-card-hover: 0 2px 6px rgba(30, 42, 56, 0.06), 0 22px 48px rgba(30, 42, 56, 0.13);
+  --shadow: 0 2px 10px rgba(32, 35, 31, 0.07);
+  --shadow-lg: 0 24px 70px rgba(32, 35, 31, 0.14);
+  --brand-shadow: 0 12px 34px rgba(32, 35, 31, 0.1), 0 2px 8px rgba(32, 35, 31, 0.05);
+  --shadow-card: 0 1px 2px rgba(32, 35, 31, 0.04), 0 10px 30px rgba(32, 35, 31, 0.06);
+  --shadow-card-hover: 0 2px 6px rgba(32, 35, 31, 0.05), 0 22px 48px rgba(32, 35, 31, 0.11);
 
   /* Radii & spacing */
   --radius-sm: 2px;
@@ -46,9 +46,9 @@
   --space-8: 64px;
   --space-9: 96px;
   --container: 1200px;
-  --gradient-brand: linear-gradient(135deg, #B08D57 0%, #C9A76B 100%);
-  --gradient-dark: linear-gradient(160deg, #16202C 0%, #1E2A38 55%, #2C3B4D 100%);
-  --gradient-nav: linear-gradient(135deg, rgba(30, 42, 56, 0.92) 0%, rgba(44, 59, 77, 0.88) 100%);
+  --gradient-brand: linear-gradient(135deg, #725830 0%, #8A6B40 100%);
+  --gradient-dark: linear-gradient(160deg, #171916 0%, #20231F 55%, #30342F 100%);
+  --gradient-nav: linear-gradient(135deg, rgba(32, 35, 31, 0.94) 0%, rgba(48, 52, 47, 0.9) 100%);
 }
 
 /* ---------- Reset ---------- */
@@ -107,7 +107,7 @@ button {
 }
 
 ::selection {
-  background: rgba(176, 141, 87, 0.25);
+  background: rgba(154, 123, 75, 0.22);
 }
 
 /* ---------- Page scaffolding ---------- */
@@ -169,13 +169,13 @@ button {
 .cta-button {
   background: var(--gradient-brand);
   color: #fff;
-  box-shadow: 0 10px 24px rgba(150, 117, 74, 0.28);
+  box-shadow: 0 10px 24px rgba(98, 74, 43, 0.24);
 }
 
 .btn-primary:hover,
 .cta-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 16px 34px rgba(150, 117, 74, 0.36);
+  box-shadow: 0 16px 34px rgba(98, 74, 43, 0.3);
 }
 
 .btn-primary:active,
@@ -187,12 +187,12 @@ button {
 }
 
 .btn-secondary {
-  background: rgba(176, 141, 87, 0.1);
+  background: rgba(122, 96, 56, 0.1);
   color: var(--brand-dark);
 }
 
 .btn-secondary:hover {
-  background: rgba(176, 141, 87, 0.18);
+  background: rgba(122, 96, 56, 0.16);
   transform: translateY(-2px);
 }
 
@@ -295,7 +295,7 @@ input:focus,
 textarea:focus {
   outline: none;
   border-color: var(--brand-primary);
-  box-shadow: 0 0 0 4px rgba(176, 141, 87, 0.14);
+  box-shadow: 0 0 0 4px rgba(122, 96, 56, 0.13);
 }
 
 input.is-invalid {
@@ -318,7 +318,7 @@ input.is-invalid {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(176, 141, 87, 0.55);
+  background: rgba(122, 96, 56, 0.5);
   border-radius: 5px;
 }
 

@@ -1,19 +1,19 @@
 /* Root token alignment with src/styles.css (kept neutral — real tokens live there) */
 :root {
-  --brand-dark: #1E2A38;
-  --brand-secondary: #B4593F;
-  --brand-primary: #B08D57;
-  --brand-tertiary: #C9A76B;
-  --brand-shadow: 0 12px 34px rgba(30, 42, 56, 0.1), 0 2px 8px rgba(30, 42, 56, 0.06);
-  --primary-color: #1E2A38;
-  --secondary-color: #B08D57;
-  --accent-color: #B4593F;
-  --text-color: #3C4C5E;
-  --text-light: #5C6B73;
-  --bg-light: #F1EEE8;
-  --border-color: #E6E1D8;
-  --shadow: 0 2px 10px rgba(30, 42, 56, 0.08);
-  --shadow-lg: 0 24px 70px rgba(30, 42, 56, 0.16);
+  --brand-dark: #20231F;
+  --brand-secondary: #62665F;
+  --brand-primary: #7A6038;
+  --brand-tertiary: #9A7B4B;
+  --brand-shadow: 0 12px 34px rgba(32, 35, 31, 0.1), 0 2px 8px rgba(32, 35, 31, 0.05);
+  --primary-color: #20231F;
+  --secondary-color: #7A6038;
+  --accent-color: #9A7B4B;
+  --text-color: #484C46;
+  --text-light: #62665F;
+  --bg-light: #ECE8DE;
+  --border-color: #DDD8CC;
+  --shadow: 0 2px 10px rgba(32, 35, 31, 0.07);
+  --shadow-lg: 0 24px 70px rgba(32, 35, 31, 0.14);
 }
 
 * {
@@ -27,7 +27,7 @@ body {
     'Helvetica Neue', Arial, sans-serif;
   line-height: 1.6;
   color: var(--text-color);
-  background-color: var(--bg-page, #F7F5F1);
+  background-color: var(--bg-page, #F5F2EA);
 }
 
 .app-shell {
@@ -43,7 +43,7 @@ body {
   justify-content: center;
   gap: 10px 32px;
   padding: 11px 24px;
-  background: #FBF9F5;
+  background: #F9F6EF;
   border-bottom: 1px solid var(--border-color);
   font-size: 0.85rem;
   font-weight: 600;
@@ -125,7 +125,7 @@ body {
 }
 
 .footer-nav a:hover {
-  color: #C9A76B;
+  color: #B39A70;
 }
 
 .footer-social {
@@ -192,7 +192,7 @@ body {
 /* Button styles */
 .cta-button {
   display: inline-block;
-  background: linear-gradient(135deg, var(--secondary-color), #C9A76B);
+  background: linear-gradient(135deg, var(--secondary-color), #9A7B4B);
   color: white;
   padding: 14px 28px;
   border-radius: 999px;

@@ -28,7 +28,7 @@
   object-fit: cover;
   object-position: center top;
   border-radius: 14px;
-  background: #F1EEE8;
+  background: var(--bg-light);
 }
 
 .item-details h2 {
@@ -138,7 +138,7 @@
   width: 72px;
   height: 72px;
   border-radius: 24px;
-  background: rgba(176, 141, 87, 0.08);
+  background: rgba(122, 96, 56, 0.08);
   font-size: 1.8rem;
   margin-bottom: 20px;
 }

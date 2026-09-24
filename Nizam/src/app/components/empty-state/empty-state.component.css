@@ -4,10 +4,10 @@
 
 :root {
   /* Matches global palette */
-  --empty-icon-fill: rgba(241, 238, 232, 0.45);
-  --empty-accent: #B08D57;
-  --empty-accent-strong: #96754A;
-  --empty-ink: #1E2A38;
+  --empty-icon-fill: rgba(236, 232, 222, 0.5);
+  --empty-accent: #7A6038;
+  --empty-accent-strong: #624A2B;
+  --empty-ink: #20231F;
 }
 
 .empty-state {
@@ -17,8 +17,8 @@
   justify-content: center;
   text-align: center;
   padding: 64px 24px;
-  background: var(--surface, #FFFFFF);
-  border: 1px solid var(--border-strong, #D8D2C6);
+  background: var(--surface, #FFFCF7);
+  border: 1px solid var(--border-strong, #C9C2B3);
   border-radius: 24px;
   box-shadow: var(--shadow-card, 0 1px 2px rgba(30,42,56,0.05), 0 10px 30px rgba(30,42,56,0.07));
   max-width: 420px;
@@ -53,7 +53,7 @@
 
 .empty-state__body {
   margin: 0 0 24px;
-  color: var(--text-light, #5C6B73);
+  color: var(--text-light, #62665F);
   font-size: 0.95rem;
   line-height: 1.65;
   max-width: 320px;
@@ -73,7 +73,7 @@
   font-size: 0.95rem;
   cursor: pointer;
   transition: background-color 0.2s ease, transform 0.2s ease;
-  box-shadow: 0 4px 14px rgba(176,141,87,0.3);
+  box-shadow: 0 4px 14px rgba(98, 74, 43, 0.25);
 }
 
 .empty-state__btn:hover {
@@ -90,7 +90,7 @@
 .empty-state--wishlist {
   border-style: dashed;
   border-color: var(--empty-accent);
-  background: rgba(176,141,87,0.03);
+  background: rgba(122, 96, 56, 0.035);
 }
 
 .empty-state--no-products {
@@ -100,7 +100,7 @@
 .empty-state--no-reviews {
   border-style: dashed;
   border-color: var(--border-color);
-  background: rgba(176,141,87,0.02);
+  background: rgba(122, 96, 56, 0.025);
 }
 
 .empty-state--out-of-stock {

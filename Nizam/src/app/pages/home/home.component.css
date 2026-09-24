@@ -3,7 +3,7 @@
 }
 .promo-banner {
   background: var(--gradient-brand);
-  color: #fff;
+  color: #F8F5EE;
   text-align: center;
   padding: 11px 20px;
   font-size: 0.9rem;
@@ -69,10 +69,10 @@
   grid-template-columns: 1.15fr repeat(3, 1fr);
   gap: 1px;
   overflow: hidden;
-  color: #fff;
-  background: #1e2a38;
+  color: #F8F5EE;
+  background: var(--ink-800);
   border-radius: 32px;
-  box-shadow: 0 30px 80px rgb(30 42 56 / 16%);
+  box-shadow: 0 30px 80px rgb(32 35 31 / 14%);
 }
 .value-grid::before {
   content: '';
@@ -81,7 +81,7 @@
   height: 360px;
   left: -160px;
   top: -220px;
-  background: rgb(201 167 107 / 24%);
+  background: rgb(179 154 112 / 20%);
   border-radius: 50%;
   filter: blur(50px);
   pointer-events: none;
@@ -100,21 +100,21 @@
   padding-right: 44px;
 }
 .value-grid .eyebrow {
-  color: #d8bd91;
+  color: #B39A70;
 }
 .value-grid__intro h2 {
   margin: 18px 0;
-  color: #fff;
+  color: #F8F5EE;
   font-size: clamp(2rem, 3vw, 3rem);
   line-height: 1.04;
 }
 .value-grid__intro h2 em {
-  color: #d8bd91;
+  color: #B39A70;
   font-weight: 400;
 }
 .value-grid__intro p,
 .value-card p {
-  color: rgb(255 255 255 / 65%);
+  color: rgb(248 245 238 / 68%);
   line-height: 1.7;
 }
 .value-grid__link {
@@ -122,12 +122,12 @@
   align-items: center;
   gap: 9px;
   margin-top: 28px;
-  color: #fff;
+  color: #F8F5EE;
   font-weight: 750;
   text-decoration: none;
 }
 .value-grid__link span {
-  color: #d8bd91;
+  color: #B39A70;
   font-size: 1.2rem;
   transition: transform 180ms ease;
 }
@@ -135,13 +135,13 @@
   transform: translate(3px, -3px);
 }
 .value-card {
-  border-left: 1px solid rgb(255 255 255 / 11%);
+  border-left: 1px solid rgb(248 245 238 / 12%);
 }
 .value-card__number {
   position: absolute;
   top: 24px;
   right: 24px;
-  color: rgb(255 255 255 / 35%);
+  color: rgb(248 245 238 / 38%);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -152,15 +152,15 @@
   height: 48px;
   margin-bottom: 32px;
   place-items: center;
-  color: #d8bd91;
-  background: rgb(255 255 255 / 7%);
-  border: 1px solid rgb(216 189 145 / 24%);
+  color: #B39A70;
+  background: rgb(248 245 238 / 7%);
+  border: 1px solid rgb(179 154 112 / 24%);
   border-radius: 16px;
   font-size: 1.35rem;
 }
 .value-card h3 {
   margin: 0 0 10px;
-  color: #fff;
+  color: #F8F5EE;
   font-size: 1.1rem;
 }
 .value-card p {
@@ -260,7 +260,7 @@
     padding: 20px 24px 32px;
   }
   .value-card {
-    border-top: 1px solid rgb(255 255 255 / 11%);
+    border-top: 1px solid rgb(248 245 238 / 12%);
     border-left: 0;
     padding: 24px;
   }

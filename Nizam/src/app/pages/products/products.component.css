@@ -3,9 +3,9 @@
   margin: 0 auto;
   padding: 0 24px 96px;
   background:
-    radial-gradient(640px 320px at 92% 4%, rgba(201, 167, 107, 0.14), transparent 60%),
-    radial-gradient(560px 300px at 4% 62%, rgba(180, 89, 63, 0.07), transparent 60%),
-    linear-gradient(180deg, rgba(176, 141, 87, 0.05) 0%, rgba(241, 238, 232, 0) 420px);
+    radial-gradient(640px 320px at 92% 4%, rgba(179, 154, 112, 0.15), transparent 60%),
+    radial-gradient(560px 300px at 4% 62%, rgba(122, 96, 56, 0.05), transparent 60%),
+    linear-gradient(180deg, rgba(154, 123, 75, 0.045) 0%, rgba(245, 242, 234, 0) 420px);
   border-radius: 0 0 40px 40px;
 }
 
@@ -61,7 +61,7 @@
   width: 100%;
   aspect-ratio: 3 / 4;
   overflow: hidden;
-  background: #F1EEE8;
+  background: var(--bg-light);
 }
 
 .product-image img {
@@ -107,7 +107,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: rgba(30, 42, 56, 0.92);
+  background: rgba(32, 35, 31, 0.92);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   color: #fff;
@@ -133,7 +133,7 @@
 .btn-quick-add:focus-visible,
 .overlay-heart:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--bg-page, #F7F5F1), 0 0 0 6px var(--brand-primary);
+  box-shadow: 0 0 0 3px var(--bg-page, #F5F2EA), 0 0 0 6px var(--brand-primary);
 }
 
 .overlay-heart {
@@ -149,13 +149,13 @@
   color: var(--brand-secondary);
   font-size: 1rem;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(30, 42, 56, 0.18);
+  box-shadow: 0 4px 14px rgba(32, 35, 31, 0.16);
   transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
 .overlay-heart:hover {
   transform: translateY(-1px) scale(1.05);
-  background: #fff;
+  background: var(--surface);
 }
 
 /* Touch devices: keep the quick-add overlay always visible */
@@ -267,7 +267,7 @@
   height: 340px;
   top: -140px;
   left: -80px;
-  background: rgba(176, 141, 87, 0.4);
+  background: rgba(122, 96, 56, 0.4);
 }
 
 .products-container .page-header::after {
@@ -361,7 +361,7 @@
 }
 
 .products-container .page-header .eyebrow {
-  color: #C9A76B;
+  color: #B39A70;
 }
 
 .products-container .page-header .page-subtitle {
