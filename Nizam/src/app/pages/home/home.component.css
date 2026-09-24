@@ -34,7 +34,8 @@
   padding: 96px 24px;
 }
 .featured-categories {
-  padding-bottom: 48px;
+  position: relative;
+  padding-bottom: 72px;
 }
 .section-head {
   display: flex;
@@ -60,6 +61,8 @@
 .value-grid {
   position: relative;
   max-width: 1200px;
+  min-height: 300px;
+  align-items: stretch;
   margin: 0 auto 96px;
   padding: 56px;
   display: grid;
@@ -86,7 +89,12 @@
 .value-grid__intro,
 .value-card {
   position: relative;
+  min-width: 0;
   padding: 28px;
+}
+.value-card {
+  display: flex;
+  flex-direction: column;
 }
 .value-grid__intro {
   padding-right: 44px;
@@ -156,6 +164,7 @@
   font-size: 1.1rem;
 }
 .value-card p {
+  margin-top: auto;
   font-size: 0.9rem;
 }
 .about-section {
