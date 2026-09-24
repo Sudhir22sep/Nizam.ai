@@ -234,8 +234,12 @@
   }
   .featured-categories,
   .value-grid {
+    max-width: 100%;
     padding-left: 18px;
     padding-right: 18px;
+  }
+  .featured-categories {
+    overflow: hidden;
   }
   .value-grid {
     margin-bottom: 64px;

@@ -201,26 +201,29 @@
   }
 
   .carousel__viewport {
-    height: 430px;
+    height: 410px;
+    overflow: hidden;
     perspective: 1000px;
+    perspective-origin: 50% 50%;
   }
 
   .carousel__item {
-    width: min(64vw, 270px);
+    width: min(58vw, 230px);
     height: 350px;
+    margin: auto;
     opacity: 1;
   }
 
   .carousel__item--mobile-left {
-    transform: translate3d(-76%, 0, -130px) rotateY(-28deg) scale(.82) !important;
+    transform: translate3d(-72%, 0, -130px) rotateY(-24deg) scale(.82) !important;
   }
 
   .carousel__item--mobile-right {
-    transform: translate3d(24%, 0, -130px) rotateY(28deg) scale(.82) !important;
+    transform: translate3d(72%, 0, -130px) rotateY(24deg) scale(.82) !important;
   }
 
   .carousel__item--active {
-    transform: translate3d(-50%, 0, 90px) rotateY(0deg) scale(1) !important;
+    transform: translate3d(0, 0, 90px) rotateY(0deg) scale(1) !important;
   }
 
   .carousel__item:not(.carousel__item--active) {
