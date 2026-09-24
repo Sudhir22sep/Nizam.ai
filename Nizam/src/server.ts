@@ -77,10 +77,33 @@ function toPublicProduct(product: Record<string, any>): Record<string, any> {
   return clone;
 }
 
+/**
+ * Collapses a duplicated brand prefix in product names, e.g.
+ * "DKNY DKNY Unisex Black Trolley Bag" → "DKNY Unisex Black Trolley Bag".
+ * The imported catalog (and possibly older MongoDB rows) repeats the brand at
+ * the start of the name; shoppers see the doubled text on cards and PDPs, so
+ * every served product name is cleaned here.
+ */
+function cleanProductName(name: unknown): string {
+  if (typeof name !== 'string') {
+    return typeof name === 'string' ? name : 'Untitled product';
+  }
+  const words = name.trim().split(/\s+/);
+  for (let take = Math.floor(words.length / 2); take >= 1; take -= 1) {
+    const first = words.slice(0, take).join(' ').toLowerCase();
+    const second = words.slice(take, take * 2).join(' ').toLowerCase();
+    if (first.length > 0 && first === second) {
+      return words.slice(take).join(' ');
+    }
+  }
+  return name.trim();
+}
+
 /** Normalizes a catalog entry and strips owner-only fields in one step. */
 function toPublicCatalogProduct(product: any): Record<string, any> {
   return toPublicProduct({
     ...product,
+    name: cleanProductName(product?.name),
     basePrice: product?.basePrice ?? product?.price ?? 0,
     currency: product?.currency ?? 'USD',
     images: Array.isArray(product?.images) ? product.images : (product?.image ? [product.image] : []),
@@ -261,6 +284,10 @@ if (sesClient && !isSenderConfigured) {
   );
 }
 
+// Where merchant order notifications are sent. The default is the shop's
+// own Gmail inbox; override with ORDER_NOTIFICATION_EMAIL when needed.
+const orderNotificationEmail = (process.env.ORDER_NOTIFICATION_EMAIL || 'ammacollectivewear@gmail.com').trim();
+
 // Initialize Express app
 const app = express();
 
@@ -411,7 +438,7 @@ interface OrderDocument {
   name: string;
   email: string;
   address: string;
-  items: Array<{ product: { name: string; price: number }; quantity: number }>;
+  items: Array<{ product: { name: string; price: number }; size?: string; quantity: number }>;
   total: number;
   currency: string;
   paymentMethod: string;
@@ -989,6 +1016,8 @@ async function lookupCatalogPriceUsd(productId: unknown): Promise<number | null>
 
 interface PricedOrderItem {
   product: { name: string; price: number };
+  /** Shopper-selected size label; absent for one-size products. */
+  size?: string;
   quantity: number;
 }
 
@@ -1023,6 +1052,9 @@ async function priceOrderItems(rawItems: unknown[]): Promise<PricingResult> {
     }
 
     const quantity = typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1;
+    // Preserve the shopper-selected size so it reaches the stored order and
+    // both the customer and merchant notification emails.
+    const size = typeof item.size === 'string' && item.size.trim() ? item.size.trim() : undefined;
 
     let unitPriceUsd: number | null = null;
     try {
@@ -1045,6 +1077,7 @@ async function priceOrderItems(rawItems: unknown[]): Promise<PricingResult> {
 
     items.push({
       product: { name: product.name || `Item ${items.length + 1}`, price: unitPriceUsd },
+      size,
       quantity,
     });
   }
@@ -1248,7 +1281,7 @@ async function getApiPartnersCollection() {
   return collection;
 }
 
-async function sendEmail(params: { to: string | string[]; subject: string; text: string; html: string }) {
+async function sendEmail(params: { to: string | string[]; subject: string; text: string; html: string; replyTo?: string }) {
   const { to, subject, text, html } = params;
   if (!sesClient) {
     throw new Error('Email service is not configured. Missing environment variable(s): SES_REGION');
@@ -1264,7 +1297,7 @@ async function sendEmail(params: { to: string | string[]; subject: string; text:
   const command = new SendEmailCommand({
     Source: verifiedSender,
     Destination: destination,
-    ReplyToAddresses: [verifiedSender],
+    ReplyToAddresses: [params.replyTo || verifiedSender],
     Message: {
       Subject: { Data: subject },
       Body: {
@@ -1284,6 +1317,109 @@ async function sendEmail(params: { to: string | string[]; subject: string; text:
   }
 }
 
+/**
+ * Minimal HTML escaping for customer-supplied values interpolated into email
+ * bodies (names, addresses, sizes). Keeps malformed input from breaking the
+ * HTML email layout or injecting markup.
+ */
+function escapeEmailHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/\r?\n/g, '<br>');
+}
+
+/**
+ * Builds the merchant notification for a new/paid order. Contains everything
+ * the shop owner needs to fulfil: customer contact, shipping address, and
+ * each item with size, quantity, unit price, and line total.
+ */
+function buildMerchantOrderNotification(params: {
+  name: string;
+  email: string;
+  address?: string;
+  items: Array<{ product: { name: string; price?: number }; size?: string; quantity: number }>;
+  total: number;
+  currency: string;
+  orderReference: string;
+  paymentMethod: string;
+  orderStatus: string;
+}) {
+  const { name, email, address, items, total, currency, orderReference, paymentMethod, orderStatus } = params;
+  const orderCurrency = (currency || 'USD').toUpperCase();
+
+  const itemRows = items.map((item) => {
+    const price = convertFromUsd(item.product.price ?? 0, orderCurrency);
+    const sizeLabel = item.size ? escapeEmailHtml(item.size) : '—';
+    return `
+    <tr>
+      <td>${escapeEmailHtml(item.product.name || 'Unnamed Item')}</td>
+      <td>${sizeLabel}</td>
+      <td align="center">${item.quantity}</td>
+      <td align="right">${formatCurrency(price, orderCurrency)}</td>
+      <td align="right">${formatCurrency(price * item.quantity, orderCurrency)}</td>
+    </tr>
+  `}).join('');
+
+  const itemText = items.map((item) => {
+    const price = convertFromUsd(item.product.price ?? 0, orderCurrency);
+    const sizeLabel = item.size ? ` (size ${item.size})` : '';
+    return `${item.quantity} x ${item.product.name || 'Unnamed Item'}${sizeLabel} @ ${formatCurrency(price, orderCurrency)} = ${formatCurrency(price * item.quantity, orderCurrency)}`;
+  }).join('\n');
+
+  const addressBlock = (address || '').trim();
+
+  return {
+    subject: `🛍️ New order ${orderReference} — ${formatCurrency(total, orderCurrency)} (${paymentMethod})`,
+    text: `New order received!
+
+Order reference: ${orderReference}
+Status: ${orderStatus}
+Payment method: ${paymentMethod}
+Total: ${formatCurrency(total, orderCurrency)}
+
+CUSTOMER
+Name: ${name}
+Email: ${email}
+
+SHIPPING ADDRESS
+${addressBlock || 'Not provided'}
+
+ITEMS
+${itemText}
+
+Fulfil this order from the admin panel or reply to this email to contact the customer.`,
+    html: `<h2>New order received</h2>
+      <p><strong>Order reference:</strong> ${escapeEmailHtml(orderReference)}</p>
+      <p><strong>Status:</strong> ${escapeEmailHtml(orderStatus)} &nbsp;|&nbsp; <strong>Payment method:</strong> ${escapeEmailHtml(paymentMethod)} &nbsp;|&nbsp; <strong>Total:</strong> <strong>${formatCurrency(total, orderCurrency)}</strong></p>
+      <h3>Customer</h3>
+      <p><strong>Name:</strong> ${escapeEmailHtml(name)}<br>
+      <strong>Email:</strong> ${escapeEmailHtml(email)}</p>
+      <h3>Shipping address</h3>
+      <p>${addressBlock ? escapeEmailHtml(addressBlock) : '<em>Not provided</em>'}</p>
+      <h3>Items</h3>
+      <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; width:100%;">
+        <thead>
+          <tr>
+            <th align="left">Item</th>
+            <th align="left">Size</th>
+            <th align="center">Qty</th>
+            <th align="right">Unit price</th>
+            <th align="right">Line total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemRows}
+        </tbody>
+      </table>
+      <p style="margin-top:12px;"><strong>Order total: ${formatCurrency(total, orderCurrency)}</strong></p>
+      <p>Fulfil this order from the admin panel, or reply to this email to contact the customer.</p>`,
+  };
+}
+
 function buildContactMessage(params: { name: string; email: string; message: string }) {
   const { name, email, message } = params;
   return {
@@ -1296,21 +1432,24 @@ function buildContactMessage(params: { name: string; email: string; message: str
 function buildOrderConfirmationMessage(params: {
   name: string;
   email: string;
-  items: Array<{ product: { name: string; price?: number; basePrice?: number }; quantity: number }>;
+  address?: string;
+  items: Array<{ product: { name: string; price?: number; basePrice?: number }; size?: string; quantity: number }>;
   total: number;
   orderReference: string;
   paymentMethod?: string;
   currency?: string;
 }) {
-  const { name, email, items, total, orderReference, paymentMethod, currency } = params;
+  const { name, email, address, items, total, orderReference, paymentMethod, currency } = params;
   const orderCurrency = (currency || 'USD').toUpperCase();
   const methodLabel = paymentMethod === 'COD' ? 'Cash on Delivery (COD)' : 'Card payment';
   const itemRows = items.map((item) => {
     const price = convertFromUsd(item.product.price ?? item.product.basePrice ?? 0, orderCurrency);
     const productName = item.product.name || 'Unnamed Item';
+    const sizeLabel = item.size ? escapeEmailHtml(item.size) : '—';
     return `
     <tr>
-      <td>${productName}</td>
+      <td>${escapeEmailHtml(productName)}</td>
+      <td>${sizeLabel}</td>
       <td>${item.quantity}</td>
       <td>${formatCurrency(price, orderCurrency)}</td>
       <td>${formatCurrency(price * item.quantity, orderCurrency)}</td>
@@ -1320,19 +1459,23 @@ function buildOrderConfirmationMessage(params: {
   const itemText = items.map((item) => {
     const price = convertFromUsd(item.product.price ?? item.product.basePrice ?? 0, orderCurrency);
     const productName = item.product.name || 'Unnamed Item';
-    return `${item.quantity} x ${productName} @ ${formatCurrency(price, orderCurrency)} = ${formatCurrency(price * item.quantity, orderCurrency)}`;
+    const sizeLabel = item.size ? ` (size ${item.size})` : '';
+    return `${item.quantity} x ${productName}${sizeLabel} @ ${formatCurrency(price, orderCurrency)} = ${formatCurrency(price * item.quantity, orderCurrency)}`;
   }).join('\n');
+
+  const shippingAddress = (address || '').trim();
 
   return {
     subject: `Order confirmation — ${orderReference}`,
-    text: `Thank you for your order, ${name}!\n\nOrder reference: ${orderReference}\nPayment method: ${methodLabel}\n\nItems:\n${itemText}\n\nTotal: ${formatCurrency(total, orderCurrency)}\n\nWe will ship to:\n${email}\n\nFor dropshipping or wholesale inquiries, email sudhir.22sep@gmail.com.`,
-    html: `<p>Thank you for your order, <strong>${name}</strong>!</p>
-      <p>Order reference: <strong>${orderReference}</strong></p>
+    text: `Thank you for your order, ${name}!\n\nOrder reference: ${orderReference}\nPayment method: ${methodLabel}\n\nItems:\n${itemText}\n\nTotal: ${formatCurrency(total, orderCurrency)}\n\nWe will ship your order to:\n${shippingAddress || 'Address to be confirmed'}\n\nFor dropshipping or wholesale inquiries, email sudhir.22sep@gmail.com.`,
+    html: `<p>Thank you for your order, <strong>${escapeEmailHtml(name)}</strong>!</p>
+      <p>Order reference: <strong>${escapeEmailHtml(orderReference)}</strong></p>
       <p>Payment method: <strong>${methodLabel}</strong></p>
       <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; width:100%;">
         <thead>
           <tr>
             <th align="left">Item</th>
+            <th align="left">Size</th>
             <th align="right">Qty</th>
             <th align="right">Price</th>
             <th align="right">Total</th>
@@ -1343,12 +1486,13 @@ function buildOrderConfirmationMessage(params: {
         </tbody>
       </table>
       <p><strong>Total: ${formatCurrency(total, orderCurrency)}</strong></p>
+      ${shippingAddress ? `<p>We will ship your order to:<br><strong>${escapeEmailHtml(shippingAddress)}</strong></p>` : ''}
       <p>We will ship your order shortly.</p>
       <p>For dropshipping or wholesale inquiries, email <strong>sudhir.22sep@gmail.com</strong>.</p>`,
   };
 }
 
-async function trySendEmail(params: { to: string | string[]; subject: string; text: string; html: string }) {
+async function trySendEmail(params: { to: string | string[]; subject: string; text: string; html: string; replyTo?: string }) {
   try {
     await sendEmail(params);
     console.log('Email sent successfully');
@@ -1987,9 +2131,9 @@ app.post('/api/create-cod-order', async (req: Request, res: Response) => {
 
     await ordersCollection.insertOne(order);
 
-    const mail = buildOrderConfirmationMessage({ 
-      name, email, items: priced.items, total: orderTotal, 
-      orderReference, paymentMethod: 'COD', currency: orderCurrency 
+    const mail = buildOrderConfirmationMessage({
+      name, email, address, items: priced.items, total: orderTotal,
+      orderReference, paymentMethod: 'COD', currency: orderCurrency
     });
 
     const sent = await trySendEmail({
@@ -1997,6 +2141,27 @@ app.post('/api/create-cod-order', async (req: Request, res: Response) => {
       subject: mail.subject,
       text: mail.text,
       html: mail.html
+    });
+
+    // Merchant notification with the full order details (address, sizes, cost).
+    const merchantMail = buildMerchantOrderNotification({
+      name,
+      email,
+      address,
+      items: priced.items,
+      total: orderTotal,
+      currency: orderCurrency,
+      orderReference,
+      paymentMethod: 'COD',
+      orderStatus: 'pending'
+    });
+
+    await trySendEmail({
+      to: orderNotificationEmail,
+      replyTo: email,
+      subject: merchantMail.subject,
+      text: merchantMail.text,
+      html: merchantMail.html
     });
 
     return res.status(200).json({ 
@@ -2144,12 +2309,20 @@ app.post('/api/confirm-razorpay-payment', async (req, res) => {
 
   try {
     const ordersCollection = await getOrdersCollection();
-    
-    // Update order status to paid
-    await ordersCollection.updateOne(
-      { orderReference },
+
+    // Transition the order to 'paid' only on the first confirmation. Both the
+    // browser callback and the Razorpay webhook can fire for the same payment;
+    // guarding here (and in the webhook) keeps customer and merchant
+    // notification emails from being sent twice.
+    const paidTransition = await ordersCollection.updateOne(
+      { orderReference, status: { $ne: 'paid' } },
       { $set: { status: 'paid', razorpayPaymentId, razorpayOrderId, updatedAt: new Date() } }
     );
+
+    if (paidTransition.modifiedCount === 0) {
+      console.log(`Razorpay confirmation: Order ${orderReference} already paid; skipping duplicate notifications.`);
+      return res.status(200).json({ success: true, orderReference, duplicate: true });
+    }
 
     // Send confirmation email
     const order = await ordersCollection.findOne<OrderDocument>({ orderReference });
@@ -2168,6 +2341,27 @@ app.post('/api/confirm-razorpay-payment', async (req, res) => {
         subject: mail.subject,
         text: mail.text,
         html: mail.html,
+      });
+
+      // Merchant notification with the full order details (address, sizes, cost).
+      const merchantMail = buildMerchantOrderNotification({
+        name: order.name,
+        email: order.email,
+        address: order.address,
+        items: order.items,
+        total: order.total,
+        currency: order.currency,
+        orderReference,
+        paymentMethod: 'Razorpay',
+        orderStatus: 'paid'
+      });
+
+      await trySendEmail({
+        to: orderNotificationEmail,
+        replyTo: order.email,
+        subject: merchantMail.subject,
+        text: merchantMail.text,
+        html: merchantMail.html,
       });
     }
 
@@ -2279,6 +2473,27 @@ app.post('/api/razorpay-webhook', async (req: Request, res: Response) => {
             subject: mail.subject,
             text: mail.text,
             html: mail.html,
+          });
+
+          // Merchant notification with the full order details (address, sizes, cost).
+          const merchantMail = buildMerchantOrderNotification({
+            name: order.name,
+            email: order.email,
+            address: order.address,
+            items: order.items,
+            total: order.total,
+            currency: order.currency,
+            orderReference,
+            paymentMethod: 'Razorpay',
+            orderStatus: 'paid'
+          });
+
+          await trySendEmail({
+            to: orderNotificationEmail,
+            replyTo: order.email,
+            subject: merchantMail.subject,
+            text: merchantMail.text,
+            html: merchantMail.html,
           });
         }
       }

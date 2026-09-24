@@ -38,6 +38,8 @@ services:
         sync: false  # Set in Render dashboard
       - key: RAZORPAY_WEBHOOK_SECRET
         sync: false  # Set in Render dashboard
+      - key: ORDER_NOTIFICATION_EMAIL
+        sync: false  # Set in Render dashboard; defaults to ammacollectivewear@gmail.com in code when unset
       - key: JWT_SECRET
         sync: false  # Set in Render dashboard (required, server exits without it)
       - key: APP_URL
