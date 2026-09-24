@@ -7,6 +7,9 @@ import { ContactComponent } from './pages/contact/contact.component';
 import { CheckoutSuccessComponent } from './pages/checkout-success/checkout-success.component';
 import { LoginComponent } from './pages/login/login.component';
 import { RegisterComponent } from './pages/register/register.component';
+import { ForgotPasswordComponent } from './pages/forgot-password/forgot-password.component';
+import { ResetPasswordComponent } from './pages/reset-password/reset-password.component';
+import { OrdersComponent } from './pages/orders/orders.component';
 import { AuthGuard } from './guards/auth.guard';
 import { AboutComponent } from './pages/about/about.component';
 
@@ -18,6 +21,9 @@ export const routes: Routes = [
   { path: 'contact', component: ContactComponent },
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
+  { path: 'forgot-password', component: ForgotPasswordComponent },
+  { path: 'reset-password', component: ResetPasswordComponent },
+  { path: 'orders', component: OrdersComponent, canActivate: [AuthGuard] },
   { path: 'about', component: AboutComponent},
   { path: 'wishlist', loadComponent: () => import('./pages/wishlist/wishlist.component').then(m => m.WishlistComponent), canActivate: [AuthGuard] },
   { path: 'checkout-success', component: CheckoutSuccessComponent, canActivate: [AuthGuard] },

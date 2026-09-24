@@ -6,7 +6,7 @@ import { PricePipe } from '../../pipes/price.pipe';
 import { ToastService } from '../../services/toast.service';
 import { CurrencyService } from '../../services/currency.service';
 import { CartService } from '../../services/cart.service';
-import { environment } from '../../../environments/environment';
+import { PaymentMethod, PaymentService } from '../../services/payment.service';
 
 @Component({
   selector: 'app-checkout',
@@ -19,11 +19,17 @@ export class CheckoutComponent {
   name = '';
   email = '';
   address = '';
-  paymentMethod: 'razorpay' | 'cod' = 'razorpay';
+  paymentMethod: PaymentMethod = 'razorpay';
   orderConfirmed = false;
   confirmationReference = '';
+  isProcessing = false;
 
-  constructor(public cartService: CartService, private currency: CurrencyService, private toast: ToastService) {}
+  constructor(
+    public cartService: CartService,
+    private currency: CurrencyService,
+    private toast: ToastService,
+    private payments: PaymentService
+  ) {}
 
   get items() {
     return this.cartService.getItems();
@@ -33,7 +39,23 @@ export class CheckoutComponent {
     return this.cartService.getTotalAmount();
   }
 
+  /** Button label for the selected payment method. */
+  get submitLabel(): string {
+    switch (this.paymentMethod) {
+      case 'cod':
+        return 'Place order with COD';
+      case 'stripe':
+        return 'Continue to Stripe (USD)';
+      default:
+        return 'Submit payment';
+    }
+  }
+
   async submitOrder() {
+    if (this.isProcessing) {
+      return;
+    }
+
     if (!this.name || !this.email || !this.address) {
       this.toast.warning('Please complete name, email and shipping address.');
       return;
@@ -44,45 +66,29 @@ export class CheckoutComponent {
       return;
     }
 
-    // Convert the USD cart total to the selected currency for payment
     const selectedCurrency = this.currency.getCurrency();
-    const totalInSelectedCurrency = this.currency.convertFromUSD(this.totalAmount);
 
+    // Stripe is the international gateway and only settles in USD; sending the
+    // shopper to it in another currency would mis-price the order.
+    if (this.paymentMethod === 'stripe' && selectedCurrency !== 'USD') {
+      this.toast.warning('International card payments are charged in USD. Switch the currency selector to USD to continue.');
+      return;
+    }
+
+    // Convert the USD cart total to the selected currency for payment
     const orderPayload = {
       name: this.name,
       email: this.email,
       address: this.address,
       items: this.items,
-      total: totalInSelectedCurrency,
+      total: this.currency.convertFromUSD(this.totalAmount),
       currency: selectedCurrency,
-      paymentMethod: this.paymentMethod,
     };
 
+    this.isProcessing = true;
+
     try {
-      const endpoint = this.paymentMethod === 'cod'
-        ? `${environment.apiUrl || ''}/api/create-cod-order`
-        : `${environment.apiUrl || ''}/api/create-razorpay-order`;
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(orderPayload),
-      });
-
-      const text = await response.text();
-      let result: any = {};
-      try {
-        result = text ? JSON.parse(text) : {};
-      } catch {
-        result = { message: text || 'Unable to complete checkout.' };
-      }
-
-      if (!response.ok || !result.success) {
-        console.error('Order creation failed:', result);
-        this.toast.error(result.message || 'Unable to complete order. Please try again.');
-        return;
-      }
+      const result = await this.payments.createOrder(this.paymentMethod, orderPayload);
 
       if (this.paymentMethod === 'cod') {
         this.orderConfirmed = true;
@@ -91,16 +97,39 @@ export class CheckoutComponent {
         return;
       }
 
-      // Razorpay payment
+      // International card payment: Stripe hosts the card form.
+      if (this.paymentMethod === 'stripe') {
+        if (!result.checkoutUrl) {
+          this.toast.error('Unable to start the Stripe payment. Please try again.');
+          return;
+        }
+        this.toast.info('Redirecting you to the secure Stripe checkout…');
+        this.payments.redirectToStripeCheckout(result.checkoutUrl);
+        return;
+      }
+
+      // Razorpay payment (domestic card/UPI)
       if (!result.orderId || !result.keyId) {
         this.toast.error(result.message || 'Unable to start Razorpay payment.');
         return;
       }
 
-      await this.openRazorpayCheckout(result);
+      await this.openRazorpayCheckout({
+        orderId: result.orderId,
+        amount: result.amount ?? 0,
+        currency: result.currency ?? 'INR',
+        keyId: result.keyId,
+        orderReference: result.orderReference || '',
+      });
     } catch (error) {
       console.error('Create payment session failed', error);
-      this.toast.error('Unable to complete checkout at this time. Please try again later.');
+      this.toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Unable to complete checkout at this time. Please try again later.'
+      );
+    } finally {
+      this.isProcessing = false;
     }
   }
 
@@ -160,44 +189,25 @@ export class CheckoutComponent {
 
   async confirmRazorpayPayment(response: any, orderReference: string) {
     console.log('Confirming Razorpay payment for order:', orderReference);
-    console.log('Response:', response);
     try {
-      const res = await fetch(`${environment.apiUrl || ''}/api/confirm-razorpay-payment`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          orderReference,
-          razorpayPaymentId: response.razorpay_payment_id,
-          razorpayOrderId: response.razorpay_order_id,
-          razorpaySignature: response.razorpay_signature,
-        }),
+      const data = await this.payments.confirmRazorpayPayment({
+        orderReference,
+        razorpayPaymentId: response?.razorpay_payment_id,
+        razorpayOrderId: response?.razorpay_order_id,
+        razorpaySignature: response?.razorpay_signature,
       });
 
-      const text = await res.text();
-      console.log('Confirmation response status:', res.status);
-      console.log('Confirmation response text:', text);
-      let data: any = {};
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch {
-        data = { message: text || 'Unable to confirm Razorpay payment.' };
-      }
-
-      if (!res.ok || !data.success) {
-        console.error('Payment confirmation failed:', data);
-        this.toast.error(data.message || 'Unable to confirm payment. Please contact support if the issue persists.');
-        return;
-      }
-
       this.orderConfirmed = true;
-      this.confirmationReference = data.orderReference || '';
+      this.confirmationReference = data?.orderReference || orderReference;
       this.cartService.clearCart();
       this.toast.success(`Payment confirmed successfully! Order reference: ${this.confirmationReference}`);
     } catch (error) {
       console.error('Razorpay confirmation failed', error);
-      this.toast.error('Unable to confirm payment after Razorpay checkout. Please contact support.');
+      this.toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Unable to confirm payment after Razorpay checkout. Please contact support.'
+      );
     }
   }
 }

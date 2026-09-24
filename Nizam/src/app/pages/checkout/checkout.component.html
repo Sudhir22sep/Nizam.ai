@@ -62,7 +62,11 @@
             <legend>Payment method</legend>
             <label class="method-option">
               <input type="radio" name="paymentMethod" value="razorpay" [(ngModel)]="paymentMethod" />
-              <span class="method-text">Online Payment (Card/UPI)</span>
+              <span class="method-text">Domestic card/UPI (Razorpay, INR)</span>
+            </label>
+            <label class="method-option">
+              <input type="radio" name="paymentMethod" value="stripe" [(ngModel)]="paymentMethod" />
+              <span class="method-text">International card (Stripe, USD)</span>
             </label>
             <label class="method-option">
               <input type="radio" name="paymentMethod" value="cod" [(ngModel)]="paymentMethod" />
@@ -71,10 +75,16 @@
           </fieldset>
 
           <div *ngIf="paymentMethod === 'razorpay'" class="payment-note">
-            <p>You will enter your card/UPI details in a secure payment popup.</p>
+            <p>You will enter your card/UPI details in a secure payment popup. Amounts are charged in INR.</p>
           </div>
 
-          <button type="submit" class="btn-primary btn-submit">{{ paymentMethod === 'cod' ? 'Place order with COD' : 'Submit payment' }}</button>
+          <div *ngIf="paymentMethod === 'stripe'" class="payment-note">
+            <p>You will be redirected to the secure Stripe checkout to pay by international card in USD. Use the currency selector in the header to switch to USD before continuing.</p>
+          </div>
+
+          <button type="submit" class="btn-primary btn-submit" [disabled]="isProcessing">
+            {{ isProcessing ? 'Processing…' : submitLabel }}
+          </button>
         </form>
 
         <p class="hint">For dropshipping or wholesale inquiries, email <strong>ammacollectivewear@gmail.com</strong>.</p>

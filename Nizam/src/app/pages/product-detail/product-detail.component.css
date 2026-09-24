@@ -1,6 +1,19 @@
-.product-detail-container {
+/*
+ * Product detail page styles.
+ *
+ * Declarations shared by several rules are grouped so the compiler emits them
+ * once, and the palette uses the global tokens from src/styles.css. Layout and
+ * cascade order are unchanged from the original.
+ */
+
+.product-detail-container,
+.loading-state,
+.not-found {
   max-width: 1200px;
   margin: 0 auto;
+}
+
+.product-detail-container {
   padding: 32px 24px 96px;
 }
 
@@ -13,7 +26,7 @@
   font-weight: 700;
   font-size: 0.92rem;
   margin-bottom: 24px;
-  transition: color 0.2s ease;
+  transition: color .2s;
 }
 
 .back-link:hover {
@@ -33,13 +46,18 @@
   top: 96px;
 }
 
+.product-image > img,
+.product-thumbnail img,
+.related-card img {
+  object-fit: cover;
+  object-position: center top;
+}
+
 .product-image > img {
   width: 100%;
   aspect-ratio: 4 / 5;
-  object-fit: cover;
-  object-position: center top;
   border-radius: 28px;
-  background: #F1EEE8;
+  background: var(--bg-light);
   box-shadow: var(--shadow-card);
 }
 
@@ -51,6 +69,7 @@
 }
 
 .product-thumbnail {
+  position: relative;
   width: 76px;
   height: 76px;
   padding: 0;
@@ -58,8 +77,8 @@
   overflow: hidden;
   border: 2px solid transparent;
   cursor: pointer;
-  background: #F1EEE8;
-  transition: border-color 0.2s ease, transform 0.2s ease;
+  background: var(--bg-light);
+  transition: border-color .2s, transform .2s;
 }
 
 .product-thumbnail:hover {
@@ -73,8 +92,6 @@
 .product-thumbnail img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: center top;
 }
 
 .thumbnail-select {
@@ -100,9 +117,16 @@
   margin-bottom: 14px;
 }
 
-.rating {
+/* Shared row layout (rules that already centred their items). */
+.rating,
+.price-section,
+.arkit-header,
+.quantity-section {
   display: flex;
   align-items: center;
+}
+
+.rating {
   gap: 10px;
   margin-bottom: 18px;
 }
@@ -124,15 +148,20 @@
   margin-bottom: 24px;
 }
 
-.price-section {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding: 18px 22px;
+/* Shared card surface. */
+.price-section,
+.loading-card,
+.product-details-info,
+.related-card {
   background: var(--surface);
   border: 1px solid var(--border-color);
   border-radius: 18px;
+}
+
+.price-section {
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 18px 22px;
   margin-bottom: 20px;
 }
 
@@ -207,7 +236,7 @@
   font-weight: 700;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+  transition: border-color .2s, background-color .2s, transform .2s;
 }
 
 .size-btn:hover {
@@ -221,15 +250,10 @@
 }
 
 .loading-state {
-  max-width: 1200px;
-  margin: 0 auto;
   padding: 96px 24px;
 }
 
 .loading-card {
-  background: var(--surface);
-  border: 1px solid var(--border-color);
-  border-radius: 18px;
   padding: 32px;
   color: var(--text-light);
 }
@@ -252,6 +276,11 @@
   width: 30%;
 }
 
+@keyframes loading-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 .upload-hint {
   color: var(--text-light);
   font-size: 0.85rem;
@@ -271,14 +300,7 @@
   margin: 10px 0 0;
 }
 
-@keyframes loading-shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
 .quantity-section {
-  display: flex;
-  align-items: center;
   gap: 14px;
   margin-bottom: 24px;
 }
@@ -305,7 +327,7 @@
   font-weight: 700;
   color: var(--brand-dark);
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color .2s;
 }
 
 .qty-btn:hover {
@@ -337,8 +359,6 @@
 }
 
 .arkit-header {
-  display: flex;
-  align-items: center;
   gap: 10px;
   margin-bottom: 8px;
 }
@@ -363,28 +383,33 @@
   margin-bottom: 12px;
 }
 
-.btn-arkit {
+/* Shared pill-button anatomy; each button keeps its own colours and padding. */
+.btn-arkit,
+.btn-add-cart,
+.btn-checkout,
+.btn-wishlist {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  border-radius: 999px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color .2s, border-color .2s, color .2s, transform .2s, box-shadow .2s;
+}
+
+.btn-arkit {
   background: var(--ink-800);
   color: #fff;
   padding: 10px 20px;
   border: none;
-  border-radius: 999px;
   font-weight: 700;
   font-size: 0.9rem;
   text-decoration: none;
-  transition: background-color 0.2s ease;
 }
 
 .btn-arkit:hover {
   background: var(--brand-primary);
-}
-
-.btn-arkit-disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .arkit-note {
@@ -401,20 +426,13 @@
 }
 
 .btn-add-cart {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
   background: var(--gradient-brand);
   color: #fff;
   padding: 14px 28px;
   border: none;
-  border-radius: 999px;
   font-weight: 800;
   font-size: 0.97rem;
-  cursor: pointer;
   box-shadow: 0 10px 24px rgba(176, 141, 87, 0.28);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .btn-add-cart:hover {
@@ -423,19 +441,12 @@
 }
 
 .btn-checkout {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
   background: var(--ink-800);
   color: #fff;
   padding: 14px 28px;
   border: none;
-  border-radius: 999px;
   font-weight: 800;
   font-size: 0.97rem;
-  cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
 .btn-checkout:hover {
@@ -444,19 +455,12 @@
 }
 
 .btn-wishlist {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
   background: var(--surface);
   border: 1.5px solid var(--border-strong);
   color: var(--brand-dark);
   padding: 14px 24px;
-  border-radius: 999px;
   font-weight: 700;
   font-size: 0.95rem;
-  cursor: pointer;
-  transition: border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 
 .btn-wishlist:hover {
@@ -466,9 +470,6 @@
 }
 
 .product-details-info {
-  background: var(--surface);
-  border: 1px solid var(--border-color);
-  border-radius: 18px;
   padding: 24px;
 }
 
@@ -502,13 +503,11 @@
 }
 
 .related-card {
-  background: var(--surface);
-  border: 1px solid var(--border-color);
-  border-radius: 18px;
+  display: block;
   overflow: hidden;
   text-decoration: none;
   box-shadow: var(--shadow-card);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transition: transform .25s, box-shadow .25s;
 }
 
 .related-card:hover {
@@ -519,9 +518,7 @@
 .related-card img {
   width: 100%;
   aspect-ratio: 3 / 4;
-  object-fit: cover;
-  object-position: center top;
-  background: #F1EEE8;
+  background: var(--bg-light);
 }
 
 .related-card h4 {
@@ -538,8 +535,6 @@
 }
 
 .not-found {
-  max-width: 1200px;
-  margin: 0 auto;
   padding: 96px 24px;
   text-align: center;
   color: var(--text-light);
@@ -576,87 +571,6 @@
   }
 }
 
-.image-upload-panel {
-  margin-top: 20px;
-  padding: 16px 18px;
-  background: var(--surface-elevated, #f7f5f1);
-  border: 1px solid var(--border, #e5e5e5);
-  border-radius: 12px;
-}
+/* The owner image-management panel lives in src/styles.css. */
 
-.image-upload-panel h4 {
-  margin: 0 0 12px 0;
-  font-size: 1rem;
-  color: var(--text-primary, #1e2a38);
-}
-
-.upload-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.upload-input {
-  flex: 1;
-  padding: 10px 14px;
-  border: 1px solid var(--border, #e5e5e5);
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-family: inherit;
-  background: #fff;
-  color: var(--text-primary, #1e2a38);
-}
-
-.upload-input:focus {
-  outline: none;
-  border-color: var(--brand-primary, #b08d57);
-}
-
-.btn-upload-image {
-  padding: 10px 18px;
-  background: var(--brand-primary, #b08d57);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.btn-upload-image:hover:not(:disabled) {
-  background: var(--brand-accent, #d4a857);
-}
-
-.btn-upload-image:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.product-thumbnail {
-  position: relative;
-}
-
-.thumbnail-remove {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(0, 0, 0, 0.6);
-  color: #fff;
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.product-thumbnail:hover .thumbnail-remove {
-  opacity: 1;
-}
 
