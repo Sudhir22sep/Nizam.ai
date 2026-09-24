@@ -3,48 +3,7 @@
     <p>New summer edit live — free shipping on orders over ₹2999. COD available across selected locations.</p>
   </div>
 
-  <section class="hero">
-    <div class="hero-glow hero-glow-one" aria-hidden="true"></div>
-    <div class="hero-glow hero-glow-two" aria-hidden="true"></div>
-
-    <div class="hero-inner">
-      <div class="hero-copy">
-        <span class="eyebrow">Limited drop</span>
-        <h1>Everyday luxury for modern wardrobes</h1>
-        <p>Discover premium apparel, effortless layering pieces, and curated essentials designed for style, comfort, and confidence.</p>
-
-        <div class="hero-actions">
-          <a routerLink="/products" class="cta-button">Shop the collection</a>
-          <a routerLink="/contact" class="text-link">Talk to a style advisor</a>
-        </div>
-
-        <div class="hero-highlights">
-          <div>
-            <strong>Fast delivery</strong>
-            <span>Across MENA & India</span>
-          </div>
-          <div>
-            <strong>Easy returns</strong>
-            <span>7-day hassle-free policy</span>
-          </div>
-          <div>
-            <strong>COD available</strong>
-            <span>Pay on delivery for added trust</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="hero-visual">
-        <div class="hero-card">
-          <img src="images/products/hero.jpg" alt="Fashion collection imagery" appImageFallback>
-          <div class="hero-card-chip">
-            <strong>New season edit</strong>
-            <span>Curated pieces, restocked weekly</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+  <app-hero-banner />
 
   <section class="featured-categories">
     <div class="section-head">
@@ -55,24 +14,10 @@
       <a routerLink="/products" class="link-secondary">View all styles</a>
     </div>
 
-    <div class="category-grid">
-      <div class="category-card">
-        <h3>Men’s essentials</h3>
-        <p>Modern shirts, tees, and relaxed tailoring for every day.</p>
-      </div>
-      <div class="category-card">
-        <h3>Women’s edit</h3>
-        <p>Flowing silhouettes, luxe knitwear, and elevated staples.</p>
-      </div>
-      <div class="category-card">
-        <h3>Street style</h3>
-        <p>Bold prints, graphic tees, and wardrobe refreshes.</p>
-      </div>
-      <div class="category-card">
-        <h3>Seasonal picks</h3>
-        <p>Curated outfits for festivals, evenings out, and travel.</p>
-      </div>
-    </div>
+    <app-rotational-carousel
+      [collections]="featuredCollections"
+      [ringRadius]="300"
+    />
   </section>
 
   <section class="value-grid">

@@ -1,0 +1,126 @@
+:host {
+  display: block;
+  --carousel-radius: min(72vw, 360px);
+}
+
+.carousel {
+  position: relative;
+  isolation: isolate;
+  min-height: 520px;
+  overflow: hidden;
+  padding: 2rem 1rem 1rem;
+}
+
+.carousel__viewport {
+  height: 440px;
+  perspective: 1100px;
+  perspective-origin: 50% 50%;
+  transform-style: preserve-3d;
+}
+
+.carousel__ring {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform: rotateY(calc(var(--rotation) * -1)) translateZ(calc(var(--ring-radius) * -1));
+  transition: transform 700ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.carousel__item {
+  position: absolute;
+  inset: 0;
+  width: min(68vw, 320px);
+  height: 360px;
+  margin: auto;
+  transform: rotateY(var(--item-angle)) translateZ(var(--ring-radius));
+  transform-style: preserve-3d;
+  opacity: .35;
+  transition: opacity 500ms ease, filter 500ms ease;
+  backface-visibility: hidden;
+}
+
+.carousel__item--active {
+  opacity: 1;
+  z-index: 2;
+  filter: drop-shadow(0 24px 24px rgb(0 0 0 / 22%));
+}
+
+.carousel__link {
+  display: block;
+  height: 100%;
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 1.5rem;
+}
+
+.carousel__image {
+  display: block;
+  width: 100%;
+  height: 65%;
+  object-fit: cover;
+}
+
+.carousel__copy {
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.carousel__copy h3,
+.carousel__copy p {
+  margin: 0;
+}
+
+.carousel__copy p {
+  margin-top: .5rem;
+  color: var(--text-muted, #64748b);
+  line-height: 1.5;
+}
+
+.carousel__controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.carousel__button {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 50%;
+  background: var(--surface, #fff);
+  color: inherit;
+  font-size: 1.7rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.carousel__button:hover,
+.carousel__button:focus-visible {
+  background: var(--brand-primary, #9a6b3f);
+  color: #fff;
+}
+
+.carousel__status {
+  min-width: 3rem;
+  text-align: center;
+  color: var(--text-muted, #64748b);
+  font-size: .875rem;
+}
+
+.carousel__empty {
+  padding: 3rem;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .carousel__ring,
+  .carousel__item {
+    transition: none;
+  }
+}
