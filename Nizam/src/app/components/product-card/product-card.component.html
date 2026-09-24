@@ -1,0 +1,79 @@
+<!--
+  The rotating surface. Its children are laid out on separate 3D planes:
+  stage (photo + badge + quick-add) floats highest, the info block sits just
+  above the card itself, and the gloss layer rides on top of everything.
+-->
+<div class="tilt-card__inner">
+  <div class="tilt-card__stage">
+    <!-- The photo plate pops towards the viewer (translateZ). tabindex="-1"
+         keeps the accessible name/keyboard path on the product title link. -->
+    <a
+      class="tilt-card__media"
+      [routerLink]="['/product', product.id]"
+      tabindex="-1"
+      [attr.aria-label]="'View ' + product.name"
+    >
+      <img
+        class="tilt-card__image"
+        [src]="image"
+        [alt]="product.name"
+        appImageFallback
+        [loading]="eager ? 'eager' : 'lazy'"
+        [attr.fetchpriority]="eager ? 'high' : null"
+      />
+    </a>
+
+    @if (discountPercent; as discount) {
+      <span class="tilt-card__badge tilt-card__badge--discount">{{ discount }}% off</span>
+    }
+
+    @if (product.rating) {
+      <span class="tilt-card__badge tilt-card__badge--rating">
+        <span aria-hidden="true">★</span> {{ product.rating }}
+        <span class="tilt-card__sr">out of 5</span>
+      </span>
+    }
+
+    <div class="tilt-card__actions">
+      <button type="button" class="tilt-card__quick-add" (click)="onQuickAdd()">
+        <span aria-hidden="true">+</span> Quick add
+      </button>
+      <button
+        type="button"
+        class="tilt-card__heart"
+        (click)="onWishlistToggle()"
+        [attr.aria-label]="'Add ' + product.name + ' to wishlist'"
+      >
+        <span aria-hidden="true">♥</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="tilt-card__info">
+    <p class="tilt-card__eyebrow">{{ product.category }}</p>
+    <h3 class="tilt-card__name">
+      <a class="tilt-card__link" [routerLink]="['/product', product.id]">{{ product.name }}</a>
+    </h3>
+    <p class="tilt-card__description">{{ product.description }}</p>
+
+    <div class="tilt-card__footer">
+      <p class="tilt-card__price">
+        {{ product.basePrice | price }}
+        @if (product.originalPrice) {
+          <s class="tilt-card__compare">{{ product.originalPrice | price }}</s>
+        }
+      </p>
+      <button
+        type="button"
+        class="tilt-card__wishlist"
+        (click)="onWishlistToggle()"
+        [attr.aria-label]="'Save ' + product.name + ' to wishlist'"
+      >
+        <span aria-hidden="true">♥</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Light sheen that follows the pointer; purely decorative. -->
+  <div class="tilt-card__gloss" aria-hidden="true"></div>
+</div>

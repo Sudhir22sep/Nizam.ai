@@ -1,0 +1,425 @@
+/* ---------------------------------------------------------------------------
+ * 3D tilt product card
+ *
+ * The component class only ever rewrites a handful of custom properties
+ * (--rotate-x, --rotate-y, --pointer-x, --pointer-y, --shadow-x/-y,
+ * --card-scale, --card-lift). Everything else — depth, easing, colours — is
+ * declared here, so the Java/TS side stays free of styling decisions.
+ *
+ * Depth stack (all measured from the card plane, towards the viewer):
+ *     info text       translateZ(20px)
+ *     photo plate     translateZ(34px)
+ *     gloss           translateZ(60px)
+ *     badge / actions translateZ(58px / 64px)
+ * ------------------------------------------------------------------------- */
+
+// ---- Tunables ------------------------------------------------------------
+$card-radius: 24px;
+$media-radius: 18px;
+$card-padding: 12px;
+
+$pop-info: 20px; // product copy
+$pop-media: 34px; // the photo plate that "pops out" of the card
+$pop-badge: 58px; // discount / rating badge
+$pop-actions: 64px; // quick-add bar (must clear the photo plate)
+$pop-gloss: 60px;
+
+$perspective: 1100px; // camera distance; smaller = more dramatic
+
+// Two speeds: a tight follow while the pointer moves, and a long, eased
+// settle when it leaves so the card snaps back elegantly.
+$track-duration: 120ms;
+$settle-duration: 560ms;
+$track-ease: linear;
+$settle-ease: cubic-bezier(0.22, 0.61, 0.36, 1); // ease-out-quad-ish, no bounce
+
+$badge-radius: 999px;
+
+// ---- Camera --------------------------------------------------------------
+:host {
+  // Neutral state. The class overwrites these while the pointer is inside.
+  --rotate-x: 0deg;
+  --rotate-y: 0deg;
+  --card-scale: 1;
+  --card-lift: 0px;
+  --pointer-x: 50%;
+  --pointer-y: 50%;
+  --shadow-x: 0px;
+  --shadow-y: 10px;
+
+  display: block;
+  // `perspective` belongs to the untransformed parent: it is the camera for
+  // `.tilt-card__inner`, the only element that rotates.
+  perspective: $perspective;
+  perspective-origin: 50% 50%;
+}
+
+// ---- Rotating surface ----------------------------------------------------
+.tilt-card__inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: $card-padding;
+  border: 1px solid var(--border-color);
+  border-radius: $card-radius;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  // Opens a 3D rendering context so the children below can be layered with
+  // translateZ() instead of being flattened onto the card plane.
+  transform-style: preserve-3d;
+  transform:
+    translate3d(0, var(--card-lift), 0)
+    rotateX(var(--rotate-x))
+    rotateY(var(--rotate-y))
+    scale(var(--card-scale));
+  transition:
+    transform $settle-duration $settle-ease,
+    box-shadow $settle-duration ease,
+    border-color 300ms ease;
+}
+
+// Cast shadow that slides against the tilt, which reads as light coming from
+// the side the pointer is on. Negative z-index paints it above the card's own
+// background but below all content.
+.tilt-card__inner::before {
+  content: '';
+  position: absolute;
+  inset: 22px 12px -10px;
+  border-radius: $card-radius;
+  background: rgba(30, 42, 56, 0.22);
+  filter: blur(22px);
+  opacity: 0;
+  transform: translate3d(var(--shadow-x), var(--shadow-y), -40px);
+  transition: opacity $settle-duration ease, transform $track-duration $track-ease;
+  pointer-events: none;
+  z-index: -1;
+}
+
+:host(:hover) .tilt-card__inner,
+:host(.is-tilting) .tilt-card__inner {
+  border-color: rgba(176, 141, 87, 0.32);
+  box-shadow: var(--shadow-card-hover);
+}
+
+:host(:hover) .tilt-card__inner::before,
+:host(.is-tilting) .tilt-card__inner::before {
+  opacity: 1;
+}
+
+// While the pointer is inside, the transform must keep up with it: shorten the
+// transition and promote the surface to its own layer.
+:host(.is-tilting) .tilt-card__inner {
+  transition:
+    transform $track-duration $track-ease,
+    box-shadow $settle-duration ease,
+    border-color 300ms ease;
+  will-change: transform;
+}
+
+// ---- Stage: the photo, its badge and the quick-add bar -------------------
+// `preserve-3d` is re-declared here so the stage is a transparent pass-through
+// instead of flattening its children onto one plane.
+.tilt-card__stage {
+  position: relative;
+  transform-style: preserve-3d;
+}
+
+.tilt-card__media {
+  display: block;
+  position: relative;
+  overflow: hidden; // clips the zooming photo
+  aspect-ratio: 3 / 4;
+  border-radius: $media-radius;
+  background: var(--bg-light);
+  box-shadow: 0 6px 18px rgba(30, 42, 56, 0.1);
+  // The product image floats above the card plane.
+  transform: translateZ($pop-media);
+  transition: transform $settle-duration $settle-ease, box-shadow $settle-duration ease;
+}
+
+.tilt-card__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  transition: transform 600ms $settle-ease;
+}
+
+:host(:hover) .tilt-card__image,
+:host(:focus-within) .tilt-card__image {
+  transform: scale(1.06);
+}
+
+// ---- Floating badges -----------------------------------------------------
+.tilt-card__badge {
+  position: absolute;
+  top: $card-padding + 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: $badge-radius;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  // Sits above the photo plate, so it reads as a sticker hovering over it.
+  transform: translateZ($pop-badge);
+}
+
+.tilt-card__badge--discount {
+  left: $card-padding + 8px;
+  background: var(--gradient-brand);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(176, 141, 87, 0.35);
+}
+
+.tilt-card__badge--rating {
+  right: $card-padding + 8px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--brand-dark);
+  box-shadow: 0 6px 16px rgba(30, 42, 56, 0.16);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+// ---- Quick-add bar -------------------------------------------------------
+// Fades and slides in on hover/focus; on touch devices it stays visible.
+// The whole bar lives on its own 3D plane, which keeps its buttons crisp.
+.tilt-card__actions {
+  position: absolute;
+  left: $card-padding + 8px;
+  right: $card-padding + 8px;
+  bottom: $card-padding + 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  transform: translate3d(0, 10px, $pop-actions);
+  transition: opacity 260ms ease, transform $settle-duration $settle-ease;
+  pointer-events: none;
+}
+
+:host(:hover) .tilt-card__actions,
+:host(:focus-within) .tilt-card__actions {
+  opacity: 1;
+  transform: translate3d(0, 0, $pop-actions);
+  pointer-events: auto;
+}
+
+.tilt-card__quick-add {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px 18px;
+  border: none;
+  border-radius: $badge-radius;
+  background: rgba(30, 42, 56, 0.92);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 200ms ease, transform 200ms ease;
+
+  &:hover {
+    background: var(--brand-primary);
+    transform: translateY(-1px);
+  }
+}
+
+.tilt-card__heart {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: $badge-radius;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--brand-secondary);
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(30, 42, 56, 0.18);
+  transition: transform 200ms ease, background-color 200ms ease;
+
+  &:hover {
+    transform: translateY(-1px) scale(1.05);
+    background: #fff;
+  }
+}
+
+// ---- Pointer-tracking gloss ---------------------------------------------
+// A very light sheen anchored to the pointer. Kept blend-mode free: mixing on a
+// 3D-transformed layer is inconsistently composited across browsers.
+.tilt-card__gloss {
+  position: absolute;
+  inset: 0;
+  border-radius: $card-radius;
+  background: radial-gradient(
+    260px circle at var(--pointer-x) var(--pointer-y),
+    rgba(255, 255, 255, 0.5),
+    rgba(255, 255, 255, 0) 60%
+  );
+  opacity: 0;
+  transform: translateZ($pop-gloss);
+  transition: opacity 400ms ease;
+  pointer-events: none;
+}
+
+:host(.is-tilting) .tilt-card__gloss {
+  opacity: 0.85;
+}
+
+// ---- Product copy --------------------------------------------------------
+.tilt-card__info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 18px 10px 10px;
+  transform: translateZ($pop-info);
+}
+
+.tilt-card__eyebrow {
+  margin: 0 0 6px;
+  color: var(--brand-primary);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.tilt-card__name {
+  margin: 0 0 8px;
+  font-size: 1.18rem;
+}
+
+.tilt-card__link {
+  color: inherit;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--brand-primary);
+  }
+}
+
+.tilt-card__description {
+  display: -webkit-box;
+  margin: 0 0 auto;
+  overflow: hidden;
+  color: var(--text-light);
+  font-size: 0.92rem;
+  line-height: 1.65;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.tilt-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-color);
+}
+
+.tilt-card__price {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--brand-dark);
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.tilt-card__compare {
+  color: var(--text-faint);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.tilt-card__wishlist {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: $badge-radius;
+  background: var(--surface);
+  color: var(--brand-secondary);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: border-color 200ms ease, background-color 200ms ease, transform 200ms ease;
+
+  &:hover {
+    border-color: var(--brand-secondary);
+    background: rgba(176, 141, 87, 0.08);
+    transform: translateY(-1px);
+  }
+}
+
+// ---- Accessibility -------------------------------------------------------
+.tilt-card__quick-add:focus-visible,
+.tilt-card__heart:focus-visible,
+.tilt-card__wishlist:focus-visible,
+.tilt-card__link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--brand-primary);
+}
+
+.tilt-card__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+// ---- Device fallbacks ----------------------------------------------------
+// Touch devices have no hover to reveal the overlay with, so keep it and skip
+// the depth offsets that would otherwise fight the finger's scroll.
+@media (hover: none) {
+  .tilt-card__actions {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    pointer-events: auto;
+  }
+
+  .tilt-card__media,
+  .tilt-card__badge,
+  .tilt-card__info,
+  .tilt-card__gloss {
+    transform: none;
+  }
+}
+
+// Honours the OS "reduce motion" setting: no rotation, no zoom, no glide.
+@media (prefers-reduced-motion: reduce) {
+  .tilt-card__inner,
+  .tilt-card__inner::before,
+  .tilt-card__media,
+  .tilt-card__image,
+  .tilt-card__actions,
+  .tilt-card__gloss {
+    transition: none;
+  }
+
+  .tilt-card__inner {
+    transform: none;
+  }
+}
