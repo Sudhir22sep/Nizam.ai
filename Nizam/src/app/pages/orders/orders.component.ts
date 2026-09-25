@@ -1,3 +1,4 @@
+import { BentoHighlightsComponent } from '../../components/bento-grid/bento-highlights.component';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -6,7 +7,7 @@ import { OrderService, OrderSummary } from '../../services/order.service';
 @Component({
   selector: 'app-orders',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, BentoHighlightsComponent],
   templateUrl: './orders.component.html',
   styleUrls: ['./orders.component.css']
 })

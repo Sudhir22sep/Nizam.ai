@@ -13,15 +13,27 @@
       tabindex="-1"
       [attr.aria-label]="'View ' + product.name"
     >
-      <img
-        class="tilt-card__image"
-        [src]="image"
-        [alt]="product.name"
-        appImageFallback
-        [loading]="eager ? 'eager' : 'lazy'"
-        [attr.fetchpriority]="eager ? 'high' : null"
-      />
+      <div class="tilt-card__image-stage">
+        @for (image of images; track image; let imageIndex = $index) {
+          <img
+            class="tilt-card__image"
+            [class.tilt-card__image--active]="imageIndex === activeImageIndex()"
+            [src]="image"
+            [alt]="product.name + ' view ' + (imageIndex + 1)"
+            appImageFallback
+            [loading]="eager && imageIndex === 0 ? 'eager' : 'lazy'"
+            [attr.fetchpriority]="eager && imageIndex === 0 ? 'high' : null"
+          />
+        }
+      </div>
     </a>
+    @if (images.length > 1) {
+      <div class="tilt-card__gallery-controls" aria-label="Product images">
+        <button type="button" (click)="previousImage($event)" aria-label="Previous product image">‹</button>
+        <span>{{ activeImageIndex() + 1 }} / {{ images.length }}</span>
+        <button type="button" (click)="nextImage($event)" aria-label="Next product image">›</button>
+      </div>
+    }
 
     @if (discountPercent; as discount) {
       <span class="tilt-card__badge tilt-card__badge--discount">{{ discount }}% off</span>

@@ -1,0 +1,61 @@
+<section class="hero" aria-labelledby="hero-title">
+  <!-- Deep plane: abstract geometry, tonal fields, and atmospheric glow. -->
+  <div class="hero__backdrop" aria-hidden="true">
+    <span class="hero__orb hero__orb--gold"></span>
+    <span class="hero__orb hero__orb--rose"></span>
+    <span class="hero__arch"></span>
+    <span class="hero__line hero__line--one"></span>
+    <span class="hero__line hero__line--two"></span>
+  </div>
+
+  <!-- Mid plane: oversized brand treatment plus readable shopping content. -->
+  <div class="hero__midground">
+    <div class="hero__brand" aria-hidden="true">{{ brandWord }}</div>
+
+    <div class="hero__inner">
+      <div class="hero__copy">
+        <span class="hero__eyebrow"><i></i>{{ eyebrow }}</span>
+        <h1 id="hero-title" class="hero__headline">{{ headline }}</h1>
+        <p class="hero__subtitle">{{ subtitle }}</p>
+
+        <div class="hero__actions">
+          <a class="hero__cta hero__cta--primary" [routerLink]="ctaPrimaryUrl">
+            {{ ctaPrimary }} <span aria-hidden="true">↗</span>
+          </a>
+          <a class="hero__cta hero__cta--secondary" [routerLink]="ctaSecondaryUrl">
+            {{ ctaSecondary }}
+          </a>
+        </div>
+
+        <div class="hero__highlights" *ngIf="heroHighlights?.length">
+          <div *ngFor="let highlight of heroHighlights">
+            <strong>{{ highlight.label }}</strong>
+            <span>{{ highlight.sub }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Foreground plane: replace the default with a transparent cut-out when available. -->
+  <div class="hero__foreground" aria-hidden="true">
+    <figure class="hero__figure">
+      <div class="hero__image-frame">
+        <img
+          *ngIf="imageUrl"
+          [src]="imageUrl"
+          [alt]="imageAlt"
+          fetchpriority="high"
+          (error)="onImageError($event)"
+        />
+      </div>
+      <figcaption *ngIf="chipLabel" class="hero__chip">
+        <span>Curated for you</span>
+        <strong>{{ chipLabel }}</strong>
+        <small *ngIf="chipSub">{{ chipSub }}</small>
+      </figcaption>
+    </figure>
+  </div>
+
+  <div class="hero__shade" aria-hidden="true"></div>
+</section>

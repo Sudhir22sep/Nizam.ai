@@ -3,48 +3,7 @@
     <p>New summer edit live — free shipping on orders over ₹2999. COD available across selected locations.</p>
   </div>
 
-  <section class="hero">
-    <div class="hero-glow hero-glow-one" aria-hidden="true"></div>
-    <div class="hero-glow hero-glow-two" aria-hidden="true"></div>
-
-    <div class="hero-inner">
-      <div class="hero-copy">
-        <span class="eyebrow">Limited drop</span>
-        <h1>Everyday luxury for modern wardrobes</h1>
-        <p>Discover premium apparel, effortless layering pieces, and curated essentials designed for style, comfort, and confidence.</p>
-
-        <div class="hero-actions">
-          <a routerLink="/products" class="cta-button">Shop the collection</a>
-          <a routerLink="/contact" class="text-link">Talk to a style advisor</a>
-        </div>
-
-        <div class="hero-highlights">
-          <div>
-            <strong>Fast delivery</strong>
-            <span>Across MENA & India</span>
-          </div>
-          <div>
-            <strong>Easy returns</strong>
-            <span>7-day hassle-free policy</span>
-          </div>
-          <div>
-            <strong>COD available</strong>
-            <span>Pay on delivery for added trust</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="hero-visual">
-        <div class="hero-card">
-          <img src="images/products/hero.jpg" alt="Fashion collection imagery" appImageFallback>
-          <div class="hero-card-chip">
-            <strong>New season edit</strong>
-            <span>Curated pieces, restocked weekly</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+  <app-hero-banner />
 
   <section class="featured-categories">
     <div class="section-head">
@@ -55,39 +14,55 @@
       <a routerLink="/products" class="link-secondary">View all styles</a>
     </div>
 
-    <div class="category-grid">
-      <div class="category-card">
-        <h3>Men’s essentials</h3>
-        <p>Modern shirts, tees, and relaxed tailoring for every day.</p>
-      </div>
-      <div class="category-card">
-        <h3>Women’s edit</h3>
-        <p>Flowing silhouettes, luxe knitwear, and elevated staples.</p>
-      </div>
-      <div class="category-card">
-        <h3>Street style</h3>
-        <p>Bold prints, graphic tees, and wardrobe refreshes.</p>
-      </div>
-      <div class="category-card">
-        <h3>Seasonal picks</h3>
-        <p>Curated outfits for festivals, evenings out, and travel.</p>
-      </div>
-    </div>
+    <app-rotational-carousel [collections]="featuredCollections" />
   </section>
 
-  <section class="value-grid">
-    <div class="value-card">
-      <h3>Quality materials</h3>
-      <p>Premium fabrics that feel good, wash well, and hold their shape.</p>
+  <section class="home-bento" aria-labelledby="bento-heading">
+    <div class="home-bento__head">
+      <div>
+        <span class="eyebrow">A closer look</span>
+        <h2 id="bento-heading">More ways to make it yours</h2>
+      </div>
+      <a routerLink="/products" class="link-secondary">Explore the collection <span aria-hidden="true">↗</span></a>
     </div>
-    <div class="value-card">
-      <h3>Local delivery</h3>
-      <p>Quick fulfillment and tracking for orders across the region.</p>
-    </div>
-    <div class="value-card">
-      <h3>Styled for comfort</h3>
-      <p>Effortless looks engineered for modern everyday wear.</p>
-    </div>
+
+    <app-bento-grid ariaLabel="Amma Wears collection highlights" [columns]="4">
+      <article class="bento-tile bento-tile--hero bento-tile--light">
+        <span class="eyebrow">The edit</span>
+        <h3>Elevated essentials for every plan.</h3>
+        <p>Discover soft structure, confident color, and easy silhouettes made to move through your day.</p>
+        <a routerLink="/products" class="bento-tile__cta">Shop new arrivals <span aria-hidden="true">→</span></a>
+      </article>
+
+      <article class="bento-tile bento-tile--accent">
+        <span class="eyebrow">01 / 03</span>
+        <h3>Modern tailoring</h3>
+        <p>Polished layers for workdays and everywhere after.</p>
+        <a routerLink="/products" aria-label="Explore modern tailoring">↗</a>
+      </article>
+
+      <article class="bento-tile bento-tile--tall">
+        <img src="/images/products/satin-slip-dress.jpeg" alt="Satin evening slip dress" loading="lazy" />
+        <div class="bento-tile__overlay">
+          <span class="eyebrow">After dark</span>
+          <h3>Evening silhouettes</h3>
+        </div>
+      </article>
+
+      <article class="bento-tile bento-tile--wide">
+        <div>
+          <span class="eyebrow">The everyday promise</span>
+          <h3>Thoughtful fabrics. Considered details. No compromise.</h3>
+        </div>
+        <a routerLink="/about" class="bento-tile__cta">Why Amma Wears <span aria-hidden="true">↗</span></a>
+      </article>
+
+      <article class="bento-tile bento-tile--light">
+        <span class="eyebrow">Made for repeat wear</span>
+        <h3>Comfort is always in style.</h3>
+        <p>Easy pieces designed to feel as good as they look.</p>
+      </article>
+    </app-bento-grid>
   </section>
 
   <section id="about" class="about-section">
@@ -101,7 +76,24 @@
     <div class="contact-copy">
       <h2>Need help styling your look?</h2>
       <p>Send us a note and our style team will get back to you shortly.</p>
-      <a routerLink="/contact" class="cta-button">Contact our team</a>
+      <button type="button" class="cta-button" (click)="styleHelpOpen = true">Get style help</button>
     </div>
   </section>
+
+  <app-glass-popup
+    [isOpen]="styleHelpOpen"
+    eyebrow="Amma Wears styling desk"
+    title="Let’s find your next favourite"
+    description="Tell our style team what you are looking for, or browse the collection and request help with sizing, fit, and styling."
+    (closed)="styleHelpOpen = false">
+    <div class="style-help-actions">
+      <a routerLink="/contact" class="popup-action popup-action--primary" (click)="styleHelpOpen = false">
+        Ask a stylist <span aria-hidden="true">↗</span>
+      </a>
+      <a routerLink="/products" class="popup-action popup-action--secondary" (click)="styleHelpOpen = false">
+        Browse the collection
+      </a>
+    </div>
+    <p class="style-help-note">Customer support replies within one business day.</p>
+  </app-glass-popup>
 </div>

@@ -1,5 +1,6 @@
 <app-navbar></app-navbar>
 <main class="app-shell">
+  <app-aurora-background class="app-shell__aurora" />
   <div class="trust-bar" role="region" aria-label="Store guarantees">
     <span><i aria-hidden="true">✓</i>Free shipping over ₹2999</span>
     <span><i aria-hidden="true">✓</i>Secure checkout</span>
@@ -8,33 +9,94 @@
   </div>
   <router-outlet></router-outlet>
 </main>
+
+<button
+  type="button"
+  class="glass-preview-launcher"
+  [class.glass-preview-launcher--active]="glassPreviewOpen()"
+  [attr.aria-expanded]="glassPreviewOpen()"
+  aria-controls="site-glass-preview"
+  (click)="glassPreviewOpen.set(true)">
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5Z" />
+    <path d="m4 7.5 8 4.5 8-4.5M12 12v9" />
+  </svg>
+  <span>Glass preview</span>
+</button>
+
+<app-glass-popup
+  id="site-glass-preview"
+  [isOpen]="glassPreviewOpen()"
+  eyebrow="Amma Wears experience"
+  title="Designed to feel beautifully effortless"
+  description="This frosted-glass preview uses layered light, a seamless animated border, and crisp controls—built entirely with Angular and CSS."
+  (closed)="glassPreviewOpen.set(false)">
+  <div class="glass-preview-visual" aria-hidden="true">
+    <span class="glass-preview-visual__orb glass-preview-visual__orb--one"></span>
+    <span class="glass-preview-visual__orb glass-preview-visual__orb--two"></span>
+    <div class="glass-preview-visual__card">
+      <span>Amma Wears</span>
+      <strong>Premium essentials</strong>
+      <small>Comfort · clarity · confidence</small>
+    </div>
+  </div>
+  <div class="glass-preview-features">
+    <span>20px backdrop blur</span>
+    <span>GPU-friendly motion</span>
+    <span>Accessible controls</span>
+  </div>
+</app-glass-popup>
+
 <app-toast-container></app-toast-container>
 <footer class="site-footer">
   <div class="footer-inner">
-    <div class="footer-brand">
-      <p class="footer-logo">Amma Wears</p>
+    <section class="footer-brand" aria-labelledby="footer-brand-title">
+      <a routerLink="/home" class="footer-logo" id="footer-brand-title">Amma Wears</a>
       <p class="footer-tagline">Everyday luxury for modern wardrobes. Crafted for confident everyday style.</p>
-    </div>
-    <nav class="footer-nav" aria-label="Footer">
-      <a routerLink="/home">Home</a>
-      <a routerLink="/products">Shop</a>
-      <a routerLink="/about">About</a>
-      <a routerLink="/contact">Contact</a>
+      <div class="footer-social" aria-label="Social media">
+        <a href="https://www.instagram.com/ammawears/" target="_blank" rel="noopener noreferrer" aria-label="Amma Wears on Instagram">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+            <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+          </svg>
+        </a>
+        <a href="https://www.facebook.com/profile.php?id=61590810583670" target="_blank" rel="noopener noreferrer" aria-label="Amma Wears on Facebook">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+          </svg>
+        </a>
+      </div>
+    </section>
+
+    <nav class="footer-column" aria-labelledby="footer-shop-title">
+      <h2 id="footer-shop-title">Shop</h2>
+      <div class="footer-nav">
+        <a routerLink="/products" routerLinkActive="active">Shop all</a>
+        <a routerLink="/products">Browse the edit</a>
+        <a routerLink="/cart" routerLinkActive="active">Your cart <span aria-hidden="true">→</span></a>
+        <a routerLink="/wishlist" routerLinkActive="active">Wishlist <span aria-hidden="true">→</span></a>
+      </div>
     </nav>
-    <div class="footer-social" aria-label="Social links">
-      <a href="https://www.instagram.com/ammawears/" target="_blank" rel="noopener" aria-label="Amma Wears on Instagram">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-          <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-          <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
-        </svg>
+
+    <nav class="footer-column" aria-labelledby="footer-help-title">
+      <h2 id="footer-help-title">Customer care</h2>
+      <div class="footer-nav">
+        <a routerLink="/about" routerLinkActive="active">About Amma Wears</a>
+        <a routerLink="/contact" routerLinkActive="active">Contact us</a>
+        <a routerLink="/orders" routerLinkActive="active">My orders</a>
+        <a routerLink="/login" routerLinkActive="active">Sign in</a>
+      </div>
+    </nav>
+
+    <section class="footer-cta" aria-labelledby="footer-cta-title">
+      <span class="footer-cta__eyebrow">The new collection</span>
+      <h2 id="footer-cta-title">Find your next favourite</h2>
+      <p>Explore premium essentials made for comfort, confidence, and everyday movement.</p>
+      <a routerLink="/products" class="footer-cta__button">
+        Shop the collection <span aria-hidden="true">↗</span>
       </a>
-      <a href="https://www.facebook.com/profile.php?id=61590810583670" target="_blank" rel="noopener" aria-label="Amma Wears on Facebook">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-        </svg>
-      </a>
-    </div>
+    </section>
   </div>
   <div class="footer-bottom">
     <p>&copy; 2026 Amma Wears. All rights reserved.</p>

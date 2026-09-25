@@ -76,6 +76,19 @@ describe('ProductsComponent', () => {
     expect(filters).toEqual(['All', 'Men', 'Women']);
   });
 
+  it('renders a live 3D product showcase above the catalog', () => {
+    const compiled = createComponent().nativeElement as HTMLElement;
+    expect(compiled.querySelectorAll('.collection-showcase__card').length).toBe(3);
+    expect(compiled.querySelector('.collection-showcase h1')?.textContent).toContain('Style in motion');
+    expect(compiled.querySelector('.collection-showcase__stage')?.getAttribute('aria-label')).toBe('Featured products');
+  });
+
+  it('uses the reusable 3D card for every product', () => {
+    const compiled = createComponent().nativeElement as HTMLElement;
+    expect(compiled.querySelectorAll('app-product-card.product-card').length).toBe(3);
+    expect(compiled.querySelectorAll('.tilt-card__inner').length).toBe(3);
+  });
+
   it('filters the grid by the category query param, ignoring case', () => {
     const compiled = createComponent('men').nativeElement as HTMLElement;
 

@@ -1,3 +1,4 @@
+import { BentoHighlightsComponent } from '../../components/bento-grid/bento-highlights.component';
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
@@ -11,7 +12,7 @@ import { EmptyStateComponent } from '../../components/empty-state/empty-state.co
 @Component({
   selector: 'app-cart',
   standalone: true,
-  imports: [CommonModule, RouterLink, PricePipe, ImageFallbackDirective, EmptyStateComponent],
+  imports: [CommonModule, RouterLink, PricePipe, ImageFallbackDirective, EmptyStateComponent, BentoHighlightsComponent],
   templateUrl: './cart.component.html',
   styleUrl: './cart.component.css'
 })

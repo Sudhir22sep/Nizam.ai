@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { BentoHighlightsComponent } from '../../components/bento-grid/bento-highlights.component';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -6,14 +7,14 @@ import { ProductService, Product, primaryProductImage } from '../../services/pro
 import { CartService } from '../../services/cart.service';
 import { WishlistService } from '../../services/wishlist.service';
 import { ToastService } from '../../services/toast.service';
-import { ImageFallbackDirective } from '../../directives/image-fallback.directive';
-import { PricePipe } from '../../pipes/price.pipe';
+import { ProductCardComponent } from '../../components/product-card/product-card.component';
 import { EmptyStateComponent } from '../../components/empty-state/empty-state.component';
+import { AuroraBackgroundComponent } from '../../components/aurora-background/aurora-background.component';
 
 @Component({
   selector: 'app-products',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, PricePipe, ImageFallbackDirective, EmptyStateComponent],
+  imports: [CommonModule, RouterLink, FormsModule, EmptyStateComponent, ProductCardComponent, AuroraBackgroundComponent, BentoHighlightsComponent],
   templateUrl: './products.component.html',
   styleUrl: './products.component.css'
 })
@@ -24,6 +25,14 @@ export class ProductsComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+
+  readonly showcaseProducts = computed(() => {
+    const category = this.normaliseCategory(this.selectedCategory());
+    return this.products()
+      .filter(product => product.isActive !== false)
+      .filter(product => !category || this.normaliseCategory(product.category) === category)
+      .slice(0, 3);
+  });
 
   /** Catalog signal published by the service (bundled catalog + live API). */
   readonly products = this.productService.getProducts();

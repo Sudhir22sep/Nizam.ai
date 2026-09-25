@@ -2,34 +2,34 @@
    Amma Wears — Global Design System
    ========================================================================== */
 :root {
-  /* Brand palette — Midnight Slate / Warm Ivory / Antique Brass */
-  --ink-900: #1E2A38;
-  --ink-800: #1E2A38;
-  --ink-700: #2C3B4D;
-  --ink-600: #3C4C5E;
-  --brand-primary: #B08D57;      /* Antique Brass — interactive accent   */
-  --brand-primary-strong: #96754A;
-  --brand-secondary: #5C6B73;    /* Storm Grey — secondary text          */
-  --brand-tertiary: #B08D57;
-  --brand-dark: #1E2A38;
-  --accent-cyan: #4A6B57;
+  /* Brand palette — Retail navy / signal red / soft gold */
+  --ink-900: #14263D;
+  --ink-800: #1B304A;
+  --ink-700: #29415F;
+  --ink-600: #40516A;
+  --brand-primary: #D92D48;      /* action red */
+  --brand-primary-strong: #B51F38;
+  --brand-secondary: #53657A;    /* secondary text */
+  --brand-tertiary: #E9B949;     /* warm highlight */
+  --brand-dark: #14263D;
+  --accent-cyan: #2D7A83;
 
   /* Neutrals */
-  --text-color: #3C4C5E;
-  --text-light: #5C6B73;
-  --text-faint: #8A94A0;
-  --bg-page: #F7F5F1;            /* Warm Ivory canvas                    */
-  --bg-light: #F1EEE8;
+  --text-color: #40516A;
+  --text-light: #64748B;
+  --text-faint: #94A3B8;
+  --bg-page: #F7F8FA;
+  --bg-light: #EEF1F5;
   --surface: #FFFFFF;
-  --border-color: #E6E1D8;
-  --border-strong: #D8D2C6;
+  --border-color: #DCE2EA;
+  --border-strong: #B8C4D2;
 
   /* Shadows */
-  --shadow: 0 2px 10px rgba(30, 42, 56, 0.08);
-  --shadow-lg: 0 24px 70px rgba(30, 42, 56, 0.16);
-  --brand-shadow: 0 12px 34px rgba(30, 42, 56, 0.1), 0 2px 8px rgba(30, 42, 56, 0.06);
-  --shadow-card: 0 1px 2px rgba(30, 42, 56, 0.05), 0 10px 30px rgba(30, 42, 56, 0.07);
-  --shadow-card-hover: 0 2px 6px rgba(30, 42, 56, 0.06), 0 22px 48px rgba(30, 42, 56, 0.13);
+  --shadow: 0 2px 10px rgba(32, 35, 31, 0.07);
+  --shadow-lg: 0 24px 70px rgba(32, 35, 31, 0.14);
+  --brand-shadow: 0 12px 34px rgba(32, 35, 31, 0.1), 0 2px 8px rgba(32, 35, 31, 0.05);
+  --shadow-card: 0 1px 2px rgba(32, 35, 31, 0.04), 0 10px 30px rgba(32, 35, 31, 0.06);
+  --shadow-card-hover: 0 2px 6px rgba(32, 35, 31, 0.05), 0 22px 48px rgba(32, 35, 31, 0.11);
 
   /* Radii & spacing */
   --radius-sm: 2px;
@@ -46,9 +46,9 @@
   --space-8: 64px;
   --space-9: 96px;
   --container: 1200px;
-  --gradient-brand: linear-gradient(135deg, #B08D57 0%, #C9A76B 100%);
-  --gradient-dark: linear-gradient(160deg, #16202C 0%, #1E2A38 55%, #2C3B4D 100%);
-  --gradient-nav: linear-gradient(135deg, rgba(30, 42, 56, 0.92) 0%, rgba(44, 59, 77, 0.88) 100%);
+  --gradient-brand: linear-gradient(135deg, #D92D48 0%, #B51F38 100%);
+  --gradient-dark: linear-gradient(160deg, #14263D 0%, #1B304A 55%, #29415F 100%);
+  --gradient-nav: linear-gradient(135deg, rgba(20, 38, 61, 0.98) 0%, rgba(27, 48, 74, 0.96) 100%);
 }
 
 /* ---------- Reset ---------- */
@@ -99,6 +99,7 @@ a {
 
 button {
   font-family: inherit;
+  -webkit-text-fill-color: currentColor;
 }
 
 :focus-visible {
@@ -107,7 +108,7 @@ button {
 }
 
 ::selection {
-  background: rgba(176, 141, 87, 0.25);
+  background: rgba(154, 123, 75, 0.22);
 }
 
 /* ---------- Page scaffolding ---------- */
@@ -119,15 +120,36 @@ button {
 
 .page-header {
   margin-bottom: var(--space-6);
+  padding: clamp(24px, 4vw, 40px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 24px;
+  color: #f7f9fc;
+  background:
+    linear-gradient(135deg, rgb(20 38 61 / 96%), rgb(9 15 28 / 96%)),
+    var(--gradient-dark);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(255 255 255 / 8%);
 }
 
-.page-header .eyebrow {
+.app-shell .page-header h1,
+.app-shell .page-header h2,
+.app-shell .page-header h3 {
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+}
+
+.app-shell .page-header .page-subtitle {
+  color: #cbd5e1;
+}
+
+.app-shell .page-header .eyebrow {
   display: inline-block;
   font-size: 0.78rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: var(--brand-primary);
+  color: #f3cf66;
+  -webkit-text-fill-color: #f3cf66;
   margin-bottom: var(--space-2);
 }
 
@@ -169,13 +191,14 @@ button {
 .cta-button {
   background: var(--gradient-brand);
   color: #fff;
-  box-shadow: 0 10px 24px rgba(150, 117, 74, 0.28);
+  -webkit-text-fill-color: #fff;
+  box-shadow: 0 10px 24px rgba(217, 45, 72, 0.26);
 }
 
 .btn-primary:hover,
 .cta-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 16px 34px rgba(150, 117, 74, 0.36);
+  box-shadow: 0 16px 34px rgba(98, 74, 43, 0.3);
 }
 
 .btn-primary:active,
@@ -187,18 +210,23 @@ button {
 }
 
 .btn-secondary {
-  background: rgba(176, 141, 87, 0.1);
+  background: #edf1f7;
   color: var(--brand-dark);
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 8px 22px rgb(0 0 0 / 18%);
 }
 
 .btn-secondary:hover {
-  background: rgba(176, 141, 87, 0.18);
+  background: #fff;
+  border-color: var(--brand-primary);
+  color: var(--brand-dark);
   transform: translateY(-2px);
 }
 
 .btn-dark {
   background: var(--ink-800);
   color: #fff;
+  -webkit-text-fill-color: #fff;
 }
 
 .btn-dark:hover {
@@ -211,6 +239,7 @@ button {
   background: rgba(255, 255, 255, 0.08);
   border: 1.5px solid rgba(255, 255, 255, 0.35);
   color: #fff;
+  -webkit-text-fill-color: #fff;
 }
 
 .btn-ghost:hover {
@@ -220,9 +249,10 @@ button {
 }
 
 .btn-outline {
-  background: var(--surface);
-  border: 1.5px solid var(--border-strong);
+  background: #edf1f7;
+  border: 1.5px solid #cbd5e1;
   color: var(--brand-dark);
+  box-shadow: 0 8px 22px rgb(0 0 0 / 18%);
 }
 
 .btn-outline:hover {
@@ -295,7 +325,7 @@ input:focus,
 textarea:focus {
   outline: none;
   border-color: var(--brand-primary);
-  box-shadow: 0 0 0 4px rgba(176, 141, 87, 0.14);
+  box-shadow: 0 0 0 4px rgba(122, 96, 56, 0.13);
 }
 
 input.is-invalid {
@@ -318,7 +348,7 @@ input.is-invalid {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(176, 141, 87, 0.55);
+  background: rgba(122, 96, 56, 0.5);
   border-radius: 5px;
 }
 
@@ -336,90 +366,63 @@ input.is-invalid {
     scroll-behavior: auto !important;
   }
 }
-
-
-/* ---------- Product gallery owner tooling ---------- */
-/* Backs the "Manage Images" panel on the product detail page. These rules live
-   in the global sheet (rather than the component stylesheet) so that the
-   component style stays inside its size budget; the class names are used only
-   by that page. */
-.image-upload-panel {
-  margin-top: 20px;
-  padding: 16px 18px;
-  background: var(--bg-page);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
+/* ---------- Product detail related products ---------- */
+.related-products {
+  border-top: 1px solid var(--border-color);
+  padding-top: 48px;
 }
 
-.image-upload-panel h4 {
-  margin: 0 0 12px 0;
-  font-size: 1rem;
+.related-products h2 {
+  font-size: 1.6rem;
+  margin-bottom: 28px;
+}
+
+.related-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  perspective: 1400px;
+}
+
+.related-card {
+  display: block;
+  min-width: 0;
+  height: 100%;
+  overflow: visible;
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.related-card img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  background: var(--bg-light);
+}
+
+.related-card h4 {
+  margin: 14px 16px 4px;
+  color: var(--brand-dark);
+  font-size: 0.98rem;
+}
+
+.related-card .price {
+  display: block;
+  margin: 0 16px 16px;
+  font-weight: 800;
   color: var(--brand-dark);
 }
 
-.upload-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+@media (max-width: 900px) {
+  .related-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
 }
 
-.upload-input {
-  flex: 1;
-  padding: 10px 14px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-family: inherit;
-  background: #fff;
-  color: var(--brand-dark);
+@media (max-width: 640px) {
+  .related-grid {
+    grid-template-columns: 1fr;
+  }
 }
-
-.upload-input:focus {
-  outline: none;
-  border-color: var(--brand-primary);
-}
-
-.btn-upload-image {
-  padding: 10px 18px;
-  background: var(--brand-primary);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background-color .2s;
-}
-
-.btn-upload-image:hover:not(:disabled) {
-  background: #d4a857;
-}
-
-.btn-upload-image:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.thumbnail-remove {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(0, 0, 0, 0.6);
-  color: #fff;
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity .2s;
-}
-
-.product-thumbnail:hover .thumbnail-remove {
-  opacity: 1;
-}
-

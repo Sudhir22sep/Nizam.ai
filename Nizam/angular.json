@@ -52,6 +52,11 @@
           ],
           "configurations": {
             "production": {
+              "optimization": {
+                "scripts": true,
+                "styles": true,
+                "fonts": false
+              },
               "budgets": [
                 {
                   "type": "initial",
@@ -60,8 +65,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "8kB",
-                  "maximumError": "12kB"
+                  "maximumWarning": "12kB",
+                  "maximumError": "16kB"
                 }
               ],
               "outputHashing": "all"
@@ -70,7 +75,7 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true,
-              "ssr": true
+              "ssr": false
             }
           },
           "defaultConfiguration": "production"

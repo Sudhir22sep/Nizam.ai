@@ -1,0 +1,275 @@
+:host {
+  // A component host must not create a lower-priority stacking context.
+  display: contents;
+}
+
+.glass-popup {
+  position: fixed;
+  z-index: 2147483000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: clamp(20px, 5vw, 64px);
+  background: rgba(5, 5, 10, 0.58);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 320ms,
+    backdrop-filter 320ms ease;
+  -webkit-backdrop-filter: blur(12px) saturate(0.8);
+  backdrop-filter: blur(12px) saturate(0.8);
+}
+
+.glass-popup--open {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.glass-popup__dialog {
+  position: relative;
+  isolation: isolate;
+  width: min(100%, 620px);
+  max-height: calc(100dvh - clamp(40px, 10vw, 128px));
+  overflow: visible;
+  opacity: 0;
+  transform: translate3d(0, 28px, 0) scale(0.965);
+  transition:
+    opacity 280ms ease,
+    transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-popup--open .glass-popup__dialog {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+// The padded gradient layer acts as the luminous outer border. The parent
+// surface covers its centre, producing a clean double-layer glass edge.
+.glass-popup__border {
+  position: absolute;
+  z-index: -1;
+  inset: -1.5px;
+  overflow: hidden;
+  border-radius: 32px;
+  background: conic-gradient(
+    from var(--border-angle, 0deg),
+    rgba(255, 255, 255, 0.12),
+    rgba(159, 123, 255, 0.35),
+    rgba(70, 224, 255, 0.22),
+    rgba(255, 110, 206, 0.38),
+    rgba(255, 255, 255, 0.12)
+  );
+  filter: blur(0.2px) saturate(115%);
+  opacity: 0.3;
+  transition:
+    opacity 360ms ease,
+    filter 360ms ease,
+    border-radius 360ms ease;
+  animation: glass-border-drift 9s linear infinite;
+  will-change: transform, opacity;
+}
+
+.glass-popup__border::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: 30.5px;
+  background: rgba(8, 8, 14, 0.86);
+}
+
+.glass-popup__surface {
+  position: relative;
+  overflow: hidden auto;
+  max-height: inherit;
+  padding: clamp(26px, 5vw, 48px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 30px;
+  color: #f7f5ff;
+  background: rgba(15, 15, 20, 0.6);
+  box-shadow:
+    0 36px 100px rgba(0, 0, 0, 0.52),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(20px) saturate(135%);
+  backdrop-filter: blur(20px) saturate(135%);
+}
+
+.glass-popup__shine {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.14), transparent 34%),
+    linear-gradient(130deg, rgba(255, 255, 255, 0.035), transparent 42%);
+  pointer-events: none;
+}
+
+.glass-popup__header,
+.glass-popup__content {
+  position: relative;
+  z-index: 1;
+}
+
+.glass-popup__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.glass-popup__copy {
+  min-width: 0;
+}
+
+.glass-popup__eyebrow {
+  display: block;
+  margin-bottom: 10px;
+  color: #a9a2c7;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.glass-popup__title {
+  max-width: 18ch;
+  margin: 0;
+  color: #fff;
+  font-size: clamp(2rem, 5vw, 3.35rem);
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.glass-popup__description {
+  max-width: 48ch;
+  margin: 18px 0 0;
+  color: rgba(238, 235, 248, 0.64);
+  font-size: 0.96rem;
+  line-height: 1.7;
+}
+
+.glass-popup__content {
+  margin-top: clamp(26px, 4vw, 38px);
+  color: rgba(248, 246, 255, 0.82);
+}
+
+.glass-popup__content:empty {
+  display: none;
+}
+
+.glass-popup__close {
+  position: relative;
+  display: grid;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.055);
+  cursor: pointer;
+  transition:
+    color 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.glass-popup__close svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.7;
+}
+
+.glass-popup__close:hover,
+.glass-popup__close:focus-visible,
+.glass-popup__close:active {
+  color: #fff;
+  border-color: rgba(190, 169, 255, 0.5);
+  background: rgba(159, 123, 255, 0.16);
+  box-shadow: 0 0 24px rgba(127, 0, 255, 0.25);
+}
+
+.glass-popup__close:active {
+  transform: scale(0.92);
+}
+
+.glass-popup__close:focus-visible {
+  outline: 2px solid #9f8cff;
+  outline-offset: 3px;
+}
+
+.glass-popup__dialog:hover .glass-popup__border,
+.glass-popup__dialog:focus-within .glass-popup__border,
+.glass-popup__dialog:active .glass-popup__border {
+  opacity: 0.9;
+  filter: blur(0.4px) saturate(150%) drop-shadow(0 0 12px rgba(127, 0, 255, 0.34));
+  animation-duration: 4.5s;
+}
+
+@supports (background: paint(x)) {
+  @property --border-angle {
+    syntax: '<angle>';
+    inherits: false;
+    initial-value: 0deg;
+  }
+}
+
+@keyframes glass-border-drift {
+  to { --border-angle: 360deg; }
+}
+
+@media (max-width: 640px) {
+  .glass-popup {
+    align-items: end;
+    padding: 12px;
+  }
+
+  .glass-popup__dialog {
+    width: 100%;
+    max-height: calc(100dvh - 24px);
+    transform: translate3d(0, 36px, 0) scale(0.98);
+  }
+
+  .glass-popup__border {
+    border-radius: 26px;
+  }
+
+  .glass-popup__border::after {
+    border-radius: 24.5px;
+  }
+
+  .glass-popup__surface {
+    border-radius: 24px;
+  }
+
+  .glass-popup__header {
+    gap: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-popup,
+  .glass-popup__dialog,
+  .glass-popup__border,
+  .glass-popup__close {
+    transition-duration: 1ms;
+  }
+
+  .glass-popup__border {
+    animation: none;
+  }
+}

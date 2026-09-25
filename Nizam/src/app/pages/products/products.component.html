@@ -1,11 +1,28 @@
 <div class="products-container">
-  <header class="page-header">
-    <span class="eyebrow">The collection</span>
-    <h1>Shop the Collection</h1>
-    <p class="page-subtitle">Premium apparel and curated essentials, crafted for style, comfort, and confidence.</p>
+  <header class="page-header collection-showcase">
+    <app-aurora-background class="collection-showcase__aurora" />
+    <div class="collection-showcase__copy">
+      <span class="eyebrow">The living collection</span>
+      <h1>Style in motion</h1>
+      <p class="page-subtitle">Explore floating previews from the latest collection, then discover every piece below.</p>
+    </div>
+    <div class="collection-showcase__stage" aria-label="Featured products">
+      @for (product of showcaseProducts(); track product.id; let i = $index) {
+        <a
+          class="collection-showcase__card"
+          [class.collection-showcase__card--center]="i === 1"
+          [routerLink]="['/product', product.id]"
+          [attr.aria-label]="'View ' + product.name"
+        >
+          <img [src]="primaryImage(product)" [alt]="product.name">
+          <span>{{ product.name }}</span>
+        </a>
+      }
+    </div>
   </header>
 
   <div class="filters" role="group" aria-label="Filter products by category">
+    <span class="results-count">{{ filteredProducts().length }} styles</span>
     <button
       class="filter-btn"
       [class.active]="selectedCategory() === ''"
@@ -24,28 +41,13 @@
 
   <div class="products-grid">
     @for (product of filteredProducts(); track product.id) {
-    <div class="product-card">
-      <div class="product-media">
-        <a [routerLink]="['/product', product.id]" class="product-image" [attr.aria-label]="'View ' + product.name">
-          <img [src]="primaryImage(product)" [alt]="product.name" appImageFallback loading="lazy">
-        </a>
-        <span class="product-overlay">
-          <button type="button" class="btn-quick-add" (click)="addToCart(product)">
-            <span aria-hidden="true">+</span> Quick add
-          </button>
-          <button type="button" class="overlay-heart" (click)="addToWishlist(product)" aria-label="Add to wishlist">♥</button>
-        </span>
-      </div>
-      <div class="product-info">
-        <p class="category">{{ product.category }}</p>
-        <h3>{{ product.name }}</h3>
-        <p class="description">{{ product.description }}</p>
-        <div class="product-footer">
-          <span class="price">{{ product.basePrice | price }}</span>
-          <button class="btn-wishlist" (click)="addToWishlist(product)" aria-label="Add to wishlist">♥</button>
-        </div>
-      </div>
-    </div>
+      <app-product-card
+        class="product-card"
+        [product]="product"
+        [eager]="$index < 4"
+        (quickAdd)="addToCart($event)"
+        (wishlistToggle)="addToWishlist($event)"
+      />
     }
   </div>
 
@@ -60,4 +62,9 @@
     ></app-empty-state>
   </div>
   }
+
+  <app-bento-highlights
+    eyebrow="The Amma Wears edit"
+    title="A little inspiration for your wardrobe"
+  />
 </div>

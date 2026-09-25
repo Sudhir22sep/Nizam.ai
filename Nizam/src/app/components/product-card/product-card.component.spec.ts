@@ -50,6 +50,23 @@ describe('ProductCardComponent', () => {
     expect(element.querySelector('.tilt-card__badge--rating')?.textContent?.trim()).toContain('4.8');
   });
 
+  it('rotates every product image with accessible controls', () => {
+    component.product = makeProduct({ images: ['photo-1.jpg', 'photo-2.jpg', 'photo-3.jpg'] });
+    fixture.componentRef.setInput('product', component.product);
+    fixture.detectChanges();
+
+    const images = element.querySelectorAll('.tilt-card__image');
+    expect(images.length).toBe(3);
+    expect(images[0].classList).toContain('tilt-card__image--active');
+
+    const next = element.querySelectorAll('.tilt-card__gallery-controls button')[1] as HTMLButtonElement;
+    next.click();
+    fixture.detectChanges();
+
+    expect(component.image).toBe('/photo-2.jpg');
+    expect(images[1].classList).toContain('tilt-card__image--active');
+  });
+
   it('computes discountPercent accurately', () => {
     expect(component.discountPercent).toBe(29);
 

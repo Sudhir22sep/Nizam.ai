@@ -1,3 +1,4 @@
+import { BentoHighlightsComponent } from '../../components/bento-grid/bento-highlights.component';
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -6,11 +7,12 @@ import { RouterLink } from '@angular/router';
 import { WishlistService } from '../../services/wishlist.service';
 import { ToastService } from '../../services/toast.service';
 import { EmptyStateComponent } from '../../components/empty-state/empty-state.component';
+import { GlassPopupComponent } from '../../components/glass-popup/glass-popup.component';
 
 @Component({
   selector: 'app-wishlist',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, EmptyStateComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, EmptyStateComponent, BentoHighlightsComponent, GlassPopupComponent],
   templateUrl: './wishlist.component.html',
   styleUrls: ['./wishlist.component.css']
 })

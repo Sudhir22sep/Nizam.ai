@@ -55,4 +55,9 @@
       [actionCallback]="goToProducts"
     ></app-empty-state>
   </ng-template>
+  <app-bento-highlights
+    *ngIf="items.length > 0"
+    eyebrow="Before you check out"
+    title="Complete your wardrobe"
+  />
 </div>

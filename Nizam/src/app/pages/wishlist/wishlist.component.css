@@ -11,9 +11,16 @@
   gap: 16px;
   flex-wrap: wrap;
   margin-bottom: 32px;
+  padding: clamp(22px, 4vw, 34px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 24px;
+  background: linear-gradient(135deg, #14263d, #090f1c);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 25%);
 }
 
 .wishlist-container > .wishlist-header h2 {
+  color: #fff;
+  -webkit-text-fill-color: #fff;
   font-size: clamp(1.8rem, 3vw, 2.4rem);
 }
 
@@ -59,7 +66,7 @@
 }
 
 .badge-public {
-  background: rgba(176, 141, 87, 0.12);
+  background: rgba(122, 96, 56, 0.12);
   color: var(--brand-primary-strong);
 }
 
@@ -179,7 +186,7 @@
   width: 36px;
   height: 36px;
   margin: 0 auto 12px;
-  border: 3px solid rgba(176, 141, 87, 0.2);
+  border: 3px solid rgba(122, 96, 56, 0.2);
   border-top-color: var(--brand-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -191,50 +198,56 @@
   }
 }
 
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(30, 42, 56, 0.55);
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
+.wishlist-form {
+  display: grid;
+  gap: 20px;
+}
+
+.wishlist-form label {
+  color: #f7f5ff;
+}
+
+.wishlist-form input[type='text'] {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.wishlist-form .checkbox-label {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 20px;
-  z-index: 1100;
-}
-
-.modal-content {
-  background: var(--surface);
-  border-radius: 24px;
-  padding: 28px;
-  width: 100%;
-  max-width: 440px;
-  box-shadow: var(--shadow-lg);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.modal-header h3 {
-  font-size: 1.25rem;
-}
-
-.btn-close {
-  background: none;
-  border: none;
-  font-size: 1.6rem;
-  line-height: 1;
-  color: var(--text-faint);
+  gap: 9px;
+  color: rgba(247, 245, 255, 0.72);
   cursor: pointer;
 }
 
-.btn-close:hover {
-  color: var(--brand-dark);
+.wishlist-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.wishlist-form__primary,
+.wishlist-form__secondary {
+  min-height: 44px;
+  padding: 11px 18px;
+  border-radius: 999px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.wishlist-form__primary {
+  border: 0;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  background: linear-gradient(135deg, #d92d48, #a91832);
+}
+
+.wishlist-form__secondary {
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  background: rgba(255, 255, 255, 0.07);
 }
 
 @media (max-width: 640px) {

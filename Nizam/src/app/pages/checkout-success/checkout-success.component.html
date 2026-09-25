@@ -9,4 +9,9 @@
       <a routerLink="/products" class="btn-primary">Continue shopping</a>
     </div>
   </div>
+  <app-bento-highlights
+    *ngIf="orderReference"
+    eyebrow="What’s next"
+    title="Keep exploring the collection"
+  />
 </div>

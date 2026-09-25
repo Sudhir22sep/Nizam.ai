@@ -1,3 +1,4 @@
+import { BentoHighlightsComponent } from '../../components/bento-grid/bento-highlights.component';
 import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -7,7 +8,7 @@ import { PaymentService } from '../../services/payment.service';
 @Component({
   selector: 'app-checkout-success',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, BentoHighlightsComponent],
   templateUrl: './checkout-success.component.html',
   styleUrl: './checkout-success.component.css'
 })

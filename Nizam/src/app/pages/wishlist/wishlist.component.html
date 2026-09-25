@@ -6,47 +6,35 @@
     </button>
   </div>
 
-  <!-- Create Wishlist Modal -->
-  <div class="modal-backdrop" *ngIf="showCreateModal" (click)="closeCreateWishlistModal()">
-    <div class="modal-content" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>Create Wishlist</h3>
-        <button class="btn-close" (click)="closeCreateWishlistModal()">&times;</button>
+  <app-glass-popup
+    [isOpen]="showCreateModal"
+    eyebrow="Your style profile"
+    title="Create a new wishlist"
+    description="Keep saved pieces organised for edits, occasions, or a personal style shortlist."
+    (closed)="closeCreateWishlistModal()">
+    <form class="wishlist-form" [formGroup]="createWishlistForm" (ngSubmit)="onCreateWishlistSubmit()">
+      <div class="form-group">
+        <label for="wishlistName">Wishlist name</label>
+        <input type="text" id="wishlistName" formControlName="name" placeholder="e.g. Weekend edit"
+               [class.is-invalid]="createWishlistForm.get('name')?.invalid && createWishlistForm.get('name')?.touched">
+        <div class="invalid-feedback" *ngIf="createWishlistForm.get('name')?.invalid && createWishlistForm.get('name')?.touched">
+          Wishlist name is required
+        </div>
       </div>
-      <div class="modal-body">
-        <form [formGroup]="createWishlistForm" (ngSubmit)="onCreateWishlistSubmit()">
-          <div class="form-group">
-            <label for="wishlistName">Wishlist Name</label>
-            <input type="text" id="wishlistName" formControlName="name" 
-                   [class.is-invalid]="createWishlistForm.get('name')?.invalid && createWishlistForm.get('name')?.touched">
-            <div class="invalid-feedback" *ngIf="createWishlistForm.get('name')?.invalid && createWishlistForm.get('name')?.touched">
-              <div *ngIf="createWishlistForm.get('name')?.errors?.['required']">
-                Wishlist name is required
-              </div>
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label class="checkbox-label">
-              <input type="checkbox" formControlName="isPublic">
-              Make this wishlist public (others can view it)
-            </label>
-          </div>
-          
-          <div class="form-group">
-            <button type="submit" class="btn btn-primary" 
-                    [disabled]="createWishlistForm.invalid || isCreating">
-              <span *ngIf="isCreating">Creating...</span>
-              <span *ngIf="!isCreating">Create Wishlist</span>
-            </button>
-            <button type="button" class="btn btn-outline" (click)="closeCreateWishlistModal()">
-              Cancel
-            </button>
-          </div>
-        </form>
+
+      <label class="checkbox-label">
+        <input type="checkbox" formControlName="isPublic">
+        Make this wishlist public
+      </label>
+
+      <div class="wishlist-form__actions">
+        <button type="submit" class="wishlist-form__primary" [disabled]="createWishlistForm.invalid || isCreating">
+          {{ isCreating ? 'Creating…' : 'Create wishlist' }}
+        </button>
+        <button type="button" class="wishlist-form__secondary" (click)="closeCreateWishlistModal()">Cancel</button>
       </div>
-    </div>
-  </div>
+    </form>
+  </app-glass-popup>
 
   <!-- Wishlists List -->
   <div class="wishlists-grid">
@@ -112,4 +100,8 @@
        </div>
      </div>
   </div>
+  <app-bento-highlights
+    eyebrow="Your style profile"
+    title="Keep discovering pieces you love"
+  />
 </div>

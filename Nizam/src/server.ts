@@ -60,6 +60,19 @@ if (!process.env['NG_TRUST_PROXY_HEADERS']) {
 // In production build, __dirname is dist/Nizam/server/, so browser is at ../browser
 const browserDistFolder = resolve(__dirname, '../browser');
 
+/**
+ * Angular may emit index.csr.html for client-rendered routes or index.html
+ * when CSR is the application's default render output. Support both layouts
+ * so the standalone server never points at a file that was not generated.
+ */
+function getClientFallbackPath(): string {
+  const candidates = [
+    join(browserDistFolder, 'index.csr.html'),
+    join(browserDistFolder, 'index.html'),
+  ];
+  return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0];
+}
+
 // ─── Owner-only product fields & bundled catalog ──────────────────────────────
 
 /**
@@ -3838,7 +3851,7 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
   // entry point. Keep the reliable CSR path as the default until SSR is
   // explicitly enabled in a deployment using a compatible adapter.
   if (process.env['ENABLE_SSR'] !== 'true') {
-    const fallbackHtml = join(browserDistFolder, 'index.csr.html');
+    const fallbackHtml = getClientFallbackPath();
     if (!res.headersSent) {
       return res.sendFile(fallbackHtml, (err: Error | null) => {
         if (err) {
@@ -3858,8 +3871,8 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
 
     const engine = await getAngularApp();
     if (!engine) {
-      // In development without SSR build, serve index.csr.html for client-side routing
-      const fallbackHtml = join(browserDistFolder, 'index.csr.html');
+      // In development without SSR build, serve the available client entry.
+      const fallbackHtml = getClientFallbackPath();
       if (res && !res.headersSent) {
         res.sendFile(fallbackHtml, (err: Error | null) => {
           if (err) {
@@ -3880,9 +3893,9 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
     next();
   } catch (err) {
     console.error('SSR Error:', err);
-    // Serve fallback CSR if SSR fails
+    // Serve the available CSR entry if SSR fails.
     try {
-      const fallbackHtml = join(browserDistFolder, 'index.csr.html');
+      const fallbackHtml = getClientFallbackPath();
       if (res && !res.headersSent) {
         res.sendFile(fallbackHtml, (fileErr: Error | null) => {
           if (fileErr) {
@@ -3917,12 +3930,10 @@ app.use((err: any, req: any, res: any, next: any) => {
 
 /**
  * Start the server if this module is the main entry point, or it is ran via PM2.
- * In development, also start the server when PORT is set (for Angular CLI dev servers).
- * The server listens on the port defined by the `PORT` environment variable, or defaults to 4000.
- */ 
-
-
-if (isMainModule(import.meta.url) || process.env['pm_id'] || (process.env['NODE_ENV'] !== 'production' && process.env['PORT'])) {
+ * In production, the standalone server owns PORT. During `ng serve`, this
+ * module is imported for SSR and must not start a second API listener.
+ */
+if (isMainModule(import.meta.url) || process.env['pm_id'] || process.env['NODE_ENV'] === 'production') {
   const port = process.env['PORT'] || 4000;
 
   // Start the server immediately - don't wait for MongoDB
