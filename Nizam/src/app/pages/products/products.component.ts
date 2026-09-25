@@ -70,6 +70,9 @@ export class ProductsComponent implements OnInit {
   constructor() {
     this.route.queryParamMap.subscribe(params => {
       this.selectedCategory.set(params.get('category') ?? '');
+      this.searchQuery.set(params.get('q') ?? '');
+      const sort = params.get('sort');
+      this.sortBy.set(sort === 'price-low' || sort === 'price-high' || sort === 'name' ? sort : 'featured');
     });
   }
 
@@ -89,12 +92,21 @@ export class ProductsComponent implements OnInit {
     });
   }
 
+  setSearchQuery(query: string) {
+    this.searchQuery.set(query);
+    void this.router.navigate([], { relativeTo: this.route, queryParams: { q: query || null }, queryParamsHandling: 'merge' });
+  }
+
+  setSort(sort: string) {
+    const value = sort === 'price-low' || sort === 'price-high' || sort === 'name' ? sort : 'featured';
+    this.sortBy.set(value);
+    void this.router.navigate([], { relativeTo: this.route, queryParams: { sort: value === 'featured' ? null : value }, queryParamsHandling: 'merge' });
+  }
+
   resetFilter() {
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { category: null },
-      queryParamsHandling: 'merge'
-    });
+    this.searchQuery.set('');
+    this.sortBy.set('featured');
+    void this.router.navigate([], { relativeTo: this.route, queryParams: { category: null, q: null, sort: null }, queryParamsHandling: 'merge' });
   }
 
   addToCart(product: Product) {

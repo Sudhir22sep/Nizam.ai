@@ -27,8 +27,7 @@
               }
             ],
             "styles": [
-              "src/styles.css",
-              "src/app/app.component.scss"
+              "src/styles.css"
             ],
             "ssr": true,
             "prerender": false,

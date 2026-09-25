@@ -15,7 +15,7 @@ import { AboutComponent } from './pages/about/about.component';
 import { ShippingReturnsComponent } from './pages/shipping-returns/shipping-returns.component';
 
 export const routes: Routes = [
-  { path: 'home', component: HomeComponent},
+  { path: 'home', redirectTo: '', pathMatch: 'full' },
   { path: 'products', component: ProductsComponent },
   { path: 'cart', component: CartComponent },
   { path: 'checkout', component: CheckoutComponent, canActivate: [AuthGuard] },
@@ -30,6 +30,6 @@ export const routes: Routes = [
   { path: 'wishlist', loadComponent: () => import('./pages/wishlist/wishlist.component').then(m => m.WishlistComponent), canActivate: [AuthGuard] },
   { path: 'checkout-success', component: CheckoutSuccessComponent, canActivate: [AuthGuard] },
   { path: 'product/:id', loadComponent: () => import('./pages/product-detail/product-detail.component').then(m => m.ProductDetailComponent) },
-  { path: '', component: ProductsComponent },
+  { path: '', component: HomeComponent },
   { path: '**', redirectTo: '' }
 ];

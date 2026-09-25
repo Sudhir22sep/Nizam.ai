@@ -4,20 +4,17 @@
       <a routerLink="/" class="logo">Amma <span>Wears</span></a>
     </div>
 
-    <button class="menu-toggle" (click)="toggleMenu()" [class.active]="isMenuOpen" aria-label="Toggle navigation menu">
+    <button class="menu-toggle" (click)="toggleMenu()" [class.active]="isMenuOpen" aria-controls="primary-navigation" [attr.aria-expanded]="isMenuOpen" [attr.aria-label]="isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'">
       <span></span>
       <span></span>
       <span></span>
     </button>
 
-    <ul class="nav-menu" [class.active]="isMenuOpen">
-      <li><a routerLink="/home" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenu()">Home</a></li>
+    <ul id="primary-navigation" class="nav-menu" [class.active]="isMenuOpen">
+      <li><a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenu()">Home</a></li>
       <li><a routerLink="/products" routerLinkActive="active" (click)="closeMenu()">Shop</a></li>
-      <li><a routerLink="/cart" routerLinkActive="active" (click)="closeMenu()">Cart</a></li>
-      <li><a routerLink="/wishlist" routerLinkActive="active" (click)="closeMenu()">Wishlist</a></li>
+      <li><a routerLink="/products" [queryParams]="{ sort: 'featured' }" routerLinkActive="active" (click)="closeMenu()">New arrivals</a></li>
       <li><a routerLink="/about" routerLinkActive="active" (click)="closeMenu()">About</a></li>
-      <li><a routerLink="/shipping-returns" routerLinkActive="active" (click)="closeMenu()">Shipping & returns</a></li>
-      <li *ngIf="isLoggedIn"><a routerLink="/orders" routerLinkActive="active" (click)="closeMenu()">My orders</a></li>
     </ul>
 
     <div class="navbar-icons">

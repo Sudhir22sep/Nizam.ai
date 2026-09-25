@@ -4,19 +4,15 @@
   z-index: 1;
   width: 100%;
   min-width: 0;
-}
-
-/* ============================================================
-   Empty State Component — Amma Wears Design System
-   ============================================================ */
-
-:root {
-  /* Matches global palette */
   --empty-icon-fill: rgba(236, 232, 222, 0.5);
   --empty-accent: #7A6038;
   --empty-accent-strong: #624A2B;
   --empty-ink: #20231F;
 }
+
+/* ============================================================
+   Empty State Component — Amma Wears Design System
+   ============================================================ */
 
 .empty-state {
   display: flex;

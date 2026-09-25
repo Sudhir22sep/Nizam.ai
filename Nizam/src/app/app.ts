@@ -5,20 +5,18 @@ import { filter, startWith } from 'rxjs/operators';
 import { NavbarComponent } from './components/navbar/navbar.component';
 import { ToastContainerComponent } from './components/toast-container/toast-container.component';
 import { AuroraBackgroundComponent } from './components/aurora-background/aurora-background.component';
-import { GlassPopupComponent } from './components/glass-popup/glass-popup.component';
 import { CustomerChatComponent } from './components/customer-chat/customer-chat.component';
 import { NewsletterSignupComponent } from './components/newsletter-signup/newsletter-signup.component';
 import { AnalyticsService } from './services/analytics.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, NavbarComponent, ToastContainerComponent, AuroraBackgroundComponent, GlassPopupComponent, CustomerChatComponent, NewsletterSignupComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NavbarComponent, ToastContainerComponent, AuroraBackgroundComponent, CustomerChatComponent, NewsletterSignupComponent],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
 })
 export class App {
-  protected readonly title = signal('Amma Wears');
-  protected readonly glassPreviewOpen = signal(false);
+  protected readonly title = 'Amma Wears';
 
   private readonly router = inject(Router);
   private readonly analytics = inject(AnalyticsService);
