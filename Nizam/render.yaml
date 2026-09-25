@@ -26,6 +26,10 @@ services:
         sync: false  # Set in Render dashboard
       - key: PRINTFUL_API_KEY
         sync: false  # Set in Render dashboard
+      - key: GEMINI_API_KEY
+        sync: false  # Free-tier Google AI Studio key for the customer assistant
+      - key: GEMINI_MODEL
+        value: "gemini-2.0-flash"
       - key: OPENAI_API_KEY
         sync: false  # Set in Render dashboard
       - key: RAZORPAY_KEY_ID

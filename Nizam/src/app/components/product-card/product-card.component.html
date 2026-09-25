@@ -46,9 +46,16 @@
       </span>
     }
 
+    @if (product.stock !== null && product.stock !== undefined && product.stock <= 0) {
+      <span class="tilt-card__badge tilt-card__badge--stock">Sold out</span>
+    } @else if (product.stock !== null && product.stock !== undefined && product.stock <= 3) {
+      <span class="tilt-card__badge tilt-card__badge--stock">Only {{ product.stock }} left</span>
+    }
+
     <div class="tilt-card__actions">
-      <button type="button" class="tilt-card__quick-add" (click)="onQuickAdd()">
-        <span aria-hidden="true">+</span> Quick add
+      <button type="button" class="tilt-card__quick-add" (click)="onQuickAdd()" [disabled]="product.stock !== null && product.stock !== undefined && product.stock <= 0">
+        <span aria-hidden="true">{{ product.stock !== null && product.stock !== undefined && product.stock <= 0 ? '×' : '+' }}</span>
+        {{ product.stock !== null && product.stock !== undefined && product.stock <= 0 ? 'Sold out' : 'Quick add' }}
       </button>
       <button
         type="button"

@@ -21,6 +21,12 @@ import jwt from 'jsonwebtoken';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { createRequire } from 'module';
+import {
+  ASSISTANT_SYSTEM_PROMPT,
+  localAssistantReply,
+  sanitizeAssistantRequest,
+  type AssistantReply
+} from './server/ai-assistant';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -958,6 +964,69 @@ async function getAngularApp(): Promise<AngularNodeAppEngine | null> {
 
 // SES client and verified sender are initialized at the top of the file
 
+
+app.post('/api/assistant', async (req, res) => {
+  const messages = sanitizeAssistantRequest(req.body);
+  const lastUserMessage = [...messages].reverse().find(message => message.role === 'user');
+  if (!lastUserMessage) {
+    return res.status(400).json({ success: false, message: 'Please enter a message.' });
+  }
+
+  const fallback = (): AssistantReply => ({
+    success: true,
+    message: localAssistantReply(lastUserMessage.content),
+    source: 'local'
+  });
+  const apiKey = (process.env['GEMINI_API_KEY'] || '').trim();
+  if (!apiKey || apiKey === 'your_gemini_api_key') {
+    return res.json(fallback());
+  }
+
+  const model = (process.env['GEMINI_MODEL'] || 'gemini-2.0-flash').trim();
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey
+      },
+      body: JSON.stringify({
+        contents: messages.map(message => ({
+          role: message.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: message.content }]
+        })),
+        systemInstruction: { parts: [{ text: ASSISTANT_SYSTEM_PROMPT }] },
+        generationConfig: { maxOutputTokens: 500, temperature: 0.35 }
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      console.warn(`Gemini assistant request failed with status ${response.status}; using local reply.`);
+      return res.json(fallback());
+    }
+
+    const payload = await response.json() as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    const text = payload.candidates?.[0]?.content?.parts
+      ?.map(part => part.text || '')
+      .join('')
+      .trim();
+    if (!text) return res.json(fallback());
+
+    return res.json({ success: true, message: text, source: 'gemini' } satisfies AssistantReply);
+  } catch (error) {
+    console.warn('Gemini assistant unavailable; using local reply.', error instanceof Error ? error.message : error);
+    return res.json(fallback());
+  } finally {
+    clearTimeout(timeout);
+  }
+});
 
 // Health check endpoint for Render (and general health monitoring)
 app.get('/api/health', async (req, res) => {

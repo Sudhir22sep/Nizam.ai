@@ -156,7 +156,7 @@
         <button (click)="addToCart()" class="btn-add-cart" [disabled]="isOutOfStock">
           🛒 Add to Cart
         </button>
-        <button routerLink="/checkout" class="btn-checkout">
+          <button type="button" (click)="buyNow()" class="btn-checkout" [disabled]="isOutOfStock">
           💳 Checkout Now
         </button>
         <button class="btn-wishlist" (click)="addToWishlist()">

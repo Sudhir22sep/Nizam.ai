@@ -33,13 +33,13 @@ const catalog: Product[] = [
 
 describe('ProductsComponent', () => {
   let productsSignal = signal<Product[]>([]);
-  let cartService = { addToCart: vi.fn() };
-  let toastService = { success: vi.fn(), error: vi.fn() };
+  let cartService = { addToCart: vi.fn(() => true), getItems: vi.fn(() => []) };
+  let toastService = { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() };
 
   function createComponent(category?: string) {
     productsSignal = signal<Product[]>([...catalog]);
-    cartService = { addToCart: vi.fn() };
-    toastService = { success: vi.fn(), error: vi.fn() };
+    cartService = { addToCart: vi.fn(() => true), getItems: vi.fn(() => []) };
+    toastService = { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() };
 
     TestBed.configureTestingModule({
       imports: [ProductsComponent],
@@ -127,5 +127,30 @@ describe('ProductsComponent', () => {
 
     expect(cartService.addToCart).toHaveBeenCalledWith(catalog[0], 1);
     expect(toastService.success).toHaveBeenCalledWith('Linen Shirt added to cart.');
+  });
+
+  it('searches across product names, descriptions, categories and tags', () => {
+    const fixture = createComponent();
+    fixture.componentInstance.searchQuery.set('linen');
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    expect(compiled.querySelectorAll('.product-card').length).toBe(1);
+    expect(compiled.textContent).toContain('Linen Shirt');
+  });
+
+  it('sorts the filtered catalog by price', () => {
+    const fixture = createComponent();
+    productsSignal.set([
+      { ...catalog[0], basePrice: 1800 },
+      { ...catalog[1], basePrice: 900 },
+      { ...catalog[2], basePrice: 1200 }
+    ]);
+    fixture.componentInstance.sortBy.set('price-low');
+    fixture.detectChanges();
+    const names = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.tilt-card__name'))
+      .map(element => element.textContent?.trim());
+
+    expect(names).toEqual(['Wool Coat', 'Silk Saree', 'Linen Shirt']);
   });
 });

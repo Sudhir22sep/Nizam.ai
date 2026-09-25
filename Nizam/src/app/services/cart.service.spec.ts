@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { CartService } from './cart.service';
+import { CART_STORAGE_KEY, CartService } from './cart.service';
 import { Product } from './product.service';
 
 describe('CartService', () => {
@@ -7,6 +7,7 @@ describe('CartService', () => {
   let testProduct: Product;
 
   beforeEach(() => {
+    localStorage.removeItem(CART_STORAGE_KEY);
     TestBed.configureTestingModule({
       providers: [CartService]
     });
@@ -31,6 +32,44 @@ describe('CartService', () => {
 
   it('should be created', () => {
     expect(service).toBeTruthy();
+  });
+
+  afterEach(() => localStorage.removeItem(CART_STORAGE_KEY));
+
+  it('persists and restores a valid variant cart line', () => {
+    service.addToCart(testProduct, 2, 'M', 125);
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [CartService] });
+    const restored = TestBed.inject(CartService);
+
+    expect(restored.getItems()).toHaveLength(1);
+    expect(restored.getItems()[0]).toMatchObject({ quantity: 2, size: 'M', unitPrice: 125 });
+  });
+
+  it('discards malformed stored data and clamps restored quantities to stock', () => {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify([
+      { product: testProduct, quantity: 20, unitPrice: 100 },
+      { product: { id: 'broken' }, quantity: 1, unitPrice: 10 }
+    ]));
+    testProduct.stock = 3;
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify([
+      { product: testProduct, quantity: 20, unitPrice: 100 }
+    ]));
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [CartService] });
+
+    expect(TestBed.inject(CartService).getItems()[0].quantity).toBe(3);
+  });
+
+  it('enforces stock when adding and updating cart lines', () => {
+    testProduct.stock = 2;
+    service.addToCart(testProduct, 5);
+    expect(service.getItems()[0].quantity).toBe(2);
+    expect(service.addToCart(testProduct, 1)).toBe(false);
+    expect(service.updateQuantity(testProduct.id, 1)).toBe(true);
+    expect(service.getItems()[0].quantity).toBe(1);
+    expect(service.updateQuantity(testProduct.id, 0)).toBe(true);
+    expect(service.getItems()).toEqual([]);
   });
 
   describe('Initial State', () => {

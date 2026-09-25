@@ -1,0 +1,35 @@
+<section class="customer-chat" aria-label="Amma customer assistant">
+  @if (!isOpen()) {
+    <button type="button" class="customer-chat__launcher" (click)="open()" aria-label="Chat with Amma">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18.5 3.5 21l4-2.5H18a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3v8.5a3 3 0 0 0 2 3Z"/><path d="M8 9h8M8 13h5"/></svg>
+      <span>Ask Amma</span>
+    </button>
+  } @else {
+    <section class="customer-chat__panel" role="dialog" aria-modal="false" aria-labelledby="customer-chat-title">
+      <header class="customer-chat__header">
+        <div class="customer-chat__avatar" aria-hidden="true">A</div>
+        <div><h2 id="customer-chat-title">Amma</h2><p>Styling & customer care</p></div>
+        <button type="button" class="customer-chat__close" (click)="close()" aria-label="Close chat">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+
+      <div class="customer-chat__messages" role="log" aria-live="polite" aria-relevant="additions">
+        @for (message of messages(); track $index) {
+          <p class="customer-chat__message" [class.customer-chat__message--user]="message.role === 'user'">{{ message.content }}</p>
+        }
+        @if (isSending()) { <p class="customer-chat__typing" aria-label="Amma is typing">•••</p> }
+      </div>
+
+      @if (error()) { <p class="customer-chat__error" role="alert">{{ error() }}</p> }
+      <form class="customer-chat__composer" (ngSubmit)="send()">
+        <label class="sr-only" for="customer-chat-message">Message Amma</label>
+        <input #messageInput id="customer-chat-message" name="message" [(ngModel)]="draft" maxlength="600" autocomplete="off" placeholder="Ask about fit, styling or orders…" [disabled]="isSending()">
+        <button type="submit" [disabled]="!draft.trim() || isSending()" aria-label="Send message">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 4 17 8-17 8 3-8-3-8Zm3 8h14"/></svg>
+        </button>
+      </form>
+      <p class="customer-chat__privacy">For live tracking, sign in and open My Orders.</p>
+    </section>
+  }
+</section>

@@ -56,6 +56,11 @@
 </app-glass-popup>
 
 <app-toast-container></app-toast-container>
+
+@defer (on immediate) {
+  <app-customer-chat />
+}
+
 <footer class="site-footer">
   <div class="footer-inner">
     <section class="footer-brand" aria-labelledby="footer-brand-title">

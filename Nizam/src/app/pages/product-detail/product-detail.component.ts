@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { BentoHighlightsComponent } from '../../components/bento-grid/bento-highlights.component';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { PricePipe } from '../../pipes/price.pipe';
 import { ProductCardComponent } from '../../components/product-card/product-card.component';
 import { ImageFallbackDirective } from '../../directives/image-fallback.directive';
@@ -23,6 +23,7 @@ export class ProductDetailComponent implements OnInit {
   private cartService = inject(CartService);
   private wishlistService = inject(WishlistService);
   private readonly toast = inject(ToastService);
+  private readonly router = inject(Router);
 
   /**
    * View state is signal-based on purpose: this app runs zoneless (Angular 21
@@ -87,7 +88,9 @@ export class ProductDetailComponent implements OnInit {
   }
 
   incrementQuantity() {
-    this.quantity.update(current => current + 1);
+    const stock = this.product()?.stock;
+    const limit = stock === null || stock === undefined ? 99 : Math.max(0, Math.floor(stock));
+    if (this.quantity() < limit) this.quantity.update(current => current + 1);
   }
 
   decrementQuantity() {
@@ -160,25 +163,32 @@ export class ProductDetailComponent implements OnInit {
     return primaryProductImage(product?.images, undefined, product?.name);
   }
 
-  addToCart() {
+  private addCurrentSelection(replaceCart = false): boolean {
     const product = this.product();
-    if (!product) {
-      return;
-    }
+    if (!product || this.isOutOfStock) return false;
     const selectedSize = this.selectedSize();
     if (this.availableSizes.length > 0 && !selectedSize) {
       this.toast.warning('Please choose a size before adding this item to your cart.');
-      return;
+      return false;
     }
-    const quantity = this.quantity();
-    this.cartService.addToCart(
-      product,
-      quantity,
-      selectedSize ?? undefined,
-      this.displayPrice
-    );
+    if (replaceCart) this.cartService.clearCart();
+    const added = this.cartService.addToCart(product, this.quantity(), selectedSize ?? undefined, this.displayPrice);
+    if (!added) {
+      if (replaceCart) this.cartService.clearCart();
+      this.toast.warning(`No more ${product.name} is available in the selected size.`);
+      return false;
+    }
     const sizeLabel = selectedSize ? ` in size ${selectedSize}` : '';
-    this.toast.success(`${quantity} ${product.name}${sizeLabel} item(s) added to cart.`);
+    this.toast.success(`${this.quantity()} ${product.name}${sizeLabel} item(s) added to cart.`);
+    return true;
+  }
+
+  addToCart() {
+    this.addCurrentSelection();
+  }
+
+  async buyNow(): Promise<void> {
+    if (this.addCurrentSelection(true)) await this.router.navigate(['/checkout']);
   }
 
   addToWishlist() {

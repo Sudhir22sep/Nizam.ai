@@ -16,7 +16,7 @@ import { AboutComponent } from './pages/about/about.component';
 export const routes: Routes = [
   { path: 'home', component: HomeComponent},
   { path: 'products', component: ProductsComponent },
-  { path: 'cart', component: CartComponent, canActivate: [AuthGuard] },
+  { path: 'cart', component: CartComponent },
   { path: 'checkout', component: CheckoutComponent, canActivate: [AuthGuard] },
   { path: 'contact', component: ContactComponent },
   { path: 'login', component: LoginComponent },

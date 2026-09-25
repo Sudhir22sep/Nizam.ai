@@ -12,10 +12,11 @@
           <div *ngFor="let item of items" class="cart-item">
             <div class="cart-item-info">
               <h3>{{ item.product.name }}</h3>
-              <p>{{ item.quantity }} × {{ item.product.basePrice | price }}</p>
+              <p *ngIf="item.size">Size: {{ item.size }}</p>
+              <p>{{ item.quantity }} × {{ item.unitPrice | price }}</p>
             </div>
             <div class="item-total">
-              {{ item.product.basePrice * item.quantity | price }}
+              {{ item.unitPrice * item.quantity | price }}
             </div>
           </div>
 

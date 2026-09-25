@@ -45,13 +45,24 @@ export class ProductsComponent implements OnInit {
       .filter(category => category.length > 0)
   );
 
+  readonly searchQuery = signal('');
+  readonly sortBy = signal<'featured' | 'price-low' | 'price-high' | 'name'>('featured');
+
   readonly filteredProducts = computed(() => {
     const category = this.normaliseCategory(this.selectedCategory());
-    const products = this.products();
-    if (!category) {
-      return products;
+    const query = this.searchQuery().trim().toLowerCase();
+    const products = this.products().filter(product => {
+      const matchesCategory = !category || this.normaliseCategory(product.category) === category;
+      const searchable = `${product.name} ${product.description} ${product.category} ${product.tags.join(' ')}`.toLowerCase();
+      return matchesCategory && (!query || searchable.includes(query));
+    });
+
+    switch (this.sortBy()) {
+      case 'price-low': return [...products].sort((a, b) => a.basePrice - b.basePrice);
+      case 'price-high': return [...products].sort((a, b) => b.basePrice - a.basePrice);
+      case 'name': return [...products].sort((a, b) => a.name.localeCompare(b.name));
+      default: return products;
     }
-    return products.filter(product => this.normaliseCategory(product.category) === category);
   });
 
   constructor() {
@@ -81,8 +92,17 @@ export class ProductsComponent implements OnInit {
   }
 
   addToCart(product: Product) {
-    this.cartService.addToCart(product, 1);
-    this.toast.success(`${product.name} added to cart.`);
+    if (product.stock !== null && product.stock !== undefined && product.stock <= 0) {
+      this.toast.info(`${product.name} is currently sold out.`);
+      return;
+    }
+    const existing = this.cartService.getItems().find(item => item.product.id === product.id && !item.size);
+    const requested = (existing?.quantity ?? 0) + 1;
+    if (product.stock !== null && product.stock !== undefined && requested > product.stock) {
+      this.toast.warning(`Only ${product.stock} ${product.name} available.`);
+      return;
+    }
+    if (this.cartService.addToCart(product, 1)) this.toast.success(`${product.name} added to cart.`);
   }
 
   addToWishlist(product: Product) {
