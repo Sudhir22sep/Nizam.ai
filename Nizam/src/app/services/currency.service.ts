@@ -2,22 +2,70 @@ import { Injectable, signal } from '@angular/core';
 
 export type CurrencyCode = 'USD' | 'INR' | 'AED' | 'SAR';
 
+const CURRENCY_OVERRIDE_KEY = 'amma-wears-currency';
+
 @Injectable({ providedIn: 'root' })
 export class CurrencyService {
-  // Active currency signal
-  activeCurrency = signal<CurrencyCode>('INR');
+  // US storefront default. Product catalog prices are authored in USD; payment
+  // providers still settle in their supported settlement currency.
+  activeCurrency = signal<CurrencyCode>('USD');
 
   // Simple exchange rates relative to USD (1 USD = X target)
   // In a real app fetch rates from an API and cache them.
-  private rates: Record<CurrencyCode, number> = {
+  private readonly rates: Record<CurrencyCode, number> = {
     USD: 1,
     INR: 95.21,
     AED: 3.67,
     SAR: 3.73
   };
 
+  constructor() {
+    this.restoreOverride();
+    if (typeof navigator !== 'undefined') {
+      void this.detectLocationCurrency();
+    }
+  }
+
   setCurrency(code: CurrencyCode) {
     this.activeCurrency.set(code);
+    try {
+      localStorage?.setItem(CURRENCY_OVERRIDE_KEY, code);
+    } catch {
+      // Storage is optional; the in-memory selection still works.
+    }
+  }
+
+  /** Detects a sensible currency from the browser locale without blocking the app. */
+  async detectLocationCurrency(): Promise<CurrencyCode> {
+    const locale = typeof navigator !== 'undefined' ? navigator.language : 'en-US';
+    const region = new Intl.Locale(locale).maximize().region ?? 'US';
+    const detected = this.currencyForRegion(region);
+    if (detected !== this.activeCurrency() && !this.hasStoredOverride()) {
+      this.activeCurrency.set(detected);
+    }
+    return this.activeCurrency();
+  }
+
+  private currencyForRegion(region: string): CurrencyCode {
+    switch (region.toUpperCase()) {
+      case 'IN': return 'INR';
+      case 'AE': return 'AED';
+      case 'SA': return 'SAR';
+      default: return 'USD';
+    }
+  }
+
+  private hasStoredOverride(): boolean {
+    try { return !!localStorage?.getItem(CURRENCY_OVERRIDE_KEY); } catch { return false; }
+  }
+
+  private restoreOverride(): void {
+    try {
+      const saved = localStorage?.getItem(CURRENCY_OVERRIDE_KEY) as CurrencyCode | null;
+      if (saved && saved in this.rates) this.activeCurrency.set(saved);
+    } catch {
+      // Use the USD default when storage is unavailable.
+    }
   }
 
   getCurrency() {

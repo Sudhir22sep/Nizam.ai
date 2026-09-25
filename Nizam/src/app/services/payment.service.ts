@@ -1,4 +1,6 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { CurrencyCode } from './currency.service';
 
@@ -49,6 +51,8 @@ const CREATE_ORDER_ENDPOINTS: Record<PaymentMethod, string> = {
  */
 @Injectable({ providedIn: 'root' })
 export class PaymentService {
+  constructor(private readonly http: HttpClient) {}
+
   private get baseUrl(): string {
     return environment.apiUrl || '';
   }
@@ -80,23 +84,10 @@ export class PaymentService {
 
   /** POSTs JSON and throws the server's message when the call fails. */
   private async post(url: string, body: unknown): Promise<any> {
-    const response = await fetch(`${this.baseUrl}${url}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    const text = await response.text();
-    let data: any = {};
     try {
-      data = text ? JSON.parse(text) : {};
-    } catch {
-      data = { message: text };
+      return await firstValueFrom(this.http.post<any>(`${this.baseUrl}${url}`, body));
+    } catch (error: any) {
+      throw new Error(error?.error?.message || 'Unable to complete the request. Please try again.');
     }
-
-    if (!response.ok || !data?.success) {
-      throw new Error(data?.message || 'Unable to complete the request. Please try again.');
-    }
-    return data;
   }
 }

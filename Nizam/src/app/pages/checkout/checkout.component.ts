@@ -8,6 +8,7 @@ import { CurrencyService } from '../../services/currency.service';
 import { CartService } from '../../services/cart.service';
 import { PaymentMethod, PaymentService } from '../../services/payment.service';
 import { GlassPopupComponent } from '../../components/glass-popup/glass-popup.component';
+import { SiteEventsService } from '../../services/site-events.service';
 
 @Component({
   selector: 'app-checkout',
@@ -29,7 +30,8 @@ export class CheckoutComponent {
     public cartService: CartService,
     private currency: CurrencyService,
     private toast: ToastService,
-    private payments: PaymentService
+    private payments: PaymentService,
+    private siteEvents: SiteEventsService
   ) {}
 
   get items() {
@@ -72,7 +74,7 @@ export class CheckoutComponent {
     // Stripe is the international gateway and only settles in USD; sending the
     // shopper to it in another currency would mis-price the order.
     if (this.paymentMethod === 'stripe' && selectedCurrency !== 'USD') {
-      this.toast.warning('International card payments are charged in USD. Switch the currency selector to USD to continue.');
+      this.toast.warning('International card payments are charged in USD. Select USD in the currency selector to continue.');
       return;
     }
 
@@ -87,6 +89,7 @@ export class CheckoutComponent {
     };
 
     this.isProcessing = true;
+    this.siteEvents.track('checkout_started', { item_count: this.items.length, value: this.totalAmount });
 
     try {
       const result = await this.payments.createOrder(this.paymentMethod, orderPayload);
@@ -94,6 +97,7 @@ export class CheckoutComponent {
       if (this.paymentMethod === 'cod') {
         this.orderConfirmed = true;
         this.confirmationReference = result.orderReference || '';
+        this.siteEvents.track('order_completed', { order_reference: this.confirmationReference, value: this.totalAmount, payment_method: this.paymentMethod });
         this.cartService.clearCart();
         return;
       }

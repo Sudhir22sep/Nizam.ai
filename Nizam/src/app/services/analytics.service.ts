@@ -104,7 +104,7 @@ export class AnalyticsService {
 
   /** E-commerce: product detail page viewed. */
   trackViewItem(product: Product): void {
-    this.ecommerceEvent('view_item', { currency: 'INR', value: product.basePrice, items: [toAnalyticsItem(product)] });
+    this.ecommerceEvent('view_item', { currency: 'USD', value: product.basePrice, items: [toAnalyticsItem(product)] });
   }
 
   /** E-commerce: item added to the cart. */
@@ -114,7 +114,7 @@ export class AnalyticsService {
       item.item_variant = size;
     }
     item.quantity = quantity;
-    this.ecommerceEvent('add_to_cart', { currency: 'INR', value: product.basePrice * quantity, items: [item] });
+    this.ecommerceEvent('add_to_cart', { currency: 'USD', value: product.basePrice * quantity, items: [item] });
   }
 
   /** E-commerce: item removed from the cart. */
@@ -122,17 +122,17 @@ export class AnalyticsService {
     const item = toAnalyticsItem(product);
     item.item_variant = size;
     item.quantity = quantity;
-    this.ecommerceEvent('remove_from_cart', { currency: 'INR', value: product.basePrice * quantity, items: [item] });
+    this.ecommerceEvent('remove_from_cart', { currency: 'USD', value: product.basePrice * quantity, items: [item] });
   }
 
   /** E-commerce: cart page viewed. */
   trackViewCart(items: AnalyticsItem[], value: number): void {
-    this.ecommerceEvent('view_cart', { currency: 'INR', value, items });
+    this.ecommerceEvent('view_cart', { currency: 'USD', value, items });
   }
 
   /** E-commerce: checkout started. */
   trackBeginCheckout(items: AnalyticsItem[], value: number): void {
-    this.ecommerceEvent('begin_checkout', { currency: 'INR', value, items });
+    this.ecommerceEvent('begin_checkout', { currency: 'USD', value, items });
   }
 
   /** E-commerce: order completed. */
@@ -144,7 +144,7 @@ export class AnalyticsService {
   ): void {
     this.ecommerceEvent('purchase', {
       transaction_id: transactionId,
-      currency: 'INR',
+      currency: 'USD',
       value,
       tax: options?.tax ?? 0,
       shipping: options?.shipping ?? 0,

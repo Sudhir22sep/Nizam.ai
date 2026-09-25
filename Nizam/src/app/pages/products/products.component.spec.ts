@@ -129,6 +129,15 @@ describe('ProductsComponent', () => {
     expect(toastService.success).toHaveBeenCalledWith('Linen Shirt added to cart.');
   });
 
+  it('exposes the responsive catalog controls with accessible labels', () => {
+    const compiled = createComponent().nativeElement as HTMLElement;
+
+    expect(compiled.querySelector('.catalog-search input[type="search"]')).toBeTruthy();
+    expect(compiled.querySelector('.catalog-sort select[aria-label="Sort products"]')).toBeTruthy();
+    expect(compiled.querySelector('.filters[aria-label="Filter products by category"]')).toBeTruthy();
+    expect(compiled.querySelectorAll('.filter-btn')).toHaveLength(3);
+  });
+
   it('searches across product names, descriptions, categories and tags', () => {
     const fixture = createComponent();
     fixture.componentInstance.searchQuery.set('linen');

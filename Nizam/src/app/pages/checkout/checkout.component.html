@@ -68,11 +68,11 @@
           </fieldset>
 
           <div *ngIf="paymentMethod === 'razorpay'" class="payment-note">
-            <p>You will enter your card/UPI details in a secure payment popup. Amounts are charged in INR.</p>
+            <p>You will enter your card/UPI details in a secure payment popup. Your total is shown in USD and the payment provider processes the equivalent amount in INR.</p>
           </div>
 
           <div *ngIf="paymentMethod === 'stripe'" class="payment-note">
-            <p>You will be redirected to the secure Stripe checkout to pay by international card in USD. Use the currency selector in the header to switch to USD before continuing.</p>
+            <p>You will be redirected to the secure Stripe checkout to pay by international card in USD.</p>
           </div>
 
           <button type="submit" class="btn-primary btn-submit" [disabled]="isProcessing">

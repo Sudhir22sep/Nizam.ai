@@ -34,7 +34,7 @@ body {
   position: relative;
   isolation: isolate;
   min-height: calc(100vh - 260px);
-  padding-top: 72px;
+  padding-top: calc(72px + env(safe-area-inset-top, 0px));
   background: var(--bg-page);
 }
 
@@ -84,6 +84,12 @@ body {
   font-weight: 800;
   color: #ffb2c0;
   -webkit-text-fill-color: #ffb2c0;
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    padding-top: calc(64px + env(safe-area-inset-top, 0px));
+  }
 }
 
 @media (max-width: 640px) {
@@ -332,7 +338,7 @@ body {
   position: fixed;
   z-index: 1200;
   right: 24px;
-  bottom: 24px;
+  bottom: 88px;
   display: inline-flex;
   min-height: 52px;
   align-items: center;
@@ -636,7 +642,7 @@ body {
 @media (max-width: 640px) {
   .glass-preview-launcher {
     right: 14px;
-    bottom: max(14px, env(safe-area-inset-bottom, 0px));
+    bottom: max(76px, calc(env(safe-area-inset-bottom, 0px) + 76px));
     min-width: 52px;
     padding: 12px;
   }

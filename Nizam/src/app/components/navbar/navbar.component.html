@@ -30,8 +30,8 @@
         <span class="cart-count">{{ cartService.getItemCount() }}</span>
       </a>
       <select class="currency-select" [value]="currentCurrency" (change)="changeCurrency($any($event.target).value)" aria-label="Currency">
-        <option value="INR">INR</option>
         <option value="USD">USD</option>
+        <option value="INR">INR</option>
         <option value="AED">AED</option>
         <option value="SAR">SAR</option>
       </select>

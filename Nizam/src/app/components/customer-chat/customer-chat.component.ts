@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, ElementRef, HostListener, ViewChild, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, HostListener, ViewChild, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { environment } from '../../../environments/environment';
+import { SiteEventsService } from '../../services/site-events.service';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -19,6 +20,7 @@ export class CustomerChatComponent {
   @ViewChild('messageInput') private messageInput?: ElementRef<HTMLInputElement>;
 
   protected readonly isOpen = signal(false);
+  private readonly siteEvents = inject(SiteEventsService);
   protected readonly isSending = signal(false);
   protected readonly error = signal('');
   protected readonly messages = signal<ChatMessage[]>([{
@@ -29,6 +31,7 @@ export class CustomerChatComponent {
 
   protected open(): void {
     this.isOpen.set(true);
+    this.siteEvents.track('chat_opened');
     queueMicrotask(() => this.messageInput?.nativeElement.focus());
   }
 

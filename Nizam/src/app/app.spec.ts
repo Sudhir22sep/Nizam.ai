@@ -36,6 +36,17 @@ describe('App', () => {
     expect(links.every(link => link.tagName === 'A' && link.textContent?.trim())).toBe(true);
   });
 
+  it('keeps the glass preview and chat launcher available as separate floating controls', async () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    expect(compiled.querySelector('.glass-preview-launcher')).toBeTruthy();
+    expect(compiled.querySelector('app-customer-chat')).toBeTruthy();
+    expect(compiled.querySelector('.glass-preview-launcher')?.getAttribute('aria-controls')).toBe('site-glass-preview');
+  });
+
   it('opens the site-wide glass preview from its launcher', async () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();

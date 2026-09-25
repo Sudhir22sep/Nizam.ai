@@ -269,6 +269,9 @@
     right: 0;
     flex-direction: column;
     gap: 4px;
+    max-height: calc(100dvh - 64px - env(safe-area-inset-top, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 12px 18px 20px;
     background: #080d18;
     -webkit-backdrop-filter: blur(20px);

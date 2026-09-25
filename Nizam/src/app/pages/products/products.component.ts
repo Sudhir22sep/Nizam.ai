@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ProductService, Product, primaryProductImage } from '../../services/product.service';
+import { SiteEventsService } from '../../services/site-events.service';
 import { CartService } from '../../services/cart.service';
 import { WishlistService } from '../../services/wishlist.service';
 import { ToastService } from '../../services/toast.service';
@@ -23,6 +24,7 @@ export class ProductsComponent implements OnInit {
   private readonly cartService = inject(CartService);
   private readonly wishlistService = inject(WishlistService);
   private readonly toast = inject(ToastService);
+  private readonly siteEvents = inject(SiteEventsService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -72,7 +74,11 @@ export class ProductsComponent implements OnInit {
   }
 
   ngOnInit() {
-    void this.productService.ensureLoaded();
+    void this.productService.ensureLoaded().then(() => {
+      const count = Math.min(this.products().length, 3);
+      this.siteEvents.announceNewArrivals(count);
+      if (count > 0) this.siteEvents.notify('new_product', 'Fresh products just landed — explore the latest edit.', 'info', 'catalog-products');
+    });
   }
 
   filterByCategory(category: string) {
@@ -102,7 +108,10 @@ export class ProductsComponent implements OnInit {
       this.toast.warning(`Only ${product.stock} ${product.name} available.`);
       return;
     }
-    if (this.cartService.addToCart(product, 1)) this.toast.success(`${product.name} added to cart.`);
+    if (this.cartService.addToCart(product, 1)) {
+      this.toast.success(`${product.name} added to cart.`);
+      this.siteEvents.track('add_to_cart', { product_id: product.id, product_name: product.name });
+    }
   }
 
   addToWishlist(product: Product) {

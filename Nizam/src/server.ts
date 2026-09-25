@@ -22,6 +22,13 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { createRequire } from 'module';
 import {
+  consumeInventory,
+  inventoryLinesFromPricedItems,
+  releaseInventory,
+  reserveInventory,
+  type InventoryLine
+} from './server/order-inventory';
+import {
   ASSISTANT_SYSTEM_PROMPT,
   localAssistantReply,
   sanitizeAssistantRequest,
@@ -86,7 +93,7 @@ function getClientFallbackPath(): string {
  * every public catalog endpoint strips them and an admin-only endpoint serves
  * the purchase link instead.
  */
-const OWNER_ONLY_PRODUCT_FIELDS = ['buyUrl', 'supplier'] as const;
+const OWNER_ONLY_PRODUCT_FIELDS = ['buyUrl', 'supplier', 'reservedStock', 'inventoryReservations'] as const;
 
 /** Removes owner-only fields from a product document. */
 function toPublicProduct(product: Record<string, any>): Record<string, any> {
@@ -455,6 +462,8 @@ interface PriceComparisonResponse {
 }
 interface OrderDocument {
   orderReference: string;
+  /** Authenticated storefront account that created the order. */
+  userId?: ObjectId;
   name: string;
   email: string;
   address: string;
@@ -469,6 +478,10 @@ interface OrderDocument {
   stripeSessionId?: string;
   /** Stripe PaymentIntent id, recorded once the session is paid. */
   stripePaymentIntentId?: string;
+  /** Mongo product ids and quantities participating in server-side inventory. */
+  inventoryItems?: Array<{ productId: ObjectId; quantity: number }>;
+  inventoryState?: 'none' | 'reserved' | 'consumed' | 'released';
+  inventoryUpdatedAt?: Date;
   // Fulfillment tracking fields
   fulfillmentService?: 'qikink' | 'printful' | 'manual';
   fulfillmentStatus?: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
@@ -485,6 +498,8 @@ interface ProductCreateDto {
   name: string;
   description: string;
   basePrice: number | string;
+  /** Numeric stock enables atomic reservation/decrement; omitted means untracked. */
+  stock?: number | null;
   currency: string;
   category: string;
   images?: string[];
@@ -525,6 +540,9 @@ interface ProductDocument {
   variants: any[];
   tags: string[];
   isActive: boolean;
+  stock?: number | null;
+  /** Units committed to pending online orders but not yet consumed. */
+  reservedStock?: number;
   createdAt: Date;
   updatedAt: Date;
   /** Owner-only supplier checkout link. Never returned by public endpoints. */
@@ -610,6 +628,17 @@ function resolveRequestUser(req: Request): { userId: string; email: string; role
   return null;
 }
 
+function requestUserId(user: { userId?: string } | undefined): ObjectId | null {
+  const raw = user?.userId?.trim() ?? '';
+  return /^[a-f\d]{24}$/i.test(raw) ? new ObjectId(raw) : null;
+}
+
+function userOwnsOrder(order: Pick<OrderDocument, 'userId' | 'email'>, user: { userId?: string; email?: string } | undefined): boolean {
+  const userId = requestUserId(user);
+  return !!userId && !!order.userId && order.userId.toString() === userId.toString() ||
+    !order.userId && !!user?.email && order.email.toLowerCase() === user.email.toLowerCase();
+}
+
 // User document type
 interface UserDocument {
   _id: any;
@@ -678,7 +707,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.post('/api/create-razorpay-order', async (req, res) => {
+app.post('/api/create-razorpay-order', authenticateJwt, async (req, res) => {
   // Guard against invalid response object
   if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
     console.error('Invalid response object in create-razorpay-order');
@@ -691,9 +720,14 @@ app.post('/api/create-razorpay-order', async (req, res) => {
     return res.status(500).json({ success: false, message: 'Razorpay is not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.' });
   }
 
-  const { name, email, address, items, total, currency } = req.body;
+  const userId = requestUserId((req as Request & { user?: any }).user);
+  if (!userId) {
+    return res.status(401).json({ success: false, message: 'A valid authenticated account is required.' });
+  }
+  const { name, email: requestedEmail, address, items, total, currency } = req.body;
+  const orderEmail = ((req as Request & { user?: any }).user?.email || requestedEmail || '').toLowerCase();
 
-  if (!name || !email || !Array.isArray(items) || typeof total !== 'number') {
+  if (!name || !orderEmail || !Array.isArray(items) || typeof total !== 'number') {
     return res.status(400).json({ success: false, message: 'Name, email, items, and total are required.' });
   }
 
@@ -727,6 +761,12 @@ app.post('/api/create-razorpay-order', async (req, res) => {
 
   console.log(`[Razorpay] Frontend currency: ${frontendCurrency}, Total: ${orderTotal}, USD: ${totalInUsd.toFixed(2)}, INR: ${totalInInr.toFixed(2)}, Paise: ${amountInPaise}`);
 
+  const inventory = await reserveOrderInventory(orderReference, priced.items);
+  if (!inventory.result.ok) {
+    return res.status(409).json({ success: false, message: inventory.result.message });
+  }
+
+
   try {
     const razorpayOrder = await razorpay.orders.create({
       amount: amountInPaise,
@@ -735,7 +775,7 @@ app.post('/api/create-razorpay-order', async (req, res) => {
       payment_capture: true,
       notes: {
         orderReference,
-        email,
+        email: orderEmail,
         name,
       },
     });
@@ -746,14 +786,18 @@ app.post('/api/create-razorpay-order', async (req, res) => {
     
     const order: OrderDocument = {
       orderReference,
+      userId,
       name,
-      email,
+      email: orderEmail,
       address: address || '',
       items: priced.items,
       total: orderTotal,
       currency: frontendCurrency, // total is expressed in the shopper's currency
       paymentMethod: 'Razorpay',
       status: 'pending',
+      inventoryItems: inventory.lines,
+      inventoryState: inventory.lines.length ? 'reserved' : 'none',
+      inventoryUpdatedAt: new Date(),
       createdAt: new Date()
     };
     await ordersCollection.insertOne(order);
@@ -767,6 +811,7 @@ app.post('/api/create-razorpay-order', async (req, res) => {
       orderReference,
     });
   } catch (error) {
+    await releaseInventory(inventory.products, orderReference, inventory.lines);
     console.error('create-razorpay-order error', error);
     return res.status(500).json({ success: false, message: 'Unable to create Razorpay order.' });
   }
@@ -1094,30 +1139,33 @@ function roundCurrency(amount: number) {
   return Math.round(amount * 100) / 100;
 }
 
-async function lookupCatalogPriceUsd(productId: unknown): Promise<number | null> {
+async function lookupCatalogProduct(productId: unknown): Promise<{ productId?: ObjectId; price: number; name?: string; stockTracked: boolean } | null> {
   const raw = productId === undefined || productId === null ? '' : String(productId).trim();
-  if (!raw) {
-    return null;
-  }
+  if (!raw) return null;
 
   const lookups: any[] = [];
-  if (/^[a-f\d]{24}$/i.test(raw)) {
-    lookups.push({ _id: new ObjectId(raw) });
-  }
+  if (/^[a-f\d]{24}$/i.test(raw)) lookups.push({ _id: new ObjectId(raw) });
   const asNumber = Number(raw);
-  if (Number.isFinite(asNumber)) {
-    lookups.push({ id: asNumber });
-  }
+  if (Number.isFinite(asNumber)) lookups.push({ id: asNumber });
   lookups.push({ id: raw });
 
   const productsCollection = await getProductsCollection();
   const product: any = await productsCollection.findOne({ $or: lookups });
   const price = product?.basePrice ?? product?.price;
-  return typeof price === 'number' && price > 0 ? price : null;
+  if (typeof price !== 'number' || price <= 0) return null;
+  return {
+    productId: product._id instanceof ObjectId ? product._id : new ObjectId(product._id),
+    price,
+    name: product.name,
+    stockTracked: typeof product.stock === 'number' && Number.isFinite(product.stock),
+  };
 }
 
 interface PricedOrderItem {
   product: { name: string; price: number };
+  /** Present only for Mongo products with numeric inventory. */
+  productId?: ObjectId;
+  stockTracked?: boolean;
   /** Shopper-selected size label; absent for one-size products. */
   size?: string;
   quantity: number;
@@ -1158,9 +1206,9 @@ async function priceOrderItems(rawItems: unknown[]): Promise<PricingResult> {
     // both the customer and merchant notification emails.
     const size = typeof item.size === 'string' && item.size.trim() ? item.size.trim() : undefined;
 
-    let unitPriceUsd: number | null = null;
+    let catalogProduct: Awaited<ReturnType<typeof lookupCatalogProduct>> = null;
     try {
-      unitPriceUsd = await lookupCatalogPriceUsd(product.id ?? product._id ?? item.productId);
+      catalogProduct = await lookupCatalogProduct(product.id ?? product._id ?? item.productId);
     } catch (error) {
       console.warn(
         'Order pricing: catalog lookup failed, falling back to the client price:',
@@ -1168,6 +1216,7 @@ async function priceOrderItems(rawItems: unknown[]): Promise<PricingResult> {
       );
     }
 
+    let unitPriceUsd = catalogProduct?.price ?? null;
     if (unitPriceUsd === null) {
       if (clientPrice === undefined || clientPrice <= 0) {
         return { ok: false, message: 'Each item must have a valid positive price' };
@@ -1178,7 +1227,9 @@ async function priceOrderItems(rawItems: unknown[]): Promise<PricingResult> {
     }
 
     items.push({
-      product: { name: product.name || `Item ${items.length + 1}`, price: unitPriceUsd },
+      product: { name: catalogProduct?.name || product.name || `Item ${items.length + 1}`, price: unitPriceUsd },
+      productId: catalogProduct?.productId,
+      stockTracked: catalogProduct?.stockTracked,
       size,
       quantity,
     });
@@ -1251,6 +1302,7 @@ async function initializeMongoDB(): Promise<void> {
     const productsCollection = db.collection('products');
 
     await ordersCollection.createIndex({ orderReference: 1 }, { unique: true });
+    await ordersCollection.createIndex({ userId: 1, createdAt: -1 });
     await ordersCollection.createIndex({ email: 1 });
     await usersCollection.createIndex({ email: 1 }, { unique: true });
     await contactsCollection.createIndex({ email: 1 });
@@ -1316,6 +1368,34 @@ async function getProductsCollection() {
     throw new Error('MongoDB not connected');
   }
   return db.collection('products');
+}
+
+async function reserveOrderInventory(orderReference: string, items: PricedOrderItem[]) {
+  const products = await getProductsCollection();
+  const lines = inventoryLinesFromPricedItems(items);
+  const result = await reserveInventory(products, orderReference, lines);
+  return { products, lines, result };
+}
+
+async function releaseOrderInventory(order: OrderDocument) {
+  if (order.inventoryState !== 'reserved' || !order.inventoryItems?.length) return;
+  const products = await getProductsCollection();
+  await releaseInventory(products, order.orderReference, order.inventoryItems as InventoryLine[]);
+  await getOrdersCollection().then(orders => orders.updateOne(
+    { orderReference: order.orderReference, inventoryState: 'reserved' },
+    { $set: { inventoryState: 'released', inventoryUpdatedAt: new Date(), updatedAt: new Date() } }
+  ));
+}
+
+async function consumeOrderInventory(order: OrderDocument) {
+  if (order.inventoryState !== 'reserved' || !order.inventoryItems?.length) return;
+  const products = await getProductsCollection();
+  const result = await consumeInventory(products, order.orderReference, order.inventoryItems as InventoryLine[]);
+  if (!result.ok) throw new Error(result.message);
+  await getOrdersCollection().then(orders => orders.updateOne(
+    { orderReference: order.orderReference, inventoryState: 'reserved' },
+    { $set: { inventoryState: 'consumed', inventoryUpdatedAt: new Date(), updatedAt: new Date() } }
+  ));
 }
 
 // Get or create wishlists collection
@@ -2254,6 +2334,18 @@ async function authenticateJwt(req: Request & { user?: any }, res: Response, nex
   next();
   return;
 }
+
+/** Restricts owner-only catalog and order operations to admins (or local sandbox tooling). */
+function requireAdmin(req: Request & { user?: any }, res: Response, next: NextFunction) {
+  const isAdmin = req.user?.role === 'admin';
+  const isLocalDev = req.user?.isDev === true && process.env['NODE_ENV'] !== 'production';
+  if (!isAdmin && !isLocalDev) {
+    return res.status(403).json({ success: false, message: 'Admin access required' });
+  }
+  next();
+  return;
+}
+
 app.post('/api/auth/logout', (req: Request, res: Response) => {
   // JWT is stateless - logout is handled client-side by deleting the token
   // This endpoint exists for API consistency and potential future token blacklisting
@@ -2326,9 +2418,16 @@ app.post('/api/auth/logout', (req: Request, res: Response) => {
 
 
 
-app.post('/api/create-cod-order', async (req: Request, res: Response) => {
+app.post('/api/create-cod-order', authenticateJwt, async (req: Request, res: Response) => {
+  let inventory: Awaited<ReturnType<typeof reserveOrderInventory>> | null = null;
+  let orderReference: string | null = null;
   try {
-    const { name, email, address, items, total, currency } = req.body;
+    const userId = requestUserId((req as Request & { user?: any }).user);
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'A valid authenticated account is required.' });
+    }
+    const { name, email: requestedEmail, address, items, total, currency } = req.body;
+    const email = ((req as Request & { user?: any }).user?.email || requestedEmail || '').toLowerCase();
 
     // Validate required fields
     if (!name || !email || !Array.isArray(items) || typeof total !== 'number') {
@@ -2367,11 +2466,16 @@ app.post('/api/create-cod-order', async (req: Request, res: Response) => {
     }
     const orderTotal = resolved.total;
 
-    const orderReference = `ORDER-${Date.now()}`;
-    const ordersCollection = await getOrdersCollection();
+  orderReference = `ORDER-${Date.now()}`;
+  inventory = await reserveOrderInventory(orderReference, priced.items);
+  if (!inventory.result.ok) {
+    return res.status(409).json({ success: false, message: inventory.result.message });
+  }
+  const ordersCollection = await getOrdersCollection();
 
-    const order = {
+  const order: OrderDocument = {
       orderReference,
+      userId,
       name,
       email,
       address,
@@ -2380,10 +2484,14 @@ app.post('/api/create-cod-order', async (req: Request, res: Response) => {
       currency: orderCurrency,
       paymentMethod: 'COD',
       status: 'pending',
+      inventoryItems: inventory.lines,
+      inventoryState: inventory.lines.length ? 'reserved' : 'none',
+      inventoryUpdatedAt: new Date(),
       createdAt: new Date()
     };
 
     await ordersCollection.insertOne(order);
+    await consumeOrderInventory(order);
 
     const mail = buildOrderConfirmationMessage({
       name, email, address, items: priced.items, total: orderTotal,
@@ -2428,11 +2536,20 @@ app.post('/api/create-cod-order', async (req: Request, res: Response) => {
 
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err));
+    // If persistence or post-reservation processing fails, return any units
+    // still held by this order instead of leaking them permanently.
+    if (inventory) {
+      try {
+        await releaseInventory(inventory.products, orderReference ?? '', inventory.lines);
+      } catch (releaseError) {
+        console.error('COD inventory cleanup error:', releaseError);
+      }
+    }
     console.error('Order creation error:', error.stack);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Unable to place COD order', 
-      error: error.message 
+    return res.status(500).json({
+      success: false,
+      message: 'Unable to place COD order',
+      error: error.message
     });
   }
 });
@@ -2447,8 +2564,13 @@ app.get('/api/orders', authenticateJwt, async (req, res) => {
     if (currentUser?.role === 'admin') {
       if (email) filter.email = email;
     } else {
-      // Customers may only list their own orders
-      filter.email = currentUser?.email;
+      // New orders use the immutable account id. Legacy orders without userId
+      // remain visible by their normalized account email during migration.
+      const userId = requestUserId(currentUser);
+      filter.$or = [
+        ...(userId ? [{ userId }] : []),
+        { email: String(currentUser?.email || '').toLowerCase() },
+      ];
     }
     if (status) filter.status = status;
     if (paymentMethod) filter.paymentMethod = paymentMethod;
@@ -2486,8 +2608,8 @@ app.get('/api/orders/:orderReference', authenticateJwt, async (req, res) => {
     }
 
     // Customers may only read their own orders; admins may read any order
-    const currentUser = (req as Request & { user?: { email?: string; role?: string } }).user;
-    if (currentUser?.role !== 'admin' && order.email !== currentUser?.email) {
+    const currentUser = (req as Request & { user?: { userId?: string; email?: string; role?: string } }).user;
+    if (currentUser?.role !== 'admin' && !userOwnsOrder(order, currentUser)) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
@@ -2499,7 +2621,7 @@ app.get('/api/orders/:orderReference', authenticateJwt, async (req, res) => {
 });
 
 // PATCH /api/orders/:orderReference/status - Update order status
-app.patch('/api/orders/:orderReference/status', authenticateJwt, async (req, res) => {
+app.patch('/api/orders/:orderReference/status', authenticateJwt, requireAdmin, async (req, res) => {
   try {
     const ordersCollection = await getOrdersCollection();
     const { status } = req.body;
@@ -2516,6 +2638,10 @@ app.patch('/api/orders/:orderReference/status', authenticateJwt, async (req, res
 
     if (result.matchedCount === 0) {
       return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+    if (status === 'cancelled') {
+      const order = await ordersCollection.findOne<OrderDocument>({ orderReference: req.params.orderReference });
+      if (order) await releaseOrderInventory(order);
     }
 
     return res.json({ success: true, message: 'Order status updated' });
@@ -2534,7 +2660,7 @@ app.patch('/api/orders/:orderReference/status', authenticateJwt, async (req, res
  * Confirm Razorpay payment after successful payment (client-side callback)
 
 */
-app.post('/api/confirm-razorpay-payment', async (req, res) => {
+app.post('/api/confirm-razorpay-payment', authenticateJwt, async (req, res) => {
   // Guard against invalid response object
   if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
     console.error('Invalid response object in confirm-razorpay-payment');
@@ -2563,6 +2689,11 @@ app.post('/api/confirm-razorpay-payment', async (req, res) => {
 
   try {
     const ordersCollection = await getOrdersCollection();
+    const ownedOrder = await ordersCollection.findOne<OrderDocument>({ orderReference });
+    if (!ownedOrder || !userOwnsOrder(ownedOrder, (req as Request & { user?: any }).user)) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+    await consumeOrderInventory(ownedOrder);
 
     // Transition the order to 'paid' only on the first confirmation. Both the
     // browser callback and the Razorpay webhook can fire for the same payment;
@@ -2695,6 +2826,7 @@ app.post('/api/razorpay-webhook', async (req: Request, res: Response) => {
       }
 
       // Update order status to paid
+      if (existingOrder) await consumeOrderInventory(existingOrder);
       await ordersCollection.updateOne(
         { orderReference },
         { 
@@ -2780,6 +2912,10 @@ async function settleStripeCheckoutSession(
 
   const ordersCollection = await getOrdersCollection();
 
+  const order = await ordersCollection.findOne<OrderDocument>({ orderReference });
+  if (!order) return null;
+  await consumeOrderInventory(order);
+
   // Guard on status so the return URL and the webhook cannot both send emails.
   const paidTransition = await ordersCollection.updateOne(
     { orderReference, status: { $ne: 'paid' } },
@@ -2798,33 +2934,33 @@ async function settleStripeCheckoutSession(
     return { orderReference, duplicate: true };
   }
 
-  const order = await ordersCollection.findOne<OrderDocument>({ orderReference });
-  if (order) {
+  const latestOrder = await ordersCollection.findOne<OrderDocument>({ orderReference });
+  if (latestOrder) {
     const mail = buildOrderConfirmationMessage({
-      name: order.name,
-      email: order.email,
-      items: order.items,
-      total: order.total,
-      currency: order.currency,
+      name: latestOrder.name,
+      email: latestOrder.email,
+      items: latestOrder.items,
+      total: latestOrder.total,
+      currency: latestOrder.currency,
       orderReference,
       paymentMethod: 'Stripe',
     });
-    await trySendEmail({ to: order.email, subject: mail.subject, text: mail.text, html: mail.html });
+    await trySendEmail({ to: latestOrder.email, subject: mail.subject, text: mail.text, html: mail.html });
 
     const merchantMail = buildMerchantOrderNotification({
-      name: order.name,
-      email: order.email,
-      address: order.address,
-      items: order.items,
-      total: order.total,
-      currency: order.currency,
+      name: latestOrder.name,
+      email: latestOrder.email,
+      address: latestOrder.address,
+      items: latestOrder.items,
+      total: latestOrder.total,
+      currency: latestOrder.currency,
       orderReference,
       paymentMethod: 'Stripe',
       orderStatus: 'paid',
     });
     await trySendEmail({
       to: orderNotificationEmail,
-      replyTo: order.email,
+      replyTo: latestOrder.email,
       subject: merchantMail.subject,
       text: merchantMail.text,
       html: merchantMail.html,
@@ -2838,7 +2974,7 @@ async function settleStripeCheckoutSession(
  * Create a Stripe Checkout Session for international (USD) card payments.
  * Returns a hosted checkout URL, so no card data ever touches this app.
  */
-app.post('/api/create-stripe-checkout-session', async (req, res) => {
+app.post('/api/create-stripe-checkout-session', authenticateJwt, async (req, res) => {
   if (!stripe) {
     return res.status(500).json({
       success: false,
@@ -2846,7 +2982,12 @@ app.post('/api/create-stripe-checkout-session', async (req, res) => {
     });
   }
 
-  const { name, email, address, items, total, currency } = req.body;
+  const userId = requestUserId((req as Request & { user?: any }).user);
+  if (!userId) {
+    return res.status(401).json({ success: false, message: 'A valid authenticated account is required.' });
+  }
+  const { name, email: requestedEmail, address, items, total, currency } = req.body;
+  const email = ((req as Request & { user?: any }).user?.email || requestedEmail || '').toLowerCase();
 
   if (!name || !email || !Array.isArray(items) || typeof total !== 'number') {
     return res.status(400).json({ success: false, message: 'Name, email, items, and total are required.' });
@@ -2876,6 +3017,10 @@ app.post('/api/create-stripe-checkout-session', async (req, res) => {
   }
   const orderTotal = resolved.total;
   const orderReference = `ORDER-${Date.now()}`;
+  const inventory = await reserveOrderInventory(orderReference, priced.items);
+  if (!inventory.result.ok) {
+    return res.status(409).json({ success: false, message: inventory.result.message });
+  }
 
   try {
     const baseUrl = resolveAppBaseUrl(req);
@@ -2908,6 +3053,7 @@ app.post('/api/create-stripe-checkout-session', async (req, res) => {
     const ordersCollection = await getOrdersCollection();
     const order: OrderDocument = {
       orderReference,
+      userId,
       name,
       email,
       address: address || '',
@@ -2916,6 +3062,9 @@ app.post('/api/create-stripe-checkout-session', async (req, res) => {
       currency: frontendCurrency,
       paymentMethod: 'Stripe',
       status: 'pending',
+      inventoryItems: inventory.lines,
+      inventoryState: inventory.lines.length ? 'reserved' : 'none',
+      inventoryUpdatedAt: new Date(),
       stripeSessionId: session.id,
       createdAt: new Date(),
     };
@@ -2933,6 +3082,7 @@ app.post('/api/create-stripe-checkout-session', async (req, res) => {
       currency: session.currency,
     });
   } catch (error) {
+    await releaseInventory(inventory.products, orderReference, inventory.lines);
     console.error('create-stripe-checkout-session error', error);
     return res.status(500).json({ success: false, message: 'Unable to start the Stripe payment.' });
   }
@@ -2941,7 +3091,7 @@ app.post('/api/create-stripe-checkout-session', async (req, res) => {
 /**
  * Confirm a Stripe payment after the shopper returns from the hosted checkout.
  */
-app.post('/api/confirm-stripe-payment', async (req, res) => {
+app.post('/api/confirm-stripe-payment', authenticateJwt, async (req, res) => {
   if (!stripe) {
     return res.status(500).json({ success: false, message: 'Stripe is not configured.' });
   }
@@ -2953,13 +3103,22 @@ app.post('/api/confirm-stripe-payment', async (req, res) => {
   }
 
   try {
+    const ordersCollection = await getOrdersCollection();
+    const ownedOrder = await ordersCollection.findOne<OrderDocument>({ orderReference: String(orderReference || '') });
+    if (ownedOrder && !userOwnsOrder(ownedOrder, (req as Request & { user?: any }).user)) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
     let session: Stripe.Checkout.Session | null = null;
 
     if (sessionId) {
       session = await stripe.checkout.sessions.retrieve(String(sessionId));
+      const sessionOrderReference = String(session.client_reference_id || session.metadata?.['orderReference'] || '');
+      const sessionOrder = await ordersCollection.findOne<OrderDocument>({ orderReference: sessionOrderReference });
+      if (!sessionOrder || !userOwnsOrder(sessionOrder, (req as Request & { user?: any }).user)) {
+        return res.status(404).json({ success: false, message: 'Order not found' });
+      }
     } else {
       // Some browsers return only the order reference.
-      const ordersCollection = await getOrdersCollection();
       const order = await ordersCollection.findOne<OrderDocument>({ orderReference: String(orderReference) });
       if (order?.stripeSessionId) {
         session = await stripe.checkout.sessions.retrieve(order.stripeSessionId);
@@ -3351,13 +3510,17 @@ app.get('/api/products/:id/', async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/products/', async (req: Request & { body: ProductCreateDto }, res: Response) => {
+app.post('/api/products/', authenticateJwt, requireAdmin, async (req: Request & { body: ProductCreateDto }, res: Response) => {
   try {
     const productsCollection = await getProductsCollection();
-    const { name, description, basePrice, currency, category, images, variants, tags, isActive, buyUrl, supplier } = req.body;
+    const { name, description, basePrice, stock, currency, category, images, variants, tags, isActive, buyUrl, supplier } = req.body;
     
     if (!name || !description || !basePrice || !currency || !category) {
       return res.status(400).json({ success: false, message: "Name, description, basePrice, currency, and category are required" });
+    }
+    const normalizedStock = stock === null || stock === undefined ? null : Number(stock);
+    if (normalizedStock !== null && (!Number.isInteger(normalizedStock) || normalizedStock < 0)) {
+      return res.status(400).json({ success: false, message: "Stock must be a non-negative integer or null" });
     }
     
     const product: ProductDocument = {
@@ -3365,6 +3528,7 @@ app.post('/api/products/', async (req: Request & { body: ProductCreateDto }, res
       name,
       description,
       basePrice: Number(basePrice),
+      ...(normalizedStock === null ? {} : { stock: normalizedStock }),
       currency,
       category,
       images: images || [],
@@ -3393,12 +3557,19 @@ app.post('/api/products/', async (req: Request & { body: ProductCreateDto }, res
   }
 });
 
-app.put('/api/products/:id/', async (req: Request, res: Response) => {
+app.put('/api/products/:id/', authenticateJwt, requireAdmin, async (req: Request, res: Response) => {
   try {
     const productsCollection = await getProductsCollection();
-    const { name, description, basePrice, currency, category, images, variants, tags, isActive, buyUrl, supplier } = req.body;
+    const { name, description, basePrice, stock, currency, category, images, variants, tags, isActive, buyUrl, supplier } = req.body;
     
     const updateData: any = {};
+    if (stock !== undefined) {
+      const normalizedStock = stock === null ? null : Number(stock);
+      if (normalizedStock !== null && (!Number.isInteger(normalizedStock) || normalizedStock < 0)) {
+        return res.status(400).json({ success: false, message: "Stock must be a non-negative integer or null" });
+      }
+      updateData.stock = normalizedStock;
+    }
     
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
@@ -3437,7 +3608,7 @@ app.put('/api/products/:id/', async (req: Request, res: Response) => {
  * Add an image to a product's gallery.
  * The image URL/path is validated and appended to the product's images array.
  */
-app.post('/api/products/:id/images', async (req: Request, res: Response) => {
+app.post('/api/products/:id/images', authenticateJwt, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { image } = req.body;
 
@@ -3477,7 +3648,7 @@ app.post('/api/products/:id/images', async (req: Request, res: Response) => {
  * Remove an image from a product's gallery by index.
  * Splice out the image at the given index and update the array.
  */
-app.delete('/api/products/:id/images/:index', async (req: Request, res: Response) => {
+app.delete('/api/products/:id/images/:index', authenticateJwt, requireAdmin, async (req: Request, res: Response) => {
   try {
     const index = Number.parseInt(req.params.index, 10);
 
@@ -3515,15 +3686,8 @@ app.delete('/api/products/:id/images/:index', async (req: Request, res: Response
  * response, so the purchase link is only reachable here, behind an
  * authenticated admin token (or the development sandbox user).
  */
-app.get('/api/admin/products/:id/purchase-link', authenticateJwt, async (req: Request & { user?: any }, res: Response) => {
+app.get('/api/admin/products/:id/purchase-link', authenticateJwt, requireAdmin, async (req: Request, res: Response) => {
   try {
-    const isAdmin = req.user?.role === 'admin';
-    const isLocalDev = req.user?.isDev === true && process.env['NODE_ENV'] !== 'production';
-
-    if (!isAdmin && !isLocalDev) {
-      return res.status(403).json({ success: false, message: 'Admin access required' });
-    }
-
     const { id } = req.params;
     let product: Record<string, any> | null = null;
 
@@ -3553,7 +3717,7 @@ app.get('/api/admin/products/:id/purchase-link', authenticateJwt, async (req: Re
 });
 
 
-app.delete('/api/products/:id/', async (req: Request, res: Response) => {
+app.delete('/api/products/:id/', authenticateJwt, requireAdmin, async (req: Request, res: Response) => {
   try {
     const productsCollection = await getProductsCollection();
     
