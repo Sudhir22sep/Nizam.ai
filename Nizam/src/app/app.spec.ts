@@ -49,5 +49,10 @@ describe('App', () => {
 
     expect(compiled.querySelector('#site-glass-preview .glass-popup--open')).toBeTruthy();
     expect(compiled.querySelector('#site-glass-preview')?.textContent).toContain('Premium essentials');
+
+    const primary = compiled.querySelector('.glass-preview-actions .btn-primary') as HTMLElement;
+    const secondary = compiled.querySelector('.glass-preview-actions .btn-ghost') as HTMLElement;
+    expect(getComputedStyle(primary).color).toBe('rgb(255, 255, 255)');
+    expect(getComputedStyle(secondary).color).toBe('rgb(255, 255, 255)');
   });
 });

@@ -40,8 +40,16 @@
       <small>Comfort · clarity · confidence</small>
     </div>
   </div>
+  <div class="glass-preview-actions">
+    <a routerLink="/products" class="btn-primary">
+      Explore the collection <span aria-hidden="true">→</span>
+    </a>
+    <button type="button" class="btn-ghost" (click)="glassPreviewOpen.set(false)">
+      Maybe later
+    </button>
+  </div>
   <div class="glass-preview-features">
-    <span>20px backdrop blur</span>
+    <span>30px backdrop blur</span>
     <span>GPU-friendly motion</span>
     <span>Accessible controls</span>
   </div>

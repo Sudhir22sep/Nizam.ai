@@ -343,11 +343,14 @@ body {
   border-radius: 999px;
   color: #fff;
   -webkit-text-fill-color: #fff;
-  background: linear-gradient(135deg, #14263d, #080b14);
+  background: linear-gradient(135deg, #e72f50 0%, #bd1737 52%, #8f102b 100%);
   box-shadow:
     0 16px 44px rgb(0 0 0 / 38%),
-    0 0 0 1px rgb(127 0 255 / 24%),
-    0 0 28px rgb(127 0 255 / 24%);
+    0 0 0 1px rgb(255 255 255 / 22%),
+    0 0 30px rgb(217 45 72 / 42%),
+    inset 0 1px 0 rgb(255 255 255 / 32%);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+  backdrop-filter: blur(18px) saturate(145%);
   font: inherit;
   font-weight: 800;
   cursor: pointer;
@@ -372,7 +375,16 @@ body {
     0 20px 52px rgb(0 0 0 / 44%),
     0 0 0 2px rgb(127 0 255 / 36%),
     0 0 34px rgb(127 0 255 / 42%);
-  transform: translateY(-3px);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow:
+    0 20px 52px rgb(0 0 0 / 44%),
+    0 0 0 2px rgb(255 255 255 / 30%),
+    0 0 38px rgb(217 45 72 / 55%),
+    inset 0 1px 0 rgb(255 255 255 / 42%);
+}
+
+.glass-preview-launcher:active {
+  transform: translateY(-1px) scale(0.97);
 }
 
 .glass-preview-launcher:focus-visible {
@@ -442,6 +454,19 @@ body {
 
 .glass-preview-visual__card strong {
   font-size: clamp(1.2rem, 4vw, 1.7rem);
+}
+
+.glass-preview-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.glass-preview-actions .btn-primary,
+.glass-preview-actions .btn-ghost {
+  color: #fff;
+  -webkit-text-fill-color: #fff;
 }
 
 .glass-preview-features {
@@ -618,5 +643,9 @@ body {
 
   .glass-preview-launcher span {
     display: none;
+  }
+
+  .glass-preview-actions {
+    grid-template-columns: 1fr;
   }
 }
