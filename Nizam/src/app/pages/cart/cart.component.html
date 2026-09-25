@@ -12,12 +12,17 @@
           <h2>{{ item.product.name }}</h2>
           <p>{{ item.product.description }}</p>
           <p class="item-size" *ngIf="item.size">Size: {{ item.size }}</p>
+          <div class="item-quantity" aria-label="Quantity for {{ item.product.name }}">
+            <button type="button" (click)="updateQuantity(item, item.quantity - 1)" [attr.aria-label]="'Decrease quantity for ' + item.product.name">−</button>
+            <span aria-live="polite">{{ item.quantity }}</span>
+            <button type="button" (click)="updateQuantity(item, item.quantity + 1)" [disabled]="item.product.stock !== null && item.product.stock !== undefined && item.quantity >= item.product.stock" [attr.aria-label]="'Increase quantity for ' + item.product.name">+</button>
+          </div>
           <div class="item-meta">
             <span>{{ item.quantity }} × {{ item.unitPrice | price }}</span>
             <strong>{{ (item.unitPrice * item.quantity) | price }}</strong>
           </div>
         </div>
-        <button class="btn-remove" (click)="removeItem(item.product.id, item.size)" aria-label="Remove item">
+        <button class="btn-remove" (click)="removeItem(item.product.id, item.size)" [attr.aria-label]="'Remove ' + item.product.name + ' from cart'">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M3 6h18" />
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />

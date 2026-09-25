@@ -21,6 +21,19 @@ import jwt from 'jsonwebtoken';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { createRequire } from 'module';
+import {
+  consumeInventory,
+  inventoryLinesFromPricedItems,
+  releaseInventory,
+  reserveInventory,
+  type InventoryLine
+} from './server/order-inventory';
+import {
+  ASSISTANT_SYSTEM_PROMPT,
+  localAssistantReply,
+  sanitizeAssistantRequest,
+  type AssistantReply
+} from './server/ai-assistant';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -80,7 +93,7 @@ function getClientFallbackPath(): string {
  * every public catalog endpoint strips them and an admin-only endpoint serves
  * the purchase link instead.
  */
-const OWNER_ONLY_PRODUCT_FIELDS = ['buyUrl', 'supplier'] as const;
+const OWNER_ONLY_PRODUCT_FIELDS = ['buyUrl', 'supplier', 'reservedStock', 'inventoryReservations'] as const;
 
 /** Removes owner-only fields from a product document. */
 function toPublicProduct(product: Record<string, any>): Record<string, any> {
@@ -449,6 +462,8 @@ interface PriceComparisonResponse {
 }
 interface OrderDocument {
   orderReference: string;
+  /** Authenticated storefront account that created the order. */
+  userId?: ObjectId;
   name: string;
   email: string;
   address: string;
@@ -463,6 +478,10 @@ interface OrderDocument {
   stripeSessionId?: string;
   /** Stripe PaymentIntent id, recorded once the session is paid. */
   stripePaymentIntentId?: string;
+  /** Mongo product ids and quantities participating in server-side inventory. */
+  inventoryItems?: Array<{ productId: ObjectId; quantity: number }>;
+  inventoryState?: 'none' | 'reserved' | 'consumed' | 'released';
+  inventoryUpdatedAt?: Date;
   // Fulfillment tracking fields
   fulfillmentService?: 'qikink' | 'printful' | 'manual';
   fulfillmentStatus?: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
@@ -479,6 +498,8 @@ interface ProductCreateDto {
   name: string;
   description: string;
   basePrice: number | string;
+  /** Numeric stock enables atomic reservation/decrement; omitted means untracked. */
+  stock?: number | null;
   currency: string;
   category: string;
   images?: string[];
@@ -519,6 +540,9 @@ interface ProductDocument {
   variants: any[];
   tags: string[];
   isActive: boolean;
+  stock?: number | null;
+  /** Units committed to pending online orders but not yet consumed. */
+  reservedStock?: number;
   createdAt: Date;
   updatedAt: Date;
   /** Owner-only supplier checkout link. Never returned by public endpoints. */
@@ -604,6 +628,17 @@ function resolveRequestUser(req: Request): { userId: string; email: string; role
   return null;
 }
 
+function requestUserId(user: { userId?: string } | undefined): ObjectId | null {
+  const raw = user?.userId?.trim() ?? '';
+  return /^[a-f\d]{24}$/i.test(raw) ? new ObjectId(raw) : null;
+}
+
+function userOwnsOrder(order: Pick<OrderDocument, 'userId' | 'email'>, user: { userId?: string; email?: string } | undefined): boolean {
+  const userId = requestUserId(user);
+  return !!userId && !!order.userId && order.userId.toString() === userId.toString() ||
+    !order.userId && !!user?.email && order.email.toLowerCase() === user.email.toLowerCase();
+}
+
 // User document type
 interface UserDocument {
   _id: any;
@@ -672,7 +707,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.post('/api/create-razorpay-order', async (req, res) => {
+app.post('/api/create-razorpay-order', authenticateJwt, async (req, res) => {
   // Guard against invalid response object
   if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
     console.error('Invalid response object in create-razorpay-order');
@@ -685,9 +720,14 @@ app.post('/api/create-razorpay-order', async (req, res) => {
     return res.status(500).json({ success: false, message: 'Razorpay is not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.' });
   }
 
-  const { name, email, address, items, total, currency } = req.body;
+  const userId = requestUserId((req as Request & { user?: any }).user);
+  if (!userId) {
+    return res.status(401).json({ success: false, message: 'A valid authenticated account is required.' });
+  }
+  const { name, email: requestedEmail, address, items, total, currency } = req.body;
+  const orderEmail = ((req as Request & { user?: any }).user?.email || requestedEmail || '').toLowerCase();
 
-  if (!name || !email || !Array.isArray(items) || typeof total !== 'number') {
+  if (!name || !orderEmail || !Array.isArray(items) || typeof total !== 'number') {
     return res.status(400).json({ success: false, message: 'Name, email, items, and total are required.' });
   }
 
@@ -721,6 +761,12 @@ app.post('/api/create-razorpay-order', async (req, res) => {
 
   console.log(`[Razorpay] Frontend currency: ${frontendCurrency}, Total: ${orderTotal}, USD: ${totalInUsd.toFixed(2)}, INR: ${totalInInr.toFixed(2)}, Paise: ${amountInPaise}`);
 
+  const inventory = await reserveOrderInventory(orderReference, priced.items);
+  if (!inventory.result.ok) {
+    return res.status(409).json({ success: false, message: inventory.result.message });
+  }
+
+
   try {
     const razorpayOrder = await razorpay.orders.create({
       amount: amountInPaise,
@@ -729,7 +775,7 @@ app.post('/api/create-razorpay-order', async (req, res) => {
       payment_capture: true,
       notes: {
         orderReference,
-        email,
+        email: orderEmail,
         name,
       },
     });
@@ -740,14 +786,18 @@ app.post('/api/create-razorpay-order', async (req, res) => {
     
     const order: OrderDocument = {
       orderReference,
+      userId,
       name,
-      email,
+      email: orderEmail,
       address: address || '',
       items: priced.items,
       total: orderTotal,
       currency: frontendCurrency, // total is expressed in the shopper's currency
       paymentMethod: 'Razorpay',
       status: 'pending',
+      inventoryItems: inventory.lines,
+      inventoryState: inventory.lines.length ? 'reserved' : 'none',
+      inventoryUpdatedAt: new Date(),
       createdAt: new Date()
     };
     await ordersCollection.insertOne(order);
@@ -761,6 +811,7 @@ app.post('/api/create-razorpay-order', async (req, res) => {
       orderReference,
     });
   } catch (error) {
+    await releaseInventory(inventory.products, orderReference, inventory.lines);
     console.error('create-razorpay-order error', error);
     return res.status(500).json({ success: false, message: 'Unable to create Razorpay order.' });
   }
@@ -959,6 +1010,69 @@ async function getAngularApp(): Promise<AngularNodeAppEngine | null> {
 // SES client and verified sender are initialized at the top of the file
 
 
+app.post('/api/assistant', async (req, res) => {
+  const messages = sanitizeAssistantRequest(req.body);
+  const lastUserMessage = [...messages].reverse().find(message => message.role === 'user');
+  if (!lastUserMessage) {
+    return res.status(400).json({ success: false, message: 'Please enter a message.' });
+  }
+
+  const fallback = (): AssistantReply => ({
+    success: true,
+    message: localAssistantReply(lastUserMessage.content),
+    source: 'local'
+  });
+  const apiKey = (process.env['GEMINI_API_KEY'] || '').trim();
+  if (!apiKey || apiKey === 'your_gemini_api_key') {
+    return res.json(fallback());
+  }
+
+  const model = (process.env['GEMINI_MODEL'] || 'gemini-2.0-flash').trim();
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey
+      },
+      body: JSON.stringify({
+        contents: messages.map(message => ({
+          role: message.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: message.content }]
+        })),
+        systemInstruction: { parts: [{ text: ASSISTANT_SYSTEM_PROMPT }] },
+        generationConfig: { maxOutputTokens: 500, temperature: 0.35 }
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      console.warn(`Gemini assistant request failed with status ${response.status}; using local reply.`);
+      return res.json(fallback());
+    }
+
+    const payload = await response.json() as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    const text = payload.candidates?.[0]?.content?.parts
+      ?.map(part => part.text || '')
+      .join('')
+      .trim();
+    if (!text) return res.json(fallback());
+
+    return res.json({ success: true, message: text, source: 'gemini' } satisfies AssistantReply);
+  } catch (error) {
+    console.warn('Gemini assistant unavailable; using local reply.', error instanceof Error ? error.message : error);
+    return res.json(fallback());
+  } finally {
+    clearTimeout(timeout);
+  }
+});
+
 // Health check endpoint for Render (and general health monitoring)
 app.get('/api/health', async (req, res) => {
   try {
@@ -1025,30 +1139,33 @@ function roundCurrency(amount: number) {
   return Math.round(amount * 100) / 100;
 }
 
-async function lookupCatalogPriceUsd(productId: unknown): Promise<number | null> {
+async function lookupCatalogProduct(productId: unknown): Promise<{ productId?: ObjectId; price: number; name?: string; stockTracked: boolean } | null> {
   const raw = productId === undefined || productId === null ? '' : String(productId).trim();
-  if (!raw) {
-    return null;
-  }
+  if (!raw) return null;
 
   const lookups: any[] = [];
-  if (/^[a-f\d]{24}$/i.test(raw)) {
-    lookups.push({ _id: new ObjectId(raw) });
-  }
+  if (/^[a-f\d]{24}$/i.test(raw)) lookups.push({ _id: new ObjectId(raw) });
   const asNumber = Number(raw);
-  if (Number.isFinite(asNumber)) {
-    lookups.push({ id: asNumber });
-  }
+  if (Number.isFinite(asNumber)) lookups.push({ id: asNumber });
   lookups.push({ id: raw });
 
   const productsCollection = await getProductsCollection();
   const product: any = await productsCollection.findOne({ $or: lookups });
   const price = product?.basePrice ?? product?.price;
-  return typeof price === 'number' && price > 0 ? price : null;
+  if (typeof price !== 'number' || price <= 0) return null;
+  return {
+    productId: product._id instanceof ObjectId ? product._id : new ObjectId(product._id),
+    price,
+    name: product.name,
+    stockTracked: typeof product.stock === 'number' && Number.isFinite(product.stock),
+  };
 }
 
 interface PricedOrderItem {
   product: { name: string; price: number };
+  /** Present only for Mongo products with numeric inventory. */
+  productId?: ObjectId;
+  stockTracked?: boolean;
   /** Shopper-selected size label; absent for one-size products. */
   size?: string;
   quantity: number;
@@ -1089,9 +1206,9 @@ async function priceOrderItems(rawItems: unknown[]): Promise<PricingResult> {
     // both the customer and merchant notification emails.
     const size = typeof item.size === 'string' && item.size.trim() ? item.size.trim() : undefined;
 
-    let unitPriceUsd: number | null = null;
+    let catalogProduct: Awaited<ReturnType<typeof lookupCatalogProduct>> = null;
     try {
-      unitPriceUsd = await lookupCatalogPriceUsd(product.id ?? product._id ?? item.productId);
+      catalogProduct = await lookupCatalogProduct(product.id ?? product._id ?? item.productId);
     } catch (error) {
       console.warn(
         'Order pricing: catalog lookup failed, falling back to the client price:',
@@ -1099,6 +1216,7 @@ async function priceOrderItems(rawItems: unknown[]): Promise<PricingResult> {
       );
     }
 
+    let unitPriceUsd = catalogProduct?.price ?? null;
     if (unitPriceUsd === null) {
       if (clientPrice === undefined || clientPrice <= 0) {
         return { ok: false, message: 'Each item must have a valid positive price' };
@@ -1109,7 +1227,9 @@ async function priceOrderItems(rawItems: unknown[]): Promise<PricingResult> {
     }
 
     items.push({
-      product: { name: product.name || `Item ${items.length + 1}`, price: unitPriceUsd },
+      product: { name: catalogProduct?.name || product.name || `Item ${items.length + 1}`, price: unitPriceUsd },
+      productId: catalogProduct?.productId,
+      stockTracked: catalogProduct?.stockTracked,
       size,
       quantity,
     });
@@ -1180,12 +1300,15 @@ async function initializeMongoDB(): Promise<void> {
     const usersCollection = db.collection('users');
     const contactsCollection = db.collection('contacts');
     const productsCollection = db.collection('products');
+    const newsletterCollection = db.collection('newsletter_subscribers');
 
     await ordersCollection.createIndex({ orderReference: 1 }, { unique: true });
+    await ordersCollection.createIndex({ userId: 1, createdAt: -1 });
     await ordersCollection.createIndex({ email: 1 });
     await usersCollection.createIndex({ email: 1 }, { unique: true });
     await contactsCollection.createIndex({ email: 1 });
     await productsCollection.createIndex({ name: 'text', description: 'text' });
+    await newsletterCollection.createIndex({ email: 1 }, { unique: true });
 
     console.log('MongoDB connected successfully');
   } catch (error) {
@@ -1240,6 +1363,16 @@ async function getContactsCollection() {
 }
 
 // Get or create products collection
+async function getNewsletterSubscribersCollection() {
+  await ensureMongoDBInitialized();
+
+  if (!db) {
+    throw new Error('MongoDB not connected');
+  }
+  return db.collection('newsletter_subscribers');
+}
+
+// Get or create products collection
 async function getProductsCollection() {
   await ensureMongoDBInitialized();
 
@@ -1247,6 +1380,34 @@ async function getProductsCollection() {
     throw new Error('MongoDB not connected');
   }
   return db.collection('products');
+}
+
+async function reserveOrderInventory(orderReference: string, items: PricedOrderItem[]) {
+  const products = await getProductsCollection();
+  const lines = inventoryLinesFromPricedItems(items);
+  const result = await reserveInventory(products, orderReference, lines);
+  return { products, lines, result };
+}
+
+async function releaseOrderInventory(order: OrderDocument) {
+  if (order.inventoryState !== 'reserved' || !order.inventoryItems?.length) return;
+  const products = await getProductsCollection();
+  await releaseInventory(products, order.orderReference, order.inventoryItems as InventoryLine[]);
+  await getOrdersCollection().then(orders => orders.updateOne(
+    { orderReference: order.orderReference, inventoryState: 'reserved' },
+    { $set: { inventoryState: 'released', inventoryUpdatedAt: new Date(), updatedAt: new Date() } }
+  ));
+}
+
+async function consumeOrderInventory(order: OrderDocument) {
+  if (order.inventoryState !== 'reserved' || !order.inventoryItems?.length) return;
+  const products = await getProductsCollection();
+  const result = await consumeInventory(products, order.orderReference, order.inventoryItems as InventoryLine[]);
+  if (!result.ok) throw new Error(result.message);
+  await getOrdersCollection().then(orders => orders.updateOne(
+    { orderReference: order.orderReference, inventoryState: 'reserved' },
+    { $set: { inventoryState: 'consumed', inventoryUpdatedAt: new Date(), updatedAt: new Date() } }
+  ));
 }
 
 // Get or create wishlists collection
@@ -1588,6 +1749,64 @@ async function trySendEmail(params: { to: string | string[]; subject: string; te
   }
 }
 
+function buildNewsletterWelcomeMessage(unsubscribeUrl: string) {
+  const safeUnsubscribeUrl = escapeEmailHtml(unsubscribeUrl);
+  return {
+    subject: 'Welcome to Amma Wears',
+    text: `Welcome to Amma Wears. You are now subscribed to new arrivals, product updates, and occasional offers. Unsubscribe anytime: ${unsubscribeUrl}`,
+    html: `<p>Welcome to Amma Wears.</p><p>You are now subscribed to new arrivals, product updates, and occasional offers.</p><p><a href="${safeUnsubscribeUrl}" style="display:inline-block;padding:12px 24px;border-radius:999px;background:#D92D48;color:#ffffff;text-decoration:none;font-weight:700;">Unsubscribe</a></p><p style="color:#64748b;font-size:12px;">You received this email because you opted in to Amma Wears marketing messages.</p>`,
+  };
+}
+
+function buildProductMarketingMessage(params: { email: string; products: Record<string, any>[]; unsubscribeUrl: string }) {
+  const items = params.products.slice(0, 6).map(product => {
+    const image = Array.isArray(product.images) ? product.images[0] : product.image;
+    const href = `${resolveAppBaseUrl()}/product/${encodeURIComponent(product.id)}`;
+    const imageHtml = image ? `<img src="${escapeEmailHtml(image)}" alt="" style="display:block;width:100%;max-width:220px;border-radius:12px;object-fit:cover;">` : '';
+    return `<li style="margin:0 0 18px;">${imageHtml}<a href="${escapeEmailHtml(href)}" style="color:#14263D;font-weight:700;">${escapeEmailHtml(product.name)}</a><br><span style="color:#64748B;font-size:12px;">${escapeEmailHtml(product.category || 'New arrival')}</span></li>`;
+  }).join('');
+  const unsubscribeUrl = escapeEmailHtml(params.unsubscribeUrl);
+  return {
+    subject: 'New Amma Wears picks selected for you',
+    text: `New Amma Wears picks selected for you:\n\n${params.products.slice(0, 6).map(product => `- ${product.name}`).join('\n')}\n\nUnsubscribe: ${params.unsubscribeUrl}`,
+    html: `<p>Hello,</p><p>We found new Amma Wears pieces that match your interests.</p><ul style="padding:0;list-style:none;">${items}</ul><p><a href="${unsubscribeUrl}" style="color:#64748B;font-size:12px;">Unsubscribe from marketing emails</a></p>`
+  };
+}
+
+function productMatchesInterest(product: Record<string, any>, interests: string[]): boolean {
+  if (!interests.length) return true;
+  const haystack = `${product.category || ''} ${(product.tags || []).join(' ')} ${product.name || ''}`.toLowerCase();
+  return interests.some(interest => haystack.includes(interest.toLowerCase()));
+}
+
+async function sendNewProductCampaign(): Promise<void> {
+  if (!sesClient || !isSenderConfigured) return;
+  try {
+    const subscribers = await getNewsletterSubscribersCollection();
+    const products = await getProductsCollection();
+    const deliveries = db!.collection('newsletter_deliveries');
+    const since = new Date(Date.now() - 30 * 60 * 1000);
+    const activeSubscribers = await subscribers.find({ status: 'subscribed' }).toArray();
+    const newProducts = await products.find({ isActive: { $ne: false }, createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(50).toArray();
+    if (!activeSubscribers.length || !newProducts.length) return;
+
+    for (const subscriber of activeSubscribers) {
+      const interests = Array.isArray(subscriber.interests) ? subscriber.interests : [];
+      const matching = newProducts.filter(product => productMatchesInterest(product, interests));
+      if (!matching.length) continue;
+      const alreadySent = await deliveries.findOne({ subscriberEmail: subscriber.email, productId: matching[0].id });
+      if (alreadySent) continue;
+      const unsubscribeUrl = `${resolveAppBaseUrl()}/api/newsletter/unsubscribe?email=${encodeURIComponent(subscriber.email)}`;
+      const sent = await trySendEmail({ to: subscriber.email, ...buildProductMarketingMessage({ email: subscriber.email, products: matching, unsubscribeUrl }) });
+      if (sent) {
+        await deliveries.insertOne({ subscriberEmail: subscriber.email, productId: matching[0].id, productIds: matching.map(product => product.id), sentAt: new Date() });
+      }
+    }
+  } catch (error) {
+    console.error('New-product marketing campaign failed:', error instanceof Error ? error.message : error);
+  }
+}
+
 app.post('/api/contact', async (req, res) => {
   const { name, email, message } = req.body;
 
@@ -1620,6 +1839,74 @@ app.post('/api/contact', async (req, res) => {
   } catch (error) {
     console.error('Failed to handle contact submission:', error);
     return res.status(500).json({ success: false, message: 'Unable to send your contact message at this time.' });
+  }
+});
+
+app.post('/api/newsletter/subscribe', async (req, res) => {
+  const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+  const interests = Array.isArray(req.body?.interests)
+    ? req.body.interests.filter((interest: unknown): interest is string => typeof interest === 'string').map((interest: string) => interest.trim()).filter(Boolean).slice(0, 12)
+    : [];
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!email || email.length > 254 || !emailPattern.test(email)) {
+    return res.status(400).json({ success: false, message: 'Please enter a valid email address.' });
+  }
+
+  try {
+    const subscribers = await getNewsletterSubscribersCollection();
+    const result = await subscribers.updateOne(
+      { email },
+      { $setOnInsert: { email, createdAt: new Date() }, $set: { status: 'subscribed', interests, unsubscribedAt: null, updatedAt: new Date() } },
+      { upsert: true }
+    );
+    const alreadySubscribed = result.upsertedCount === 0;
+    let welcomeEmailSent = false;
+    if (!alreadySubscribed) {
+      const unsubscribeUrl = `${resolveAppBaseUrl(req)}/api/newsletter/unsubscribe?email=${encodeURIComponent(email)}`;
+      const welcome = buildNewsletterWelcomeMessage(unsubscribeUrl);
+      welcomeEmailSent = await trySendEmail({ to: email, subject: welcome.subject, text: welcome.text, html: welcome.html });
+    }
+
+    return res.status(200).json({
+      success: true,
+      alreadySubscribed,
+      welcomeEmailSent,
+      message: alreadySubscribed
+        ? 'You are already subscribed to the Amma Wears newsletter.'
+        : 'Thanks for subscribing to the Amma Wears newsletter.',
+    });
+  } catch (error) {
+    // A unique-index race can still be treated as the same successful subscription.
+    if (error && typeof error === 'object' && 'code' in error && (error as { code?: number }).code === 11000) {
+      return res.status(200).json({ success: true, alreadySubscribed: true, message: 'You are already subscribed to the Amma Wears newsletter.' });
+    }
+    console.error('Newsletter subscription failed:', error);
+    return res.status(500).json({ success: false, message: 'Unable to subscribe right now. Please try again later.' });
+  }
+});
+
+app.all('/api/newsletter/unsubscribe', async (req, res) => {
+  const email = typeof (req.query.email ?? req.body?.email) === 'string' ? String(req.query.email ?? req.body.email).trim().toLowerCase() : '';
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ success: false, message: 'A valid email address is required.' });
+  }
+
+  try {
+    const subscribers = await getNewsletterSubscribersCollection();
+    const result = await subscribers.updateOne(
+      { email },
+      { $set: { status: 'unsubscribed', unsubscribedAt: new Date(), updatedAt: new Date() } }
+    );
+    return res.status(200).json({
+      success: true,
+      message: result.modifiedCount > 0
+        ? 'You have been unsubscribed from Amma Wears marketing emails.'
+        : 'This email address is already unsubscribed.',
+    });
+  } catch (error) {
+    console.error('Newsletter unsubscribe failed:', error);
+    return res.status(500).json({ success: false, message: 'Unable to unsubscribe right now. Please try again later.' });
   }
 });
 
@@ -2185,6 +2472,18 @@ async function authenticateJwt(req: Request & { user?: any }, res: Response, nex
   next();
   return;
 }
+
+/** Restricts owner-only catalog and order operations to admins (or local sandbox tooling). */
+function requireAdmin(req: Request & { user?: any }, res: Response, next: NextFunction) {
+  const isAdmin = req.user?.role === 'admin';
+  const isLocalDev = req.user?.isDev === true && process.env['NODE_ENV'] !== 'production';
+  if (!isAdmin && !isLocalDev) {
+    return res.status(403).json({ success: false, message: 'Admin access required' });
+  }
+  next();
+  return;
+}
+
 app.post('/api/auth/logout', (req: Request, res: Response) => {
   // JWT is stateless - logout is handled client-side by deleting the token
   // This endpoint exists for API consistency and potential future token blacklisting
@@ -2257,9 +2556,16 @@ app.post('/api/auth/logout', (req: Request, res: Response) => {
 
 
 
-app.post('/api/create-cod-order', async (req: Request, res: Response) => {
+app.post('/api/create-cod-order', authenticateJwt, async (req: Request, res: Response) => {
+  let inventory: Awaited<ReturnType<typeof reserveOrderInventory>> | null = null;
+  let orderReference: string | null = null;
   try {
-    const { name, email, address, items, total, currency } = req.body;
+    const userId = requestUserId((req as Request & { user?: any }).user);
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'A valid authenticated account is required.' });
+    }
+    const { name, email: requestedEmail, address, items, total, currency } = req.body;
+    const email = ((req as Request & { user?: any }).user?.email || requestedEmail || '').toLowerCase();
 
     // Validate required fields
     if (!name || !email || !Array.isArray(items) || typeof total !== 'number') {
@@ -2298,11 +2604,16 @@ app.post('/api/create-cod-order', async (req: Request, res: Response) => {
     }
     const orderTotal = resolved.total;
 
-    const orderReference = `ORDER-${Date.now()}`;
-    const ordersCollection = await getOrdersCollection();
+  orderReference = `ORDER-${Date.now()}`;
+  inventory = await reserveOrderInventory(orderReference, priced.items);
+  if (!inventory.result.ok) {
+    return res.status(409).json({ success: false, message: inventory.result.message });
+  }
+  const ordersCollection = await getOrdersCollection();
 
-    const order = {
+  const order: OrderDocument = {
       orderReference,
+      userId,
       name,
       email,
       address,
@@ -2311,10 +2622,14 @@ app.post('/api/create-cod-order', async (req: Request, res: Response) => {
       currency: orderCurrency,
       paymentMethod: 'COD',
       status: 'pending',
+      inventoryItems: inventory.lines,
+      inventoryState: inventory.lines.length ? 'reserved' : 'none',
+      inventoryUpdatedAt: new Date(),
       createdAt: new Date()
     };
 
     await ordersCollection.insertOne(order);
+    await consumeOrderInventory(order);
 
     const mail = buildOrderConfirmationMessage({
       name, email, address, items: priced.items, total: orderTotal,
@@ -2359,11 +2674,20 @@ app.post('/api/create-cod-order', async (req: Request, res: Response) => {
 
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err));
+    // If persistence or post-reservation processing fails, return any units
+    // still held by this order instead of leaking them permanently.
+    if (inventory) {
+      try {
+        await releaseInventory(inventory.products, orderReference ?? '', inventory.lines);
+      } catch (releaseError) {
+        console.error('COD inventory cleanup error:', releaseError);
+      }
+    }
     console.error('Order creation error:', error.stack);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Unable to place COD order', 
-      error: error.message 
+    return res.status(500).json({
+      success: false,
+      message: 'Unable to place COD order',
+      error: error.message
     });
   }
 });
@@ -2378,8 +2702,13 @@ app.get('/api/orders', authenticateJwt, async (req, res) => {
     if (currentUser?.role === 'admin') {
       if (email) filter.email = email;
     } else {
-      // Customers may only list their own orders
-      filter.email = currentUser?.email;
+      // New orders use the immutable account id. Legacy orders without userId
+      // remain visible by their normalized account email during migration.
+      const userId = requestUserId(currentUser);
+      filter.$or = [
+        ...(userId ? [{ userId }] : []),
+        { email: String(currentUser?.email || '').toLowerCase() },
+      ];
     }
     if (status) filter.status = status;
     if (paymentMethod) filter.paymentMethod = paymentMethod;
@@ -2417,8 +2746,8 @@ app.get('/api/orders/:orderReference', authenticateJwt, async (req, res) => {
     }
 
     // Customers may only read their own orders; admins may read any order
-    const currentUser = (req as Request & { user?: { email?: string; role?: string } }).user;
-    if (currentUser?.role !== 'admin' && order.email !== currentUser?.email) {
+    const currentUser = (req as Request & { user?: { userId?: string; email?: string; role?: string } }).user;
+    if (currentUser?.role !== 'admin' && !userOwnsOrder(order, currentUser)) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
@@ -2430,7 +2759,7 @@ app.get('/api/orders/:orderReference', authenticateJwt, async (req, res) => {
 });
 
 // PATCH /api/orders/:orderReference/status - Update order status
-app.patch('/api/orders/:orderReference/status', authenticateJwt, async (req, res) => {
+app.patch('/api/orders/:orderReference/status', authenticateJwt, requireAdmin, async (req, res) => {
   try {
     const ordersCollection = await getOrdersCollection();
     const { status } = req.body;
@@ -2447,6 +2776,10 @@ app.patch('/api/orders/:orderReference/status', authenticateJwt, async (req, res
 
     if (result.matchedCount === 0) {
       return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+    if (status === 'cancelled') {
+      const order = await ordersCollection.findOne<OrderDocument>({ orderReference: req.params.orderReference });
+      if (order) await releaseOrderInventory(order);
     }
 
     return res.json({ success: true, message: 'Order status updated' });
@@ -2465,7 +2798,7 @@ app.patch('/api/orders/:orderReference/status', authenticateJwt, async (req, res
  * Confirm Razorpay payment after successful payment (client-side callback)
 
 */
-app.post('/api/confirm-razorpay-payment', async (req, res) => {
+app.post('/api/confirm-razorpay-payment', authenticateJwt, async (req, res) => {
   // Guard against invalid response object
   if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
     console.error('Invalid response object in confirm-razorpay-payment');
@@ -2494,6 +2827,11 @@ app.post('/api/confirm-razorpay-payment', async (req, res) => {
 
   try {
     const ordersCollection = await getOrdersCollection();
+    const ownedOrder = await ordersCollection.findOne<OrderDocument>({ orderReference });
+    if (!ownedOrder || !userOwnsOrder(ownedOrder, (req as Request & { user?: any }).user)) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+    await consumeOrderInventory(ownedOrder);
 
     // Transition the order to 'paid' only on the first confirmation. Both the
     // browser callback and the Razorpay webhook can fire for the same payment;
@@ -2626,6 +2964,7 @@ app.post('/api/razorpay-webhook', async (req: Request, res: Response) => {
       }
 
       // Update order status to paid
+      if (existingOrder) await consumeOrderInventory(existingOrder);
       await ordersCollection.updateOne(
         { orderReference },
         { 
@@ -2711,6 +3050,10 @@ async function settleStripeCheckoutSession(
 
   const ordersCollection = await getOrdersCollection();
 
+  const order = await ordersCollection.findOne<OrderDocument>({ orderReference });
+  if (!order) return null;
+  await consumeOrderInventory(order);
+
   // Guard on status so the return URL and the webhook cannot both send emails.
   const paidTransition = await ordersCollection.updateOne(
     { orderReference, status: { $ne: 'paid' } },
@@ -2729,33 +3072,33 @@ async function settleStripeCheckoutSession(
     return { orderReference, duplicate: true };
   }
 
-  const order = await ordersCollection.findOne<OrderDocument>({ orderReference });
-  if (order) {
+  const latestOrder = await ordersCollection.findOne<OrderDocument>({ orderReference });
+  if (latestOrder) {
     const mail = buildOrderConfirmationMessage({
-      name: order.name,
-      email: order.email,
-      items: order.items,
-      total: order.total,
-      currency: order.currency,
+      name: latestOrder.name,
+      email: latestOrder.email,
+      items: latestOrder.items,
+      total: latestOrder.total,
+      currency: latestOrder.currency,
       orderReference,
       paymentMethod: 'Stripe',
     });
-    await trySendEmail({ to: order.email, subject: mail.subject, text: mail.text, html: mail.html });
+    await trySendEmail({ to: latestOrder.email, subject: mail.subject, text: mail.text, html: mail.html });
 
     const merchantMail = buildMerchantOrderNotification({
-      name: order.name,
-      email: order.email,
-      address: order.address,
-      items: order.items,
-      total: order.total,
-      currency: order.currency,
+      name: latestOrder.name,
+      email: latestOrder.email,
+      address: latestOrder.address,
+      items: latestOrder.items,
+      total: latestOrder.total,
+      currency: latestOrder.currency,
       orderReference,
       paymentMethod: 'Stripe',
       orderStatus: 'paid',
     });
     await trySendEmail({
       to: orderNotificationEmail,
-      replyTo: order.email,
+      replyTo: latestOrder.email,
       subject: merchantMail.subject,
       text: merchantMail.text,
       html: merchantMail.html,
@@ -2769,7 +3112,7 @@ async function settleStripeCheckoutSession(
  * Create a Stripe Checkout Session for international (USD) card payments.
  * Returns a hosted checkout URL, so no card data ever touches this app.
  */
-app.post('/api/create-stripe-checkout-session', async (req, res) => {
+app.post('/api/create-stripe-checkout-session', authenticateJwt, async (req, res) => {
   if (!stripe) {
     return res.status(500).json({
       success: false,
@@ -2777,7 +3120,12 @@ app.post('/api/create-stripe-checkout-session', async (req, res) => {
     });
   }
 
-  const { name, email, address, items, total, currency } = req.body;
+  const userId = requestUserId((req as Request & { user?: any }).user);
+  if (!userId) {
+    return res.status(401).json({ success: false, message: 'A valid authenticated account is required.' });
+  }
+  const { name, email: requestedEmail, address, items, total, currency } = req.body;
+  const email = ((req as Request & { user?: any }).user?.email || requestedEmail || '').toLowerCase();
 
   if (!name || !email || !Array.isArray(items) || typeof total !== 'number') {
     return res.status(400).json({ success: false, message: 'Name, email, items, and total are required.' });
@@ -2807,6 +3155,10 @@ app.post('/api/create-stripe-checkout-session', async (req, res) => {
   }
   const orderTotal = resolved.total;
   const orderReference = `ORDER-${Date.now()}`;
+  const inventory = await reserveOrderInventory(orderReference, priced.items);
+  if (!inventory.result.ok) {
+    return res.status(409).json({ success: false, message: inventory.result.message });
+  }
 
   try {
     const baseUrl = resolveAppBaseUrl(req);
@@ -2839,6 +3191,7 @@ app.post('/api/create-stripe-checkout-session', async (req, res) => {
     const ordersCollection = await getOrdersCollection();
     const order: OrderDocument = {
       orderReference,
+      userId,
       name,
       email,
       address: address || '',
@@ -2847,6 +3200,9 @@ app.post('/api/create-stripe-checkout-session', async (req, res) => {
       currency: frontendCurrency,
       paymentMethod: 'Stripe',
       status: 'pending',
+      inventoryItems: inventory.lines,
+      inventoryState: inventory.lines.length ? 'reserved' : 'none',
+      inventoryUpdatedAt: new Date(),
       stripeSessionId: session.id,
       createdAt: new Date(),
     };
@@ -2864,6 +3220,7 @@ app.post('/api/create-stripe-checkout-session', async (req, res) => {
       currency: session.currency,
     });
   } catch (error) {
+    await releaseInventory(inventory.products, orderReference, inventory.lines);
     console.error('create-stripe-checkout-session error', error);
     return res.status(500).json({ success: false, message: 'Unable to start the Stripe payment.' });
   }
@@ -2872,7 +3229,7 @@ app.post('/api/create-stripe-checkout-session', async (req, res) => {
 /**
  * Confirm a Stripe payment after the shopper returns from the hosted checkout.
  */
-app.post('/api/confirm-stripe-payment', async (req, res) => {
+app.post('/api/confirm-stripe-payment', authenticateJwt, async (req, res) => {
   if (!stripe) {
     return res.status(500).json({ success: false, message: 'Stripe is not configured.' });
   }
@@ -2884,13 +3241,22 @@ app.post('/api/confirm-stripe-payment', async (req, res) => {
   }
 
   try {
+    const ordersCollection = await getOrdersCollection();
+    const ownedOrder = await ordersCollection.findOne<OrderDocument>({ orderReference: String(orderReference || '') });
+    if (ownedOrder && !userOwnsOrder(ownedOrder, (req as Request & { user?: any }).user)) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
     let session: Stripe.Checkout.Session | null = null;
 
     if (sessionId) {
       session = await stripe.checkout.sessions.retrieve(String(sessionId));
+      const sessionOrderReference = String(session.client_reference_id || session.metadata?.['orderReference'] || '');
+      const sessionOrder = await ordersCollection.findOne<OrderDocument>({ orderReference: sessionOrderReference });
+      if (!sessionOrder || !userOwnsOrder(sessionOrder, (req as Request & { user?: any }).user)) {
+        return res.status(404).json({ success: false, message: 'Order not found' });
+      }
     } else {
       // Some browsers return only the order reference.
-      const ordersCollection = await getOrdersCollection();
       const order = await ordersCollection.findOne<OrderDocument>({ orderReference: String(orderReference) });
       if (order?.stripeSessionId) {
         session = await stripe.checkout.sessions.retrieve(order.stripeSessionId);
@@ -3282,13 +3648,62 @@ app.get('/api/products/:id/', async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/products/', async (req: Request & { body: ProductCreateDto }, res: Response) => {
+app.get('/api/products/:id/reviews', async (req: Request, res: Response) => {
+  try {
+    const productId = String(req.params.id || '').trim();
+    if (!productId) return res.status(400).json({ success: false, message: 'Product id is required.' });
+    const reviews = await (await getReviewsCollection()).find({ productId }).sort({ createdAt: -1 }).limit(50).toArray();
+    const rating = reviews.length
+      ? Math.round((reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / reviews.length) * 10) / 10
+      : null;
+    return res.json({ success: true, reviews, rating, reviewCount: reviews.length });
+  } catch (error) {
+    console.error('Get product reviews error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to load reviews.' });
+  }
+});
+
+app.post('/api/products/:id/reviews', authenticateJwt, async (req: Request, res: Response) => {
+  try {
+    const productId = String(req.params.id || '').trim();
+    const userId = requestUserId((req as Request & { user?: any }).user);
+    const rating = Number(req.body?.rating);
+    const title = String(req.body?.title || '').trim();
+    const comment = String(req.body?.comment || '').trim();
+    if (!productId || !userId) return res.status(400).json({ success: false, message: 'Product and account are required.' });
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) return res.status(400).json({ success: false, message: 'Rating must be a whole number from 1 to 5.' });
+    if (comment.length < 10 || comment.length > 1000) return res.status(400).json({ success: false, message: 'Review must be between 10 and 1000 characters.' });
+    if (title.length > 120) return res.status(400).json({ success: false, message: 'Review title is too long.' });
+
+    const reviews = await getReviewsCollection();
+    const review = { productId, userId, rating, title, comment, createdAt: new Date(), updatedAt: new Date() };
+    const result = await reviews.updateOne(
+      { productId, userId },
+      { $set: { rating, title, comment, updatedAt: review.updatedAt }, $setOnInsert: { createdAt: review.createdAt } },
+      { upsert: true }
+    );
+    return res.status(result.upsertedCount ? 201 : 200).json({ success: true, review, updated: result.modifiedCount > 0 });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('E11000')) {
+      return res.status(409).json({ success: false, message: 'You have already reviewed this product.' });
+    }
+    console.error('Create product review error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to save review.' });
+  }
+});
+
+
+app.post('/api/products/', authenticateJwt, requireAdmin, async (req: Request & { body: ProductCreateDto }, res: Response) => {
   try {
     const productsCollection = await getProductsCollection();
-    const { name, description, basePrice, currency, category, images, variants, tags, isActive, buyUrl, supplier } = req.body;
+    const { name, description, basePrice, stock, currency, category, images, variants, tags, isActive, buyUrl, supplier } = req.body;
     
     if (!name || !description || !basePrice || !currency || !category) {
       return res.status(400).json({ success: false, message: "Name, description, basePrice, currency, and category are required" });
+    }
+    const normalizedStock = stock === null || stock === undefined ? null : Number(stock);
+    if (normalizedStock !== null && (!Number.isInteger(normalizedStock) || normalizedStock < 0)) {
+      return res.status(400).json({ success: false, message: "Stock must be a non-negative integer or null" });
     }
     
     const product: ProductDocument = {
@@ -3296,6 +3711,7 @@ app.post('/api/products/', async (req: Request & { body: ProductCreateDto }, res
       name,
       description,
       basePrice: Number(basePrice),
+      ...(normalizedStock === null ? {} : { stock: normalizedStock }),
       currency,
       category,
       images: images || [],
@@ -3324,12 +3740,19 @@ app.post('/api/products/', async (req: Request & { body: ProductCreateDto }, res
   }
 });
 
-app.put('/api/products/:id/', async (req: Request, res: Response) => {
+app.put('/api/products/:id/', authenticateJwt, requireAdmin, async (req: Request, res: Response) => {
   try {
     const productsCollection = await getProductsCollection();
-    const { name, description, basePrice, currency, category, images, variants, tags, isActive, buyUrl, supplier } = req.body;
+    const { name, description, basePrice, stock, currency, category, images, variants, tags, isActive, buyUrl, supplier } = req.body;
     
     const updateData: any = {};
+    if (stock !== undefined) {
+      const normalizedStock = stock === null ? null : Number(stock);
+      if (normalizedStock !== null && (!Number.isInteger(normalizedStock) || normalizedStock < 0)) {
+        return res.status(400).json({ success: false, message: "Stock must be a non-negative integer or null" });
+      }
+      updateData.stock = normalizedStock;
+    }
     
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
@@ -3368,7 +3791,7 @@ app.put('/api/products/:id/', async (req: Request, res: Response) => {
  * Add an image to a product's gallery.
  * The image URL/path is validated and appended to the product's images array.
  */
-app.post('/api/products/:id/images', async (req: Request, res: Response) => {
+app.post('/api/products/:id/images', authenticateJwt, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { image } = req.body;
 
@@ -3408,7 +3831,7 @@ app.post('/api/products/:id/images', async (req: Request, res: Response) => {
  * Remove an image from a product's gallery by index.
  * Splice out the image at the given index and update the array.
  */
-app.delete('/api/products/:id/images/:index', async (req: Request, res: Response) => {
+app.delete('/api/products/:id/images/:index', authenticateJwt, requireAdmin, async (req: Request, res: Response) => {
   try {
     const index = Number.parseInt(req.params.index, 10);
 
@@ -3446,15 +3869,8 @@ app.delete('/api/products/:id/images/:index', async (req: Request, res: Response
  * response, so the purchase link is only reachable here, behind an
  * authenticated admin token (or the development sandbox user).
  */
-app.get('/api/admin/products/:id/purchase-link', authenticateJwt, async (req: Request & { user?: any }, res: Response) => {
+app.get('/api/admin/products/:id/purchase-link', authenticateJwt, requireAdmin, async (req: Request, res: Response) => {
   try {
-    const isAdmin = req.user?.role === 'admin';
-    const isLocalDev = req.user?.isDev === true && process.env['NODE_ENV'] !== 'production';
-
-    if (!isAdmin && !isLocalDev) {
-      return res.status(403).json({ success: false, message: 'Admin access required' });
-    }
-
     const { id } = req.params;
     let product: Record<string, any> | null = null;
 
@@ -3484,7 +3900,7 @@ app.get('/api/admin/products/:id/purchase-link', authenticateJwt, async (req: Re
 });
 
 
-app.delete('/api/products/:id/', async (req: Request, res: Response) => {
+app.delete('/api/products/:id/', authenticateJwt, requireAdmin, async (req: Request, res: Response) => {
   try {
     const productsCollection = await getProductsCollection();
     
@@ -3812,6 +4228,16 @@ app.get('/health', (req: Request, res: Response) => {
  * End of all route registrations - any custom middleware should be added above
  * this point to avoid overwriting existing behavior.
  */
+app.get('/robots.txt', (_req: Request, res: Response) => {
+  res.type('text/plain').send(`User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: ${resolveAppBaseUrl()}/sitemap.xml\n`);
+});
+
+app.get('/sitemap.xml', (_req: Request, res: Response) => {
+  const base = resolveAppBaseUrl();
+  const urls = ['/', '/products', '/about', '/contact', '/shipping-returns'];
+  res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map(url => `<url><loc>${base}${url}</loc></url>`).join('')}</urlset>`);
+});
+
 /**
  * Unknown API routes return JSON instead of Express' default HTML 404 page.
  * Must be registered after every API route above.
@@ -3946,6 +4372,11 @@ if (isMainModule(import.meta.url) || process.env['pm_id'] || process.env['NODE_E
     console.error('Server experienced an execution error:', error);
     throw error;
   });
+
+  // Half-hour personalized new-product campaigns. The job is best-effort and
+  // remains a no-op until MongoDB, SES, and a verified sender are configured.
+  setInterval(() => { void sendNewProductCampaign(); }, 30 * 60 * 1000);
+  void sendNewProductCampaign();
 
   // Initialize MongoDB in the background (non-blocking)
   ensureMongoDBInitialized().catch((error) => {

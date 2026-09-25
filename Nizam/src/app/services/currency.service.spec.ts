@@ -9,8 +9,8 @@ describe('CurrencyService', () => {
     service = TestBed.inject(CurrencyService);
   });
 
-  it('should default to INR', () => {
-    expect(service.getCurrency()).toBe('INR');
+  it('should default to USD for the US storefront', () => {
+    expect(service.getCurrency()).toBe('USD');
   });
 
   it('should convert USD to INR correctly', () => {

@@ -1,11 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
-import { ActivatedRoute, provideRouter } from '@angular/router';
+import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { of } from 'rxjs';
 import { Product, ProductService } from '../../services/product.service';
 import { CartService } from '../../services/cart.service';
 import { WishlistService } from '../../services/wishlist.service';
 import { ToastService } from '../../services/toast.service';
+import { ReviewService } from '../../services/review.service';
 import { ProductDetailComponent } from './product-detail.component';
 
 function makeProduct(id: string, name: string, category: string): Product {
@@ -60,12 +61,12 @@ async function flushZonelessScheduler(fixture: ComponentFixture<unknown>): Promi
 }
 
 describe('ProductDetailComponent (zoneless)', () => {
-  let cartService = { addToCart: vi.fn() };
+  let cartService = { addToCart: vi.fn(() => true), clearCart: vi.fn() };
   let toastService = { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() };
   let resolveCatalog: () => void = () => {};
 
   function createComponent(productId: string): ComponentFixture<ProductDetailComponent> {
-    cartService = { addToCart: vi.fn() };
+    cartService = { addToCart: vi.fn(() => true), clearCart: vi.fn() };
     toastService = { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() };
 
     let release: () => void = () => {};
@@ -100,6 +101,7 @@ describe('ProductDetailComponent (zoneless)', () => {
           }
         },
         { provide: ToastService, useValue: toastService },
+        { provide: ReviewService, useValue: { list: () => of({ success: true, reviews: [], rating: null, reviewCount: 0 }), submit: vi.fn() } },
         {
           provide: ActivatedRoute,
           // The component reads the raw `params` dictionary (`params['id']`), so the
@@ -151,6 +153,22 @@ describe('ProductDetailComponent (zoneless)', () => {
 
     expect(cartService.addToCart).not.toHaveBeenCalled();
     expect(toastService.warning).toHaveBeenCalledWith('Please choose a size before adding this item to your cart.');
+  });
+
+  it('adds the selected variant and navigates to checkout for Buy Now', async () => {
+    const fixture = createComponent('2');
+    resolveCatalog();
+    await flushZonelessScheduler(fixture);
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    fixture.componentInstance.selectSize('M');
+    fixture.componentInstance.quantity.set(2);
+
+    await fixture.componentInstance.buyNow();
+
+    expect(cartService.clearCart).toHaveBeenCalledOnce();
+    expect(cartService.addToCart).toHaveBeenCalledWith(catalog[1], 2, 'M', 1299);
+    expect(navigate).toHaveBeenCalledWith(['/checkout']);
   });
 
   it('renders the product gallery as a 3D coverflow when multiple images exist', async () => {

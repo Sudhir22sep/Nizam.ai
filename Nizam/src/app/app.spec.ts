@@ -36,6 +36,17 @@ describe('App', () => {
     expect(links.every(link => link.tagName === 'A' && link.textContent?.trim())).toBe(true);
   });
 
+  it('keeps the glass preview and chat launcher available as separate floating controls', async () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    expect(compiled.querySelector('.glass-preview-launcher')).toBeTruthy();
+    expect(compiled.querySelector('app-customer-chat')).toBeTruthy();
+    expect(compiled.querySelector('.glass-preview-launcher')?.getAttribute('aria-controls')).toBe('site-glass-preview');
+  });
+
   it('opens the site-wide glass preview from its launcher', async () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
@@ -49,5 +60,10 @@ describe('App', () => {
 
     expect(compiled.querySelector('#site-glass-preview .glass-popup--open')).toBeTruthy();
     expect(compiled.querySelector('#site-glass-preview')?.textContent).toContain('Premium essentials');
+
+    const primary = compiled.querySelector('.glass-preview-actions .btn-primary') as HTMLElement;
+    const secondary = compiled.querySelector('.glass-preview-actions .btn-ghost') as HTMLElement;
+    expect(getComputedStyle(primary).color).toBe('rgb(255, 255, 255)');
+    expect(getComputedStyle(secondary).color).toBe('rgb(255, 255, 255)');
   });
 });

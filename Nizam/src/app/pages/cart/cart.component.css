@@ -62,6 +62,12 @@
   font-size: 1.05rem;
 }
 
+.item-quantity { display: inline-flex; align-items: center; overflow: hidden; margin: 0 0 12px; border: 1px solid var(--border-strong); border-radius: 999px; }
+.item-quantity button { width: 36px; height: 34px; border: 0; color: var(--brand-dark); background: transparent; font-size: 1.05rem; font-weight: 800; cursor: pointer; }
+.item-quantity button:hover:not(:disabled), .item-quantity button:focus-visible { color: #fff; background: var(--brand-primary); }
+.item-quantity button:disabled { cursor: not-allowed; opacity: .35; }
+.item-quantity span { min-width: 30px; text-align: center; font-size: .88rem; font-weight: 800; }
+
 .btn-remove {
   border: none;
   background: rgba(180, 89, 63, 0.1);

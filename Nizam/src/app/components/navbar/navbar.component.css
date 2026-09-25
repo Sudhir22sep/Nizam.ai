@@ -4,21 +4,25 @@
   left: 0;
   right: 0;
   z-index: 1000;
-  background: #070a12;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.32);
+  background:
+    linear-gradient(180deg, rgb(20 27 42 / 92%), rgb(7 10 18 / 88%)),
+    #070a12;
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  backdrop-filter: blur(28px) saturate(150%);
+  border-bottom: 1px solid rgb(255 255 255 / 16%);
+  box-shadow: 0 14px 44px rgb(0 0 0 / 38%), inset 0 1px 0 rgb(255 255 255 / 10%);
   padding-top: env(safe-area-inset-top, 0);
 }
 
 .navbar-container {
-  max-width: 1200px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 0 24px;
-  display: flex;
+  padding: 0 32px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  height: 72px;
+  gap: clamp(18px, 2.4vw, 38px);
+  height: 76px;
 }
 
 .navbar-brand {
@@ -43,7 +47,7 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  gap: 6px;
+  gap: clamp(2px, .45vw, 8px);
   flex: 1;
   justify-content: center;
 }
@@ -52,10 +56,11 @@
   display: inline-block;
   text-decoration: none;
   color: rgba(255, 255, 255, 0.78);
-  font-weight: 600;
-  font-size: 0.95rem;
-  padding: 9px 16px;
-  border-radius: 999px;
+  position: relative;
+  font-weight: 650;
+  font-size: 0.92rem;
+  padding: 10px clamp(8px, 1vw, 14px);
+  border-radius: 10px;
   transition: color 0.2s ease, background-color 0.2s ease;
 }
 
@@ -66,7 +71,29 @@
 
 .nav-menu a.active {
   color: #fff;
-  background: rgba(217, 45, 72, 0.32);
+  background: rgb(255 255 255 / 9%);
+}
+
+.nav-menu a.active::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  bottom: 3px;
+  left: 12px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f3cf66, #ff8da0);
+  box-shadow: 0 0 12px rgb(243 207 102 / 45%);
+}
+
+.nav-menu a:focus-visible,
+.logo:focus-visible,
+.icon-btn:focus-visible,
+.currency-select:focus-visible,
+.btn-nav-cta:focus-visible,
+.menu-toggle:focus-visible {
+  outline: 2px solid #f3cf66;
+  outline-offset: 3px;
 }
 
 .navbar-icons {
@@ -143,11 +170,14 @@
   font-weight: 700;
   font-size: 0.92rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 12px 28px rgb(217 45 72 / 40%), inset 0 1px 0 rgb(255 255 255 / 28%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
 }
 
 .btn-nav-cta:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(98, 74, 43, 0.34);
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 16px 34px rgb(217 45 72 / 48%), inset 0 1px 0 rgb(255 255 255 / 36%);
 }
 
 /* Signed-in navbar affordances (name + sign out) */
@@ -262,6 +292,9 @@
     right: 0;
     flex-direction: column;
     gap: 4px;
+    max-height: calc(100dvh - 64px - env(safe-area-inset-top, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 12px 18px 20px;
     background: #080d18;
     -webkit-backdrop-filter: blur(20px);

@@ -1,3 +1,11 @@
+:host {
+  display: block;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-width: 0;
+}
+
 /* ============================================================
    Empty State Component — Amma Wears Design System
    ============================================================ */
@@ -67,8 +75,21 @@
   background: var(--empty-accent);
   color: #fff;
   border: none;
+  position: relative;
+  z-index: 1;
+  min-height: 48px;
   padding: 12px 28px;
+  border: 2px solid transparent;
   border-radius: 999px;
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.2;
+  pointer-events: auto;
+  touch-action: manipulation;
   font-weight: 600;
   font-size: 0.95rem;
   cursor: pointer;

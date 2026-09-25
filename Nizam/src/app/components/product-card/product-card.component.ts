@@ -206,6 +206,7 @@ export class ProductCardComponent implements OnDestroy {
   }
 
   onQuickAdd(): void {
+    if (this.product.stock !== null && this.product.stock !== undefined && this.product.stock <= 0) return;
     this.quickAdd.emit(this.product);
   }
 

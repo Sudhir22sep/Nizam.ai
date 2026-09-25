@@ -16,7 +16,9 @@
 .carousel__viewport {
   position: relative;
   width: 100%;
-  height: clamp(470px, 52vw, 570px);
+  height: clamp(430px, 46vw, 540px);
+  min-height: 0;
+  overflow: hidden;
   perspective: 1200px;
   perspective-origin: 50% 46%;
   transform-style: preserve-3d;
@@ -31,11 +33,12 @@
 .carousel__item {
   position: absolute;
   inset: 0;
-  width: min(52vw, 340px);
-  height: clamp(390px, 43vw, 460px);
+  width: min(42vw, 300px);
+  height: min(42vw, 400px);
+  max-height: calc(100% - 2rem);
+  aspect-ratio: 3 / 4;
   margin: auto;
   transform-origin: 50% 50%;
-  position: relative;
   overflow: hidden;
   color: inherit;
   text-decoration: none;
@@ -209,7 +212,8 @@
 
   .carousel__item {
     width: min(58vw, 230px);
-    height: 350px;
+    height: min(350px, calc(100% - 1rem));
+    max-height: 350px;
     margin: auto;
     opacity: 1;
   }
@@ -229,6 +233,17 @@
   .carousel__item:not(.carousel__item--active) {
     visibility: visible;
     pointer-events: none;
+  }
+
+  .carousel__controls {
+    flex-wrap: wrap;
+    gap: .55rem;
+    padding: 0 .5rem;
+  }
+
+  .carousel__status {
+    flex: 1 0 100%;
+    order: 4;
   }
 
   .carousel__copy {

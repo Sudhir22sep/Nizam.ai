@@ -30,6 +30,10 @@ export class CartComponent {
     return this.cartService.getTotalAmount();
   }
 
+  updateQuantity(item: CartItem, quantity: number): boolean {
+    return this.cartService.updateQuantity(item.product.id, quantity, item.size);
+  }
+
   removeItem(productId: string, size?: string) {
     this.cartService.removeFromCart(productId, size);
   }

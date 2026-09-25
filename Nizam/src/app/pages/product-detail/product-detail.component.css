@@ -397,6 +397,34 @@
   border: 1.5px solid var(--border-strong);
   color: var(--brand-dark);
   padding: 14px 24px;
+
+.reviews-section {
+  margin: 8px 0 72px;
+  padding: 32px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 24px;
+  background: var(--surface, #fff);
+}
+.reviews-heading { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 420px); gap: 32px; align-items: start; }
+.section-eyebrow { margin: 0 0 6px; color: var(--brand-primary); font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.reviews-heading h2 { margin: 0; font-size: clamp(1.6rem, 3vw, 2.2rem); }
+.reviews-heading h2 span { color: var(--text-light); font-size: 1rem; font-weight: 500; }
+.review-form { display: grid; gap: 8px; padding: 18px; border-radius: 18px; background: var(--bg-light, #f7f7f8); }
+.review-form h3 { margin: 0 0 4px; font-size: 1rem; }
+.review-form label { font-size: .78rem; font-weight: 800; }
+.review-form label span { color: var(--text-light); font-weight: 500; }
+.review-form input, .review-form select, .review-form textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--border-strong, #d8dbe2); border-radius: 10px; padding: 10px 12px; background: var(--surface, #fff); color: var(--text-color, #1e293b); font: inherit; }
+.review-form textarea { resize: vertical; }
+.btn-review { min-height: 44px; border: 0; border-radius: 999px; padding: 0 18px; color: #fff; background: var(--brand-primary); font-weight: 800; cursor: pointer; }
+.btn-review:disabled { opacity: .6; cursor: wait; }
+.review-list { display: grid; gap: 12px; margin-top: 28px; }
+.review-card { padding: 16px 18px; border: 1px solid var(--border-color, #e5e7eb); border-radius: 14px; }
+.review-card__top { display: flex; justify-content: space-between; gap: 12px; }
+.review-card__top span { color: #b7791f; letter-spacing: .08em; }
+.review-card p { margin: 8px 0 0; color: var(--text-light); line-height: 1.55; }
+.reviews-empty { margin: 28px 0 0; color: var(--text-light); }
+@media (max-width: 700px) { .reviews-section { padding: 22px 16px; } .reviews-heading { grid-template-columns: 1fr; } }
+
   font-weight: 700;
   font-size: 0.95rem;
 }

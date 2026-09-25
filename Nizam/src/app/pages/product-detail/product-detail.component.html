@@ -156,7 +156,7 @@
         <button (click)="addToCart()" class="btn-add-cart" [disabled]="isOutOfStock">
           🛒 Add to Cart
         </button>
-        <button routerLink="/checkout" class="btn-checkout">
+          <button type="button" (click)="buyNow()" class="btn-checkout" [disabled]="isOutOfStock">
           💳 Checkout Now
         </button>
         <button class="btn-wishlist" (click)="addToWishlist()">
@@ -179,6 +179,35 @@
       </div>
     </div>
   </div>
+
+
+  <section class="reviews-section" aria-labelledby="reviews-heading">
+    <div class="reviews-heading">
+      <div>
+        <p class="section-eyebrow">Customer feedback</p>
+        <h2 id="reviews-heading">Reviews <span>({{ productReviews().length }})</span></h2>
+      </div>
+      <div class="review-form" aria-label="Write a review">
+        <h3>Share your experience</h3>
+        <label for="review-rating">Rating</label>
+        <select id="review-rating" [value]="reviewRating()" (change)="reviewRating.set(+$any($event.target).value)">
+          <option value="5">5 — Excellent</option><option value="4">4 — Good</option><option value="3">3 — Average</option><option value="2">2 — Poor</option><option value="1">1 — Bad</option>
+        </select>
+        <label for="review-title">Title <span>(optional)</span></label>
+        <input id="review-title" type="text" maxlength="120" [value]="reviewTitle()" (input)="reviewTitle.set($any($event.target).value)" placeholder="What did you like?">
+        <label for="review-comment">Your review</label>
+        <textarea id="review-comment" rows="3" maxlength="1000" [value]="reviewComment()" (input)="reviewComment.set($any($event.target).value)" placeholder="Tell other shoppers about fit, quality, and delivery…"></textarea>
+        <button type="button" class="btn-review" [disabled]="reviewSubmitting()" (click)="submitReview()">{{ reviewSubmitting() ? 'Publishing…' : 'Publish review' }}</button>
+      </div>
+    </div>
+    <div class="review-list" *ngIf="productReviews().length; else noReviewsYet">
+      <article class="review-card" *ngFor="let review of productReviews()">
+        <div class="review-card__top"><strong>{{ review.title || 'Amma Wears shopper' }}</strong><span aria-label="Rated {{ review.rating }} out of 5">{{ '★'.repeat(review.rating) }}{{ '☆'.repeat(5 - review.rating) }}</span></div>
+        <p>{{ review.comment }}</p>
+      </article>
+    </div>
+    <ng-template #noReviewsYet><p class="reviews-empty">Be the first to review this piece.</p></ng-template>
+  </section>
 
   <section class="related-products" *ngIf="relatedProducts().length > 0">
     <h2>More styles you’ll love</h2>

@@ -244,6 +244,8 @@ $badge-radius: 999px;
 // ---- Quick-add bar -------------------------------------------------------
 // Fades and slides in on hover/focus; on touch devices it stays visible.
 // The whole bar lives on its own 3D plane, which keeps its buttons crisp.
+.tilt-card__badge--stock { top: 48px; left: 14px; background: #24211d; color: #fff; }
+.tilt-card__quick-add:disabled { cursor: not-allowed; opacity: .58; transform: none; }
 .tilt-card__actions {
   position: absolute;
   left: $card-padding + 8px;
@@ -284,7 +286,7 @@ $badge-radius: 999px;
   cursor: pointer;
   transition: background-color 200ms ease, transform 200ms ease;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: var(--brand-primary);
     transform: translateY(-1px);
   }

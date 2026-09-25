@@ -12,8 +12,8 @@ describe('PricePipe', () => {
     pipe = new PricePipe(service);
   });
 
-  it('should format values in INR by default', () => {
-    expect(pipe.transform(2)).toBe('₹190.42');
+  it('should format values in USD by default', () => {
+    expect(pipe.transform(2)).toBe('$2.00');
   });
 
   it('should format values in USD when currency is switched', () => {

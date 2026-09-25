@@ -21,6 +21,24 @@
     </div>
   </header>
 
+  <div class="catalog-toolbar">
+    <label class="catalog-search">
+      <span class="sr-only">Search products</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+      <input type="search" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" placeholder="Search styles, fabrics, categories…" autocomplete="off">
+      @if (searchQuery()) { <button type="button" (click)="searchQuery.set('')" aria-label="Clear product search">×</button> }
+    </label>
+    <label class="catalog-sort">
+      <span>Sort</span>
+      <select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)" aria-label="Sort products">
+        <option value="featured">Featured</option>
+        <option value="price-low">Price: low to high</option>
+        <option value="price-high">Price: high to low</option>
+        <option value="name">Name: A to Z</option>
+      </select>
+    </label>
+  </div>
+
   <div class="filters" role="group" aria-label="Filter products by category">
     <span class="results-count">{{ filteredProducts().length }} styles</span>
     <button
