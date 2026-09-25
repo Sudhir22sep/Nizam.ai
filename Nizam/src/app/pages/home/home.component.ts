@@ -1,16 +1,20 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { BentoGridComponent } from '../../components/bento-grid/bento-grid.component';
 import { HeroBannerComponent } from '../../components/hero/hero-banner.component';
 import { FeaturedCollection, RotationalCarouselComponent } from '../../components/rotational-carousel/rotational-carousel.component';
+import { GlassPopupComponent } from '../../components/glass-popup/glass-popup.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [RouterLink, HeroBannerComponent, RotationalCarouselComponent],
+  imports: [RouterLink, HeroBannerComponent, RotationalCarouselComponent, BentoGridComponent, GlassPopupComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css'
 })
 export class HomeComponent {
+  protected styleHelpOpen = false;
+
   protected readonly featuredCollections: ReadonlyArray<FeaturedCollection> = [
     {
       title: 'Modern tailoring',

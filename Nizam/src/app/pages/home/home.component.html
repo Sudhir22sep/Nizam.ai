@@ -17,31 +17,52 @@
     <app-rotational-carousel [collections]="featuredCollections" />
   </section>
 
-  <section class="value-grid" aria-label="Why shop with Amma Wears">
-    <div class="value-grid__intro">
-      <span class="eyebrow">The Amma Wears promise</span>
-      <h2>Everyday pieces,<br><em>made memorable.</em></h2>
-      <p>Thoughtful fabrics, considered details, and silhouettes that move with you.</p>
-      <a routerLink="/about" class="value-grid__link">Our story <span aria-hidden="true">↗</span></a>
+  <section class="home-bento" aria-labelledby="bento-heading">
+    <div class="home-bento__head">
+      <div>
+        <span class="eyebrow">A closer look</span>
+        <h2 id="bento-heading">More ways to make it yours</h2>
+      </div>
+      <a routerLink="/products" class="link-secondary">Explore the collection <span aria-hidden="true">↗</span></a>
     </div>
-    <div class="value-card">
-      <span class="value-card__number">01</span>
-      <span class="value-icon" aria-hidden="true">✦</span>
-      <h3>Quality materials</h3>
-      <p>Premium fabrics that feel good, wash well, and hold their shape.</p>
-    </div>
-    <div class="value-card">
-      <span class="value-card__number">02</span>
-      <span class="value-icon" aria-hidden="true">⌁</span>
-      <h3>Local delivery</h3>
-      <p>Quick fulfillment and tracking for orders across the region.</p>
-    </div>
-    <div class="value-card">
-      <span class="value-card__number">03</span>
-      <span class="value-icon" aria-hidden="true">◌</span>
-      <h3>Styled for comfort</h3>
-      <p>Effortless looks engineered for modern everyday wear.</p>
-    </div>
+
+    <app-bento-grid ariaLabel="Amma Wears collection highlights" [columns]="4">
+      <article class="bento-tile bento-tile--hero bento-tile--light">
+        <span class="eyebrow">The edit</span>
+        <h3>Elevated essentials for every plan.</h3>
+        <p>Discover soft structure, confident color, and easy silhouettes made to move through your day.</p>
+        <a routerLink="/products" class="bento-tile__cta">Shop new arrivals <span aria-hidden="true">→</span></a>
+      </article>
+
+      <article class="bento-tile bento-tile--accent">
+        <span class="eyebrow">01 / 03</span>
+        <h3>Modern tailoring</h3>
+        <p>Polished layers for workdays and everywhere after.</p>
+        <a routerLink="/products" aria-label="Explore modern tailoring">↗</a>
+      </article>
+
+      <article class="bento-tile bento-tile--tall">
+        <img src="/images/products/satin-slip-dress.jpeg" alt="Satin evening slip dress" loading="lazy" />
+        <div class="bento-tile__overlay">
+          <span class="eyebrow">After dark</span>
+          <h3>Evening silhouettes</h3>
+        </div>
+      </article>
+
+      <article class="bento-tile bento-tile--wide">
+        <div>
+          <span class="eyebrow">The everyday promise</span>
+          <h3>Thoughtful fabrics. Considered details. No compromise.</h3>
+        </div>
+        <a routerLink="/about" class="bento-tile__cta">Why Amma Wears <span aria-hidden="true">↗</span></a>
+      </article>
+
+      <article class="bento-tile bento-tile--light">
+        <span class="eyebrow">Made for repeat wear</span>
+        <h3>Comfort is always in style.</h3>
+        <p>Easy pieces designed to feel as good as they look.</p>
+      </article>
+    </app-bento-grid>
   </section>
 
   <section id="about" class="about-section">
@@ -55,7 +76,24 @@
     <div class="contact-copy">
       <h2>Need help styling your look?</h2>
       <p>Send us a note and our style team will get back to you shortly.</p>
-      <a routerLink="/contact" class="cta-button">Contact our team</a>
+      <button type="button" class="cta-button" (click)="styleHelpOpen = true">Get style help</button>
     </div>
   </section>
+
+  <app-glass-popup
+    [isOpen]="styleHelpOpen"
+    eyebrow="Amma Wears styling desk"
+    title="Let’s find your next favourite"
+    description="Tell our style team what you are looking for, or browse the collection and request help with sizing, fit, and styling."
+    (closed)="styleHelpOpen = false">
+    <div class="style-help-actions">
+      <a routerLink="/contact" class="popup-action popup-action--primary" (click)="styleHelpOpen = false">
+        Ask a stylist <span aria-hidden="true">↗</span>
+      </a>
+      <a routerLink="/products" class="popup-action popup-action--secondary" (click)="styleHelpOpen = false">
+        Browse the collection
+      </a>
+    </div>
+    <p class="style-help-note">Customer support replies within one business day.</p>
+  </app-glass-popup>
 </div>

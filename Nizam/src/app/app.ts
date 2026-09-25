@@ -1,19 +1,22 @@
 import { Component, effect, inject, signal } from '@angular/core';
-import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { filter, map, startWith } from 'rxjs/operators';
+import { filter, startWith } from 'rxjs/operators';
 import { NavbarComponent } from './components/navbar/navbar.component';
 import { ToastContainerComponent } from './components/toast-container/toast-container.component';
+import { AuroraBackgroundComponent } from './components/aurora-background/aurora-background.component';
+import { GlassPopupComponent } from './components/glass-popup/glass-popup.component';
 import { AnalyticsService } from './services/analytics.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, NavbarComponent, ToastContainerComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NavbarComponent, ToastContainerComponent, AuroraBackgroundComponent, GlassPopupComponent],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
 })
 export class App {
   protected readonly title = signal('Amma Wears');
+  protected readonly glassPreviewOpen = signal(false);
 
   private readonly router = inject(Router);
   private readonly analytics = inject(AnalyticsService);

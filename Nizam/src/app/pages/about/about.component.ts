@@ -1,7 +1,9 @@
 import { Component } from '@angular/core';
+import { BentoHighlightsComponent } from '../../components/bento-grid/bento-highlights.component';
 
 @Component({
   selector: 'app-about',
+  imports: [BentoHighlightsComponent],
   template: `
     <div class="about-page">
       <header class="page-header">
@@ -26,6 +28,10 @@ import { Component } from '@angular/core';
           </div>
         </div>
       </div>
+      <app-bento-highlights
+        eyebrow="Our design promise"
+        title="Made for the way you live"
+      />
     </div>`,
   styles: [`
     .about-page {

@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { BentoHighlightsComponent } from '../../components/bento-grid/bento-highlights.component';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PricePipe } from '../../pipes/price.pipe';
@@ -12,7 +13,7 @@ import { ToastService } from '../../services/toast.service';
 @Component({
   selector: 'app-product-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, PricePipe, ImageFallbackDirective, ProductCardComponent],
+  imports: [CommonModule, RouterLink, PricePipe, ImageFallbackDirective, ProductCardComponent, BentoHighlightsComponent],
   templateUrl: './product-detail.component.html',
   styleUrl: './product-detail.component.css'
 })

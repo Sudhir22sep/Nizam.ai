@@ -4,15 +4,7 @@
     <h1>Checkout</h1>
   </header>
 
-  <div *ngIf="orderConfirmed" class="order-confirmation">
-    <span class="confirm-icon">✓</span>
-    <h2>Thank you for your purchase!</h2>
-    <p>Your order reference is <strong>{{ confirmationReference }}</strong>.</p>
-    <p>We’ll send shipping updates to <strong>{{ email }}</strong>.</p>
-    <a routerLink="/products" class="btn-primary">Continue shopping</a>
-  </div>
-
-  <div *ngIf="!orderConfirmed">
+  @if (!orderConfirmed) {
     <div class="checkout-layout">
       <section class="cart-summary panel">
         <h2>Order summary</h2>
@@ -90,5 +82,16 @@
         <p class="hint">For dropshipping or wholesale inquiries, email <strong>ammacollectivewear@gmail.com</strong>.</p>
       </section>
     </div>
-  </div>
+  }
 </div>
+
+<app-glass-popup
+  [isOpen]="orderConfirmed"
+  eyebrow="Order confirmed"
+  title="Thank you for your purchase"
+  [description]="'We’ll send shipping updates to ' + email + '. Your order reference is ' + confirmationReference + '.'"
+  [dismissible]="false"
+  closeLabel="Order confirmation">
+  <div class="confirmation-mark" aria-hidden="true">✓</div>
+  <a routerLink="/products" class="confirmation-action">Continue shopping <span aria-hidden="true">→</span></a>
+</app-glass-popup>

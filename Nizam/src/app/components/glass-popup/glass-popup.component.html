@@ -1,0 +1,47 @@
+<div
+  class="glass-popup"
+  [class.glass-popup--open]="isOpen"
+  [attr.aria-hidden]="!isOpen"
+  [style.pointer-events]="isOpen ? 'auto' : 'none'"
+  (click)="onBackdropClick($event)">
+  <section
+    #dialog
+    class="glass-popup__dialog"
+    role="dialog"
+    tabindex="-1"
+    aria-modal="true"
+    [attr.aria-label]="title"
+    [attr.inert]="isOpen ? null : ''">
+    <div class="glass-popup__border" aria-hidden="true"></div>
+
+    <div class="glass-popup__surface">
+      <div class="glass-popup__shine" aria-hidden="true"></div>
+
+      <header class="glass-popup__header">
+        <div class="glass-popup__copy">
+          <span class="glass-popup__eyebrow">{{ eyebrow }}</span>
+          <h2 class="glass-popup__title">{{ title }}</h2>
+          @if (description) {
+            <p class="glass-popup__description">{{ description }}</p>
+          }
+        </div>
+
+        @if (dismissible) {
+          <button
+            type="button"
+            class="glass-popup__close"
+            [attr.aria-label]="closeLabel"
+            (click)="requestClose()">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
+          </button>
+        }
+      </header>
+
+      <div class="glass-popup__content">
+        <ng-content />
+      </div>
+    </div>
+  </section>
+</div>

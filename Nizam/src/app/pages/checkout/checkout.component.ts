@@ -7,11 +7,12 @@ import { ToastService } from '../../services/toast.service';
 import { CurrencyService } from '../../services/currency.service';
 import { CartService } from '../../services/cart.service';
 import { PaymentMethod, PaymentService } from '../../services/payment.service';
+import { GlassPopupComponent } from '../../components/glass-popup/glass-popup.component';
 
 @Component({
   selector: 'app-checkout',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, PricePipe],
+  imports: [CommonModule, FormsModule, RouterLink, PricePipe, GlassPopupComponent],
   templateUrl: './checkout.component.html',
   styleUrl: './checkout.component.css'
 })

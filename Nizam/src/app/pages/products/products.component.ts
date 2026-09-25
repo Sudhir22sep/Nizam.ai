@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { BentoHighlightsComponent } from '../../components/bento-grid/bento-highlights.component';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -8,11 +9,12 @@ import { WishlistService } from '../../services/wishlist.service';
 import { ToastService } from '../../services/toast.service';
 import { ProductCardComponent } from '../../components/product-card/product-card.component';
 import { EmptyStateComponent } from '../../components/empty-state/empty-state.component';
+import { AuroraBackgroundComponent } from '../../components/aurora-background/aurora-background.component';
 
 @Component({
   selector: 'app-products',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, EmptyStateComponent, ProductCardComponent],
+  imports: [CommonModule, RouterLink, FormsModule, EmptyStateComponent, ProductCardComponent, AuroraBackgroundComponent, BentoHighlightsComponent],
   templateUrl: './products.component.html',
   styleUrl: './products.component.css'
 })

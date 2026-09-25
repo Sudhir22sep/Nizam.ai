@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { BentoHighlightsComponent } from '../../components/bento-grid/bento-highlights.component';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { environment } from '../../../environments/environment';
@@ -6,7 +7,7 @@ import { environment } from '../../../environments/environment';
 @Component({
   selector: 'app-contact',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, BentoHighlightsComponent],
   templateUrl: './contact.component.html',
   styleUrl: './contact.component.css'
 })

@@ -2,27 +2,27 @@
    Amma Wears — Global Design System
    ========================================================================== */
 :root {
-  /* Brand palette — Forest Charcoal / Warm Pearl / Champagne Bronze */
-  --ink-900: #20231F;
-  --ink-800: #20231F;
-  --ink-700: #30342F;
-  --ink-600: #484C46;
-  --brand-primary: #7A6038;      /* Muted bronze — accessible text/interaction */
-  --brand-primary-strong: #624A2B;
-  --brand-secondary: #62665F;    /* Soft graphite — secondary text           */
-  --brand-tertiary: #9A7B4B;
-  --brand-dark: #20231F;
-  --accent-cyan: #4A6B57;
+  /* Brand palette — Retail navy / signal red / soft gold */
+  --ink-900: #14263D;
+  --ink-800: #1B304A;
+  --ink-700: #29415F;
+  --ink-600: #40516A;
+  --brand-primary: #D92D48;      /* action red */
+  --brand-primary-strong: #B51F38;
+  --brand-secondary: #53657A;    /* secondary text */
+  --brand-tertiary: #E9B949;     /* warm highlight */
+  --brand-dark: #14263D;
+  --accent-cyan: #2D7A83;
 
   /* Neutrals */
-  --text-color: #484C46;
-  --text-light: #62665F;
-  --text-faint: #7D817A;
-  --bg-page: #F5F2EA;            /* Soft ivory canvas                       */
-  --bg-light: #ECE8DE;
-  --surface: #FFFCF7;             /* Warm pearl instead of stark white        */
-  --border-color: #DDD8CC;
-  --border-strong: #C9C2B3;
+  --text-color: #40516A;
+  --text-light: #64748B;
+  --text-faint: #94A3B8;
+  --bg-page: #F7F8FA;
+  --bg-light: #EEF1F5;
+  --surface: #FFFFFF;
+  --border-color: #DCE2EA;
+  --border-strong: #B8C4D2;
 
   /* Shadows */
   --shadow: 0 2px 10px rgba(32, 35, 31, 0.07);
@@ -46,9 +46,9 @@
   --space-8: 64px;
   --space-9: 96px;
   --container: 1200px;
-  --gradient-brand: linear-gradient(135deg, #725830 0%, #8A6B40 100%);
-  --gradient-dark: linear-gradient(160deg, #171916 0%, #20231F 55%, #30342F 100%);
-  --gradient-nav: linear-gradient(135deg, rgba(32, 35, 31, 0.94) 0%, rgba(48, 52, 47, 0.9) 100%);
+  --gradient-brand: linear-gradient(135deg, #D92D48 0%, #B51F38 100%);
+  --gradient-dark: linear-gradient(160deg, #14263D 0%, #1B304A 55%, #29415F 100%);
+  --gradient-nav: linear-gradient(135deg, rgba(20, 38, 61, 0.98) 0%, rgba(27, 48, 74, 0.96) 100%);
 }
 
 /* ---------- Reset ---------- */
@@ -99,6 +99,7 @@ a {
 
 button {
   font-family: inherit;
+  -webkit-text-fill-color: currentColor;
 }
 
 :focus-visible {
@@ -119,15 +120,36 @@ button {
 
 .page-header {
   margin-bottom: var(--space-6);
+  padding: clamp(24px, 4vw, 40px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 24px;
+  color: #f7f9fc;
+  background:
+    linear-gradient(135deg, rgb(20 38 61 / 96%), rgb(9 15 28 / 96%)),
+    var(--gradient-dark);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(255 255 255 / 8%);
 }
 
-.page-header .eyebrow {
+.app-shell .page-header h1,
+.app-shell .page-header h2,
+.app-shell .page-header h3 {
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+}
+
+.app-shell .page-header .page-subtitle {
+  color: #cbd5e1;
+}
+
+.app-shell .page-header .eyebrow {
   display: inline-block;
   font-size: 0.78rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: var(--brand-primary);
+  color: #f3cf66;
+  -webkit-text-fill-color: #f3cf66;
   margin-bottom: var(--space-2);
 }
 
@@ -169,7 +191,8 @@ button {
 .cta-button {
   background: var(--gradient-brand);
   color: #fff;
-  box-shadow: 0 10px 24px rgba(98, 74, 43, 0.24);
+  -webkit-text-fill-color: #fff;
+  box-shadow: 0 10px 24px rgba(217, 45, 72, 0.26);
 }
 
 .btn-primary:hover,
@@ -187,18 +210,23 @@ button {
 }
 
 .btn-secondary {
-  background: rgba(122, 96, 56, 0.1);
+  background: #edf1f7;
   color: var(--brand-dark);
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 8px 22px rgb(0 0 0 / 18%);
 }
 
 .btn-secondary:hover {
-  background: rgba(122, 96, 56, 0.16);
+  background: #fff;
+  border-color: var(--brand-primary);
+  color: var(--brand-dark);
   transform: translateY(-2px);
 }
 
 .btn-dark {
   background: var(--ink-800);
   color: #fff;
+  -webkit-text-fill-color: #fff;
 }
 
 .btn-dark:hover {
@@ -211,6 +239,7 @@ button {
   background: rgba(255, 255, 255, 0.08);
   border: 1.5px solid rgba(255, 255, 255, 0.35);
   color: #fff;
+  -webkit-text-fill-color: #fff;
 }
 
 .btn-ghost:hover {
@@ -220,9 +249,10 @@ button {
 }
 
 .btn-outline {
-  background: var(--surface);
-  border: 1.5px solid var(--border-strong);
+  background: #edf1f7;
+  border: 1.5px solid #cbd5e1;
   color: var(--brand-dark);
+  box-shadow: 0 8px 22px rgb(0 0 0 / 18%);
 }
 
 .btn-outline:hover {
@@ -334,5 +364,65 @@ input.is-invalid {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+/* ---------- Product detail related products ---------- */
+.related-products {
+  border-top: 1px solid var(--border-color);
+  padding-top: 48px;
+}
+
+.related-products h2 {
+  font-size: 1.6rem;
+  margin-bottom: 28px;
+}
+
+.related-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  perspective: 1400px;
+}
+
+.related-card {
+  display: block;
+  min-width: 0;
+  height: 100%;
+  overflow: visible;
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.related-card img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  background: var(--bg-light);
+}
+
+.related-card h4 {
+  margin: 14px 16px 4px;
+  color: var(--brand-dark);
+  font-size: 0.98rem;
+}
+
+.related-card .price {
+  display: block;
+  margin: 0 16px 16px;
+  font-weight: 800;
+  color: var(--brand-dark);
+}
+
+@media (max-width: 900px) {
+  .related-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+}
+
+@media (max-width: 640px) {
+  .related-grid {
+    grid-template-columns: 1fr;
   }
 }

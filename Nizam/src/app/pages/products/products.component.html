@@ -1,5 +1,6 @@
 <div class="products-container">
   <header class="page-header collection-showcase">
+    <app-aurora-background class="collection-showcase__aurora" />
     <div class="collection-showcase__copy">
       <span class="eyebrow">The living collection</span>
       <h1>Style in motion</h1>
@@ -21,6 +22,7 @@
   </header>
 
   <div class="filters" role="group" aria-label="Filter products by category">
+    <span class="results-count">{{ filteredProducts().length }} styles</span>
     <button
       class="filter-btn"
       [class.active]="selectedCategory() === ''"
@@ -60,4 +62,9 @@
     ></app-empty-state>
   </div>
   }
+
+  <app-bento-highlights
+    eyebrow="The Amma Wears edit"
+    title="A little inspiration for your wardrobe"
+  />
 </div>

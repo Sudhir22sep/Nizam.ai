@@ -38,4 +38,9 @@
       <p class="order-total">Total: <strong>{{ formatTotal(order) }}</strong></p>
     </li>
   </ul>
+  <app-bento-highlights
+    *ngIf="!isLoading && !errorMessage && orders.length > 0"
+    eyebrow="Your next favorite"
+    title="Keep your wardrobe growing"
+  />
 </div>
