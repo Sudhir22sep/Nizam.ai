@@ -7,11 +7,12 @@ import { ToastContainerComponent } from './components/toast-container/toast-cont
 import { AuroraBackgroundComponent } from './components/aurora-background/aurora-background.component';
 import { GlassPopupComponent } from './components/glass-popup/glass-popup.component';
 import { CustomerChatComponent } from './components/customer-chat/customer-chat.component';
+import { NewsletterSignupComponent } from './components/newsletter-signup/newsletter-signup.component';
 import { AnalyticsService } from './services/analytics.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, NavbarComponent, ToastContainerComponent, AuroraBackgroundComponent, GlassPopupComponent, CustomerChatComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NavbarComponent, ToastContainerComponent, AuroraBackgroundComponent, GlassPopupComponent, CustomerChatComponent, NewsletterSignupComponent],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
 })

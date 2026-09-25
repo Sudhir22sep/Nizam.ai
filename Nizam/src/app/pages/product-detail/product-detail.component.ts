@@ -9,6 +9,7 @@ import { ProductService, Product, normalizeProductImages, primaryProductImage, p
 import { CartService } from '../../services/cart.service';
 import { WishlistService } from '../../services/wishlist.service';
 import { ToastService } from '../../services/toast.service';
+import { ReviewService, ProductReview } from '../../services/review.service';
 
 @Component({
   selector: 'app-product-detail',
@@ -23,6 +24,7 @@ export class ProductDetailComponent implements OnInit {
   private cartService = inject(CartService);
   private wishlistService = inject(WishlistService);
   private readonly toast = inject(ToastService);
+  private readonly reviews = inject(ReviewService);
   private readonly router = inject(Router);
 
   /**
@@ -38,6 +40,11 @@ export class ProductDetailComponent implements OnInit {
   readonly selectedSize = signal<string | null>(null);
   readonly isLoading = signal(true);
   readonly loadError = signal<string | null>(null);
+  readonly productReviews = signal<ProductReview[]>([]);
+  readonly reviewRating = signal(5);
+  readonly reviewTitle = signal('');
+  readonly reviewComment = signal('');
+  readonly reviewSubmitting = signal(false);
 
   ngOnInit() {
     this.route.params.subscribe(params => {
@@ -71,6 +78,11 @@ export class ProductDetailComponent implements OnInit {
       }
 
       this.product.set(product);
+      this.productReviews.set([]);
+      this.reviews.list(product.id).subscribe({
+        next: response => this.productReviews.set(response.reviews ?? []),
+        error: () => this.productReviews.set([])
+      });
       const sizes = this.availableSizes;
       this.selectedSize.set(sizes.length === 1 ? sizes[0] : null);
       this.relatedProducts.set(
@@ -319,5 +331,35 @@ export class ProductDetailComponent implements OnInit {
     this.selectedSize.set(size);
   }
 
-  /** Gallery selection is shopper-facing; image management is owner tooling. */
+  submitReview(): void {
+    const product = this.product();
+    const comment = this.reviewComment().trim();
+    if (!product || comment.length < 10) {
+      this.toast.warning('Please write at least 10 characters so shoppers can learn from your review.');
+      return;
+    }
+    this.reviewSubmitting.set(true);
+    this.reviews.submit(product.id, {
+      rating: this.reviewRating(),
+      title: this.reviewTitle().trim(),
+      comment
+    }).subscribe({
+      next: response => {
+        this.reviewSubmitting.set(false);
+        this.reviewComment.set('');
+        this.reviewTitle.set('');
+        this.toast.success('Thanks — your review is now live.');
+        this.reviews.list(product.id).subscribe(result => this.productReviews.set(result.reviews ?? []));
+        if (response.review) {
+          this.productReviews.update(reviews => [response.review, ...reviews.filter(review => review.userId !== response.review.userId)]);
+        }
+      },
+      error: error => {
+        this.reviewSubmitting.set(false);
+        this.toast.error(error?.error?.message || 'Unable to save your review. Please sign in and try again.');
+      }
+    });
+  }
+
+  // Gallery selection is shopper-facing; image management is owner tooling.
 }

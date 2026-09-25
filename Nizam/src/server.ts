@@ -1300,6 +1300,7 @@ async function initializeMongoDB(): Promise<void> {
     const usersCollection = db.collection('users');
     const contactsCollection = db.collection('contacts');
     const productsCollection = db.collection('products');
+    const newsletterCollection = db.collection('newsletter_subscribers');
 
     await ordersCollection.createIndex({ orderReference: 1 }, { unique: true });
     await ordersCollection.createIndex({ userId: 1, createdAt: -1 });
@@ -1307,6 +1308,7 @@ async function initializeMongoDB(): Promise<void> {
     await usersCollection.createIndex({ email: 1 }, { unique: true });
     await contactsCollection.createIndex({ email: 1 });
     await productsCollection.createIndex({ name: 'text', description: 'text' });
+    await newsletterCollection.createIndex({ email: 1 }, { unique: true });
 
     console.log('MongoDB connected successfully');
   } catch (error) {
@@ -1358,6 +1360,16 @@ async function getContactsCollection() {
     throw new Error('MongoDB not connected');
   }
   return db.collection('contacts');
+}
+
+// Get or create products collection
+async function getNewsletterSubscribersCollection() {
+  await ensureMongoDBInitialized();
+
+  if (!db) {
+    throw new Error('MongoDB not connected');
+  }
+  return db.collection('newsletter_subscribers');
 }
 
 // Get or create products collection
@@ -1737,6 +1749,64 @@ async function trySendEmail(params: { to: string | string[]; subject: string; te
   }
 }
 
+function buildNewsletterWelcomeMessage(unsubscribeUrl: string) {
+  const safeUnsubscribeUrl = escapeEmailHtml(unsubscribeUrl);
+  return {
+    subject: 'Welcome to Amma Wears',
+    text: `Welcome to Amma Wears. You are now subscribed to new arrivals, product updates, and occasional offers. Unsubscribe anytime: ${unsubscribeUrl}`,
+    html: `<p>Welcome to Amma Wears.</p><p>You are now subscribed to new arrivals, product updates, and occasional offers.</p><p><a href="${safeUnsubscribeUrl}" style="display:inline-block;padding:12px 24px;border-radius:999px;background:#D92D48;color:#ffffff;text-decoration:none;font-weight:700;">Unsubscribe</a></p><p style="color:#64748b;font-size:12px;">You received this email because you opted in to Amma Wears marketing messages.</p>`,
+  };
+}
+
+function buildProductMarketingMessage(params: { email: string; products: Record<string, any>[]; unsubscribeUrl: string }) {
+  const items = params.products.slice(0, 6).map(product => {
+    const image = Array.isArray(product.images) ? product.images[0] : product.image;
+    const href = `${resolveAppBaseUrl()}/product/${encodeURIComponent(product.id)}`;
+    const imageHtml = image ? `<img src="${escapeEmailHtml(image)}" alt="" style="display:block;width:100%;max-width:220px;border-radius:12px;object-fit:cover;">` : '';
+    return `<li style="margin:0 0 18px;">${imageHtml}<a href="${escapeEmailHtml(href)}" style="color:#14263D;font-weight:700;">${escapeEmailHtml(product.name)}</a><br><span style="color:#64748B;font-size:12px;">${escapeEmailHtml(product.category || 'New arrival')}</span></li>`;
+  }).join('');
+  const unsubscribeUrl = escapeEmailHtml(params.unsubscribeUrl);
+  return {
+    subject: 'New Amma Wears picks selected for you',
+    text: `New Amma Wears picks selected for you:\n\n${params.products.slice(0, 6).map(product => `- ${product.name}`).join('\n')}\n\nUnsubscribe: ${params.unsubscribeUrl}`,
+    html: `<p>Hello,</p><p>We found new Amma Wears pieces that match your interests.</p><ul style="padding:0;list-style:none;">${items}</ul><p><a href="${unsubscribeUrl}" style="color:#64748B;font-size:12px;">Unsubscribe from marketing emails</a></p>`
+  };
+}
+
+function productMatchesInterest(product: Record<string, any>, interests: string[]): boolean {
+  if (!interests.length) return true;
+  const haystack = `${product.category || ''} ${(product.tags || []).join(' ')} ${product.name || ''}`.toLowerCase();
+  return interests.some(interest => haystack.includes(interest.toLowerCase()));
+}
+
+async function sendNewProductCampaign(): Promise<void> {
+  if (!sesClient || !isSenderConfigured) return;
+  try {
+    const subscribers = await getNewsletterSubscribersCollection();
+    const products = await getProductsCollection();
+    const deliveries = db!.collection('newsletter_deliveries');
+    const since = new Date(Date.now() - 30 * 60 * 1000);
+    const activeSubscribers = await subscribers.find({ status: 'subscribed' }).toArray();
+    const newProducts = await products.find({ isActive: { $ne: false }, createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(50).toArray();
+    if (!activeSubscribers.length || !newProducts.length) return;
+
+    for (const subscriber of activeSubscribers) {
+      const interests = Array.isArray(subscriber.interests) ? subscriber.interests : [];
+      const matching = newProducts.filter(product => productMatchesInterest(product, interests));
+      if (!matching.length) continue;
+      const alreadySent = await deliveries.findOne({ subscriberEmail: subscriber.email, productId: matching[0].id });
+      if (alreadySent) continue;
+      const unsubscribeUrl = `${resolveAppBaseUrl()}/api/newsletter/unsubscribe?email=${encodeURIComponent(subscriber.email)}`;
+      const sent = await trySendEmail({ to: subscriber.email, ...buildProductMarketingMessage({ email: subscriber.email, products: matching, unsubscribeUrl }) });
+      if (sent) {
+        await deliveries.insertOne({ subscriberEmail: subscriber.email, productId: matching[0].id, productIds: matching.map(product => product.id), sentAt: new Date() });
+      }
+    }
+  } catch (error) {
+    console.error('New-product marketing campaign failed:', error instanceof Error ? error.message : error);
+  }
+}
+
 app.post('/api/contact', async (req, res) => {
   const { name, email, message } = req.body;
 
@@ -1769,6 +1839,74 @@ app.post('/api/contact', async (req, res) => {
   } catch (error) {
     console.error('Failed to handle contact submission:', error);
     return res.status(500).json({ success: false, message: 'Unable to send your contact message at this time.' });
+  }
+});
+
+app.post('/api/newsletter/subscribe', async (req, res) => {
+  const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+  const interests = Array.isArray(req.body?.interests)
+    ? req.body.interests.filter((interest: unknown): interest is string => typeof interest === 'string').map((interest: string) => interest.trim()).filter(Boolean).slice(0, 12)
+    : [];
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!email || email.length > 254 || !emailPattern.test(email)) {
+    return res.status(400).json({ success: false, message: 'Please enter a valid email address.' });
+  }
+
+  try {
+    const subscribers = await getNewsletterSubscribersCollection();
+    const result = await subscribers.updateOne(
+      { email },
+      { $setOnInsert: { email, createdAt: new Date() }, $set: { status: 'subscribed', interests, unsubscribedAt: null, updatedAt: new Date() } },
+      { upsert: true }
+    );
+    const alreadySubscribed = result.upsertedCount === 0;
+    let welcomeEmailSent = false;
+    if (!alreadySubscribed) {
+      const unsubscribeUrl = `${resolveAppBaseUrl(req)}/api/newsletter/unsubscribe?email=${encodeURIComponent(email)}`;
+      const welcome = buildNewsletterWelcomeMessage(unsubscribeUrl);
+      welcomeEmailSent = await trySendEmail({ to: email, subject: welcome.subject, text: welcome.text, html: welcome.html });
+    }
+
+    return res.status(200).json({
+      success: true,
+      alreadySubscribed,
+      welcomeEmailSent,
+      message: alreadySubscribed
+        ? 'You are already subscribed to the Amma Wears newsletter.'
+        : 'Thanks for subscribing to the Amma Wears newsletter.',
+    });
+  } catch (error) {
+    // A unique-index race can still be treated as the same successful subscription.
+    if (error && typeof error === 'object' && 'code' in error && (error as { code?: number }).code === 11000) {
+      return res.status(200).json({ success: true, alreadySubscribed: true, message: 'You are already subscribed to the Amma Wears newsletter.' });
+    }
+    console.error('Newsletter subscription failed:', error);
+    return res.status(500).json({ success: false, message: 'Unable to subscribe right now. Please try again later.' });
+  }
+});
+
+app.all('/api/newsletter/unsubscribe', async (req, res) => {
+  const email = typeof (req.query.email ?? req.body?.email) === 'string' ? String(req.query.email ?? req.body.email).trim().toLowerCase() : '';
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ success: false, message: 'A valid email address is required.' });
+  }
+
+  try {
+    const subscribers = await getNewsletterSubscribersCollection();
+    const result = await subscribers.updateOne(
+      { email },
+      { $set: { status: 'unsubscribed', unsubscribedAt: new Date(), updatedAt: new Date() } }
+    );
+    return res.status(200).json({
+      success: true,
+      message: result.modifiedCount > 0
+        ? 'You have been unsubscribed from Amma Wears marketing emails.'
+        : 'This email address is already unsubscribed.',
+    });
+  } catch (error) {
+    console.error('Newsletter unsubscribe failed:', error);
+    return res.status(500).json({ success: false, message: 'Unable to unsubscribe right now. Please try again later.' });
   }
 });
 
@@ -3510,6 +3648,51 @@ app.get('/api/products/:id/', async (req: Request, res: Response) => {
   }
 });
 
+app.get('/api/products/:id/reviews', async (req: Request, res: Response) => {
+  try {
+    const productId = String(req.params.id || '').trim();
+    if (!productId) return res.status(400).json({ success: false, message: 'Product id is required.' });
+    const reviews = await (await getReviewsCollection()).find({ productId }).sort({ createdAt: -1 }).limit(50).toArray();
+    const rating = reviews.length
+      ? Math.round((reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / reviews.length) * 10) / 10
+      : null;
+    return res.json({ success: true, reviews, rating, reviewCount: reviews.length });
+  } catch (error) {
+    console.error('Get product reviews error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to load reviews.' });
+  }
+});
+
+app.post('/api/products/:id/reviews', authenticateJwt, async (req: Request, res: Response) => {
+  try {
+    const productId = String(req.params.id || '').trim();
+    const userId = requestUserId((req as Request & { user?: any }).user);
+    const rating = Number(req.body?.rating);
+    const title = String(req.body?.title || '').trim();
+    const comment = String(req.body?.comment || '').trim();
+    if (!productId || !userId) return res.status(400).json({ success: false, message: 'Product and account are required.' });
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) return res.status(400).json({ success: false, message: 'Rating must be a whole number from 1 to 5.' });
+    if (comment.length < 10 || comment.length > 1000) return res.status(400).json({ success: false, message: 'Review must be between 10 and 1000 characters.' });
+    if (title.length > 120) return res.status(400).json({ success: false, message: 'Review title is too long.' });
+
+    const reviews = await getReviewsCollection();
+    const review = { productId, userId, rating, title, comment, createdAt: new Date(), updatedAt: new Date() };
+    const result = await reviews.updateOne(
+      { productId, userId },
+      { $set: { rating, title, comment, updatedAt: review.updatedAt }, $setOnInsert: { createdAt: review.createdAt } },
+      { upsert: true }
+    );
+    return res.status(result.upsertedCount ? 201 : 200).json({ success: true, review, updated: result.modifiedCount > 0 });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('E11000')) {
+      return res.status(409).json({ success: false, message: 'You have already reviewed this product.' });
+    }
+    console.error('Create product review error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to save review.' });
+  }
+});
+
+
 app.post('/api/products/', authenticateJwt, requireAdmin, async (req: Request & { body: ProductCreateDto }, res: Response) => {
   try {
     const productsCollection = await getProductsCollection();
@@ -4045,6 +4228,16 @@ app.get('/health', (req: Request, res: Response) => {
  * End of all route registrations - any custom middleware should be added above
  * this point to avoid overwriting existing behavior.
  */
+app.get('/robots.txt', (_req: Request, res: Response) => {
+  res.type('text/plain').send(`User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: ${resolveAppBaseUrl()}/sitemap.xml\n`);
+});
+
+app.get('/sitemap.xml', (_req: Request, res: Response) => {
+  const base = resolveAppBaseUrl();
+  const urls = ['/', '/products', '/about', '/contact', '/shipping-returns'];
+  res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map(url => `<url><loc>${base}${url}</loc></url>`).join('')}</urlset>`);
+});
+
 /**
  * Unknown API routes return JSON instead of Express' default HTML 404 page.
  * Must be registered after every API route above.
@@ -4179,6 +4372,11 @@ if (isMainModule(import.meta.url) || process.env['pm_id'] || process.env['NODE_E
     console.error('Server experienced an execution error:', error);
     throw error;
   });
+
+  // Half-hour personalized new-product campaigns. The job is best-effort and
+  // remains a no-op until MongoDB, SES, and a verified sender are configured.
+  setInterval(() => { void sendNewProductCampaign(); }, 30 * 60 * 1000);
+  void sendNewProductCampaign();
 
   // Initialize MongoDB in the background (non-blocking)
   ensureMongoDBInitialized().catch((error) => {

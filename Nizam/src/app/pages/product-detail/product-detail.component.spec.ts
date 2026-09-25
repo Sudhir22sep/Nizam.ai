@@ -6,6 +6,7 @@ import { Product, ProductService } from '../../services/product.service';
 import { CartService } from '../../services/cart.service';
 import { WishlistService } from '../../services/wishlist.service';
 import { ToastService } from '../../services/toast.service';
+import { ReviewService } from '../../services/review.service';
 import { ProductDetailComponent } from './product-detail.component';
 
 function makeProduct(id: string, name: string, category: string): Product {
@@ -100,6 +101,7 @@ describe('ProductDetailComponent (zoneless)', () => {
           }
         },
         { provide: ToastService, useValue: toastService },
+        { provide: ReviewService, useValue: { list: () => of({ success: true, reviews: [], rating: null, reviewCount: 0 }), submit: vi.fn() } },
         {
           provide: ActivatedRoute,
           // The component reads the raw `params` dictionary (`params['id']`), so the

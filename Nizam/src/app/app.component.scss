@@ -34,7 +34,7 @@ body {
   position: relative;
   isolation: isolate;
   min-height: calc(100vh - 260px);
-  padding-top: calc(72px + env(safe-area-inset-top, 0px));
+  padding-top: calc(76px + env(safe-area-inset-top, 0px));
   background: var(--bg-page);
 }
 
@@ -110,8 +110,8 @@ body {
     radial-gradient(circle at 82% 0%, rgb(127 0 255 / 18%), transparent 34%),
     radial-gradient(circle at 14% 100%, rgb(0 229 255 / 10%), transparent 32%),
     linear-gradient(160deg, #070a12 0%, #101a2c 58%, #14263d 100%);
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 -24px 70px rgb(0 0 0 / 22%);
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 -24px 70px rgb(0 0 0 / 28%), inset 0 3px 0 rgb(243 207 102 / 72%);
 }
 
 .site-footer::before {
@@ -129,12 +129,12 @@ body {
 .footer-inner {
   position: relative;
   display: grid;
-  max-width: var(--container, 1200px);
-  grid-template-columns: minmax(220px, 1.25fr) minmax(150px, 0.72fr) minmax(170px, 0.82fr) minmax(250px, 1.15fr);
-  gap: clamp(28px, 4vw, 58px);
+  max-width: var(--container, 1440px);
+  grid-template-columns: minmax(230px, 1.2fr) minmax(140px, .65fr) minmax(180px, .8fr) minmax(280px, 1.15fr);
+  gap: clamp(32px, 4.5vw, 72px);
   align-items: start;
   margin: 0 auto;
-  padding: 72px 24px 112px;
+  padding: 84px 32px 116px;
 }
 
 .footer-brand,
@@ -323,7 +323,9 @@ body {
 
 .footer-bottom {
   position: relative;
-  padding: 20px 24px max(20px, env(safe-area-inset-bottom, 0px));
+  max-width: var(--container, 1440px);
+  margin: 0 auto;
+  padding: 22px 32px max(22px, env(safe-area-inset-bottom, 0px));
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   text-align: center;
 }

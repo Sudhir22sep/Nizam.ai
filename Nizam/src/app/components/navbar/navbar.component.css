@@ -15,14 +15,14 @@
 }
 
 .navbar-container {
-  max-width: 1200px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 0 24px;
-  display: flex;
+  padding: 0 32px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  height: 72px;
+  gap: clamp(18px, 2.4vw, 38px);
+  height: 76px;
 }
 
 .navbar-brand {
@@ -47,7 +47,7 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  gap: 6px;
+  gap: clamp(2px, .45vw, 8px);
   flex: 1;
   justify-content: center;
 }
@@ -56,10 +56,11 @@
   display: inline-block;
   text-decoration: none;
   color: rgba(255, 255, 255, 0.78);
-  font-weight: 600;
-  font-size: 0.95rem;
-  padding: 9px 16px;
-  border-radius: 999px;
+  position: relative;
+  font-weight: 650;
+  font-size: 0.92rem;
+  padding: 10px clamp(8px, 1vw, 14px);
+  border-radius: 10px;
   transition: color 0.2s ease, background-color 0.2s ease;
 }
 
@@ -70,7 +71,29 @@
 
 .nav-menu a.active {
   color: #fff;
-  background: rgba(217, 45, 72, 0.32);
+  background: rgb(255 255 255 / 9%);
+}
+
+.nav-menu a.active::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  bottom: 3px;
+  left: 12px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f3cf66, #ff8da0);
+  box-shadow: 0 0 12px rgb(243 207 102 / 45%);
+}
+
+.nav-menu a:focus-visible,
+.logo:focus-visible,
+.icon-btn:focus-visible,
+.currency-select:focus-visible,
+.btn-nav-cta:focus-visible,
+.menu-toggle:focus-visible {
+  outline: 2px solid #f3cf66;
+  outline-offset: 3px;
 }
 
 .navbar-icons {
