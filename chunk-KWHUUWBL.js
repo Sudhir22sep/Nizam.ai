@@ -1,0 +1,1 @@
+import{d as o}from"./chunk-SFAYB5AG.js";var e,n=o(()=>{"use strict";e={production:!1,appName:"Nizam.ai",gaMeasurementId:"G-X8Q0VPPQ0K",apiUrl:typeof window<"u"&&window.location.origin.includes("localhost")?"http://localhost:4000":""}});export{e as a,n as b};
