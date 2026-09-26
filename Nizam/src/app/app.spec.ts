@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
+import { Route } from '@angular/router';
 import { App } from './app';
 import { routes } from './app.routes';
 import { AuthGuard } from './guards/auth.guard';
@@ -71,8 +72,13 @@ describe('app routes', () => {
 
   it('keeps the auth guard on every private destination', () => {
     const guarded = new Set(['checkout', 'orders', 'wishlist', 'checkout-success']);
+    // The explicit `is Route & { path: string }` predicate is what narrows
+    // `path` to `string` for the loop below. A plain `filter` callback does not
+    // propagate the narrowing, so `route.path` stayed `string | undefined` and
+    // the whole test bundle failed to compile with TS2345.
     const privateRoutes = routes.filter(
-      route => route.path && !route.path.includes(':') && route.path !== 'home' && route.path !== '**',
+      (route): route is Route & { path: string } =>
+        !!route.path && !route.path.includes(':') && route.path !== 'home' && route.path !== '**',
     );
 
     for (const route of privateRoutes) {

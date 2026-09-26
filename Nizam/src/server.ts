@@ -4822,10 +4822,10 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
     return next();
   }
 
-  // This server currently exports an Express app as well as the Angular SSR
-  // entry point. Keep the reliable CSR path as the default until SSR is
-  // explicitly enabled in a deployment using a compatible adapter.
-  if (process.env['ENABLE_SSR'] !== 'true') {
+  // SSR is the default. The CSR path is kept as an explicit opt-out because it
+  // still works when the server bundle is missing (a client-only deployment)
+  // or when an engine change needs to be rolled back quickly.
+  if (process.env['ENABLE_SSR'] === 'false') {
     // Without a built client there is nothing on disk to send, and calling
     // `res.sendFile` with a non-existent path throws ENOENT and turns every
     // page request into a 500. Hand the request back so the Vite dev server

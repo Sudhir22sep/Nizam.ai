@@ -6,12 +6,20 @@ services:
     plan: free  # or starter, standard, etc.
     workingDirectory: ./Nizam
     buildCommand: npm install && npm run build
-    startCommand: node dist/Nizam/server/main.server.mjs
+    startCommand: node dist/Nizam/server/server.mjs
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: "4000"
+      # Server-side rendering. The CSR fallback is the escape hatch if the
+      # engine is ever disabled; leave unset to serve the built client only.
+      - key: ENABLE_SSR
+        value: "true"
+      - key: META_VERIFY_TOKEN
+        sync: false  # Set in Render dashboard (WhatsApp webhook handshake)
+      - key: META_APP_SECRET
+        sync: false  # Set in Render dashboard (X-Hub-Signature-256 verification)
       - key: MONGODB_URI
         sync: false  # Set in Render dashboard
       - key: JWT_SECRET

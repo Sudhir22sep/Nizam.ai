@@ -444,8 +444,22 @@ export class ProductService {
     }
   }
 
+  /**
+   * Base URL for server-side requests.
+   *
+   * A relative URL cannot be resolved during SSR, so the server has to address
+   * itself explicitly. It used to be hardcoded to `http://localhost:4000`, which
+   * silently broke whenever the process ran on any other port (Render's PORT,
+   * a local `PORT=4125`, the Codespaces preview URL) — the catalog fetch failed
+   * with ECONNREFUSED and the page rendered empty. Deriving it from PORT keeps
+   * SSR pointed at whichever port this same process is listening on.
+   */
   private get apiUrl(): string {
-    return isPlatformServer(this.platformId) ? 'http://localhost:4000' : '';
+    if (!isPlatformServer(this.platformId)) {
+      return '';
+    }
+    const port = process.env['PORT'] || '4000';
+    return `http://127.0.0.1:${port}`;
   }
 
   /** Add an image URL to a product's gallery (owner/backend tooling). */
