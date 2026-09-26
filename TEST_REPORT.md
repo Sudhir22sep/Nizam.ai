@@ -199,8 +199,28 @@ git push
 
 ## 8. Known issues intentionally left alone
 
-- `/checkout-success` calls the deliberately disabled Stripe endpoint `/api/confirm-payment`. The
-  Razorpay flow confirms in-page, so this page is only reachable by direct URL — legacy Stripe-era code.
-- `APP_URL` is read but only used by commented-out Stripe code, so it has no effect today.
-- `Nizam/server/main.server.mjs` is a committed, hand-maintained entry file unrelated to the build
-  output (`dist/Nizam/server/main.server.mjs`). Harmless, but confusing — consider deleting it.
+> Updated after the SSR/webhook work. All three items below were open when this
+> report was first written; two are now closed and the third is recorded with
+> what is actually left to do.
+
+- ~~`/checkout-success` calls the disabled `/api/confirm-payment`~~ — **closed.**
+  `PaymentService.confirmStripePayment` now posts to `/api/confirm-stripe-payment`,
+  which is a live JWT-authenticated route in `server.ts` that re-fetches the
+  session from Stripe and only releases the order when Stripe reports it paid.
+  The commented-out `/api/confirm-payment` block remains in `server.ts` as dead
+  code and could be deleted.
+- ~~`APP_URL` has no effect~~ — **closed.** `resolveAppBaseUrl()` uses `APP_URL`
+  as the base for links in transactional email, falling back to the request host
+  so Codespaces and preview deployments also work.
+- ~~`Nizam/server/main.server.mjs` is a confusing committed entry file~~ —
+  **closed, deleted.** It was unrelated to the build output: it only read env
+  vars, printed them, and exited without ever listening on a port. Nothing
+  referenced it. Note that the real entry is `dist/Nizam/server/server.mjs`;
+  `main.server.mjs` is the Angular bootstrap module and never calls `listen()`.
+
+### Still open
+
+- **`gaMeasurementId` is the placeholder `G-X8Q0VPPQ0K`** in both
+  `src/environments/environment.ts` and `environment.prod.ts`. Analytics will
+  load but every event goes nowhere. This needs the real GA4 property id from
+  the owner; it cannot be derived from the code.

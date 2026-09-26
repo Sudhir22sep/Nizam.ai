@@ -6,7 +6,7 @@
     "ng": "ng",
     "start": "ng serve",
     "dev:api": "npm run build && node dist/Nizam/server/server.mjs",
-    "dev:full": "npm run build && (node dist/Nizam/server/server.mjs & ng serve --proxy-config proxy.conf.json)",
+    "dev:full": "node scripts/dev.mjs",
     "build": "npm run optimize:images && ng build",
     "optimize:images": "node scripts/optimize-images.mjs",
     "watch": "ng build --watch --configuration development",

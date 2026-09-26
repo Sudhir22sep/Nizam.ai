@@ -1036,8 +1036,23 @@ app.post('/api/create-printful-order', async (req, res) => {
 // In dev mode (Vite), we try to create the engine; if it fails, we fall back to CSR.
 let angularApp: AngularNodeAppEngine | null = null;
 
+// The in-flight initialization, memoized so it runs at most once.
+//
+// Checking `if (!angularApp)` alone is check-then-act: the first page requests
+// arrive concurrently, and every one of them sees a null engine and builds its
+// own before the first assignment lands. That is not only wasted work, it
+// printed "Angular SSR engine initialized successfully" once per racing request
+// (observed twice on a cold start) and left the losers to be discarded while
+// their listeners were still registered. Storing the promise closes the window:
+// the first caller starts the work, the rest await the same result.
+let angularAppInit: Promise<AngularNodeAppEngine | null> | null = null;
+
 async function getAngularApp(): Promise<AngularNodeAppEngine | null> {
-  if (!angularApp) {
+  if (angularApp) {
+    return angularApp;
+  }
+
+  angularAppInit ??= (async () => {
     try {
       // Load Angular SSR manifests (only available in production build)
       await loadAngularManifests();
@@ -1055,15 +1070,25 @@ async function getAngularApp(): Promise<AngularNodeAppEngine | null> {
       // - Production: when the manifest exists (built with ng build)
       // - Development SSR mode (ng run <project>:serve-ssr): when the Angular CLI sets up the environment
       // It will fail in a pure client-side dev setup (ng serve) but we catch the error and fall back to CSR.
-      angularApp = new AngularNodeAppEngine();
+      const engine = new AngularNodeAppEngine();
       console.log('Angular SSR engine initialized successfully');
+      return engine;
     } catch (error) {
       console.warn('AngularNodeAppEngine initialization failed:', error instanceof Error ? error.message : error);
       // Fall back to null to indicate SSR not available
-      angularApp = null;
+      return null;
     }
+  })();
+
+  // A failed init is not cached permanently: `angularAppInit` is reset below so
+  // a later request can retry, but a successful engine is kept for good.
+  const engine = await angularAppInit;
+  if (engine) {
+    angularApp = engine;
+  } else {
+    angularAppInit = null;
   }
-  return angularApp;
+  return engine;
 }
 
 // SES client and verified sender are initialized at the top of the file
@@ -1385,8 +1410,13 @@ async function initializeMongoDB(): Promise<void> {
 
 
 function ensureMongoDBInitialized(): Promise<void> {
-   console.log('ensureMongoDBInitialized called');
+  // Logged inside the guard, not before it. The guard means the connection is
+  // established exactly once, so logging outside it printed
+  // "ensureMongoDBInitialized called" on every request that touched a
+  // collection while the work itself only ever happened once -- which reads as
+  // a repeated failure to anyone watching the log.
   if (!mongoInitPromise) {
+    console.log('ensureMongoDBInitialized called; connecting to MongoDB');
     mongoInitPromise = initializeMongoDB().catch((error) => {
       console.error('MongoDB connection failed, continuing without database:', error.message);
       // Don't exit, just continue without DB
