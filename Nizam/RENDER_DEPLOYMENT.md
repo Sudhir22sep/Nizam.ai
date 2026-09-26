@@ -54,7 +54,7 @@ In Render dashboard → Settings → Environment Variables, add:
 
 **Required:**
 - `MONGODB_URI` = your MongoDB Atlas connection string
-- `JWT_SECRET` = at least 32 random bytes (base64/hex). **The server exits at startup with `JWT_SECRET must be set in the runtime environment` if this is missing**, and every login/register call 500s without it.
+- `JWT_SECRET` = at least 32 random bytes (base64/hex). **The server exits at startup with `JWT_SECRET must be set in the runtime environment` if this is missing**, and every login/register call 500s without it. It is *not* required at build time -- `ng build` imports `src/server.ts` (it is the SSR entry) and the check runs only when the server process actually starts.
 - `SES_REGION` = `us-east-1` (or your SES region)
 - `SES_VERIFIED_SENDER` = your verified SES email (must be a verified identity; the SES sandbox also requires verified recipients)
 - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` = IAM user with `ses:SendEmail` + `ses:SendRawEmail`. Optional: omit both to use the AWS SDK default credential chain (environment, `AWS_PROFILE`/SSO, instance role).

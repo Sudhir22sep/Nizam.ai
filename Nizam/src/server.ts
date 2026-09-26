@@ -639,13 +639,49 @@ console.log('Printful integration:', printful ? 'ENABLED' : 'DISABLED');
 const appUrl = process.env['APP_URL'] || 'http://localhost:4200';
 
 // JWT Configuration
+//
+// NOTE: this module is also imported by the Angular CLI while it builds
+// (`angular.json` -> `ssr.entry` is this file, and the builder imports it to
+// obtain the request handler for SSR/prerendering). A throw at module scope
+// therefore breaks `npm run build` in any environment that does not have the
+// production secrets yet -- e.g. the Docker builder stage, where `.env` is
+// excluded by `.dockerignore`. So the check is deferred: importing this module
+// is always safe, and the process still refuses to start serving without a
+// secret (see `assertJwtSecret` called from the startup block) and every
+// sign/verify path goes through `getJwtSecret()`.
 if (!process.env.JWT_SECRET) {
-  console.error('JWT_SECRET is missing from the runtime environment.');
-  console.error('Set it in the Render dashboard (Environment) or define it in a local .env file.');
-  throw new Error('JWT_SECRET must be set in the runtime environment');
+  console.warn('JWT_SECRET is missing from the environment at import time.');
+  console.warn('This is expected while building. It must be set before the server accepts requests.');
 }
 const jwtSecret = process.env.JWT_SECRET;
 const jwtExpiresIn = '30d';
+
+/**
+ * Read the JWT secret, or throw if it is not configured.
+ *
+ * Used on every signing/verification path so a misconfigured deployment fails
+ * loudly on the affected request instead of silently signing tokens with an
+ * empty key.
+ */
+function getJwtSecret(): string {
+  if (!jwtSecret) {
+    throw new Error('JWT_SECRET must be set in the runtime environment');
+  }
+  return jwtSecret;
+}
+
+/**
+ * Startup guard. Called only when this module is the process entry point, so
+ * a server launched without `JWT_SECRET` still exits immediately instead of
+ * booting and 500ing on every login/register call.
+ */
+function assertJwtSecret(): void {
+  if (!jwtSecret) {
+    console.error('JWT_SECRET is missing from the runtime environment.');
+    console.error('Set it in the Render dashboard (Environment) or define it in a local .env file.');
+    throw new Error('JWT_SECRET must be set in the runtime environment');
+  }
+}
 
 /**
  * Resolve the authenticated user for a request.
@@ -661,7 +697,7 @@ function resolveRequestUser(req: Request): { userId: string; email: string; role
     const token = authHeader.substring(7).trim();
     if (token) {
       try {
-        return jwt.verify(token, jwtSecret) as { userId: string; email: string; role?: string };
+        return jwt.verify(token, getJwtSecret()) as { userId: string; email: string; role?: string };
       } catch (err) {
         // A token that is expired, malformed, or signed with a different JWT_SECRET
         // (e.g. the secret was rotated) must never crash the request. Treat it as
@@ -2304,7 +2340,7 @@ app.get('/api/auth/social/:provider/callback', async (req: Request, res: Respons
 
     const token = jwt.sign(
       { userId: user._id.toString(), email: user.email, role: user.role },
-      jwtSecret,
+      getJwtSecret(),
       { expiresIn: jwtExpiresIn },
     );
 
@@ -2337,7 +2373,7 @@ app.post('/api/auth/social/exchange', (req: Request, res: Response) => {
   }
 
   try {
-    const decoded = jwt.verify(token, jwtSecret) as { userId: string; email: string; role?: string };
+    const decoded = jwt.verify(token, getJwtSecret()) as { userId: string; email: string; role?: string };
     return res.json({
       success: true,
       token,
@@ -2398,7 +2434,7 @@ app.post('/api/auth/register', async (req, res) => {
     // Generate JWT token
     const token = jwt.sign(
       { userId: result.insertedId.toString(), email: user.email, role: user.role },
-      jwtSecret,
+      getJwtSecret(),
       { expiresIn: jwtExpiresIn }
     );
 
@@ -2460,7 +2496,7 @@ app.post('/api/auth/login', async (req, res) => {
     // Generate JWT token
     const token = jwt.sign(
       { userId: user._id.toString(), email: user.email, role: user.role },
-      jwtSecret,
+      getJwtSecret(),
       { expiresIn: jwtExpiresIn }
     );
 
@@ -2603,7 +2639,7 @@ app.get('/api/auth/me', async (req, res) => {
     const token = authHeader.substring(7);
     let decoded: any;
     try {
-      decoded = jwt.verify(token, jwtSecret);
+      decoded = jwt.verify(token, getJwtSecret());
     } catch (err) {
       return res.status(401).json({ success: false, message: 'Invalid or expired token.' });
     }
@@ -2656,7 +2692,7 @@ app.put('/api/auth/profile', async (req, res) => {
     const token = authHeader.substring(7);
     let decoded: any;
     try {
-      decoded = jwt.verify(token, jwtSecret);
+      decoded = jwt.verify(token, getJwtSecret());
     } catch (err) {
       return res.status(401).json({ success: false, message: 'Invalid or expired token.' });
     }
@@ -2722,7 +2758,7 @@ app.post('/api/auth/addresses', async (req, res) => {
     const token = authHeader.substring(7);
     let decoded: any;
     try {
-      decoded = jwt.verify(token, jwtSecret);
+      decoded = jwt.verify(token, getJwtSecret());
     } catch (err) {
       return res.status(401).json({ success: false, message: 'Invalid or expired token.' });
     }
@@ -2791,7 +2827,7 @@ app.delete('/api/auth/addresses/:index', async (req, res) => {
     const token = authHeader.substring(7);
     let decoded: any;
     try {
-      decoded = jwt.verify(token, jwtSecret);
+      decoded = jwt.verify(token, getJwtSecret());
     } catch (err) {
       return res.status(401).json({ success: false, message: 'Invalid or expired token.' });
     }
@@ -4949,11 +4985,37 @@ app.use((err: any, req: any, res: any, next: any) => {
 });
 
 /**
- * Start the server if this module is the main entry point, or it is ran via PM2.
- * In production, the standalone server owns PORT. During `ng serve`, this
- * module is imported for SSR and must not start a second API listener.
+ * Decide whether this process should own the API listener.
+ *
+ * Every supported launch path runs `node dist/Nizam/server/server.mjs`
+ * directly -- the Docker `CMD`, the Render `startCommand`, and
+ * `npm run serve:ssr`. In all of those `isMainModule` is true. PM2 is covered
+ * by `pm_id`.
+ *
+ * `NODE_ENV === 'production'` is deliberately NOT used as a trigger. The
+ * Angular builder sets `NODE_ENV=production` in the child process it uses to
+ * import this module during `ng build`, so keying off it made the build start a
+ * listener and run the startup assertions (and fail the build when secrets
+ * such as `JWT_SECRET` are not present in the build environment, as in the
+ * Docker builder stage where `.env` is excluded by `.dockerignore`).
  */
-if (isMainModule(import.meta.url) || process.env['pm_id'] || process.env['NODE_ENV'] === 'production') {
+function shouldStartServer(): boolean {
+  if (isMainModule(import.meta.url)) {
+    return true;
+  }
+  if (process.env['pm_id']) {
+    return true;
+  }
+  // Escape hatch for hosts that load the bundle as a library but still expect
+  // it to boot. Opt-in only, so it can never fire during a build.
+  return process.env['START_SERVER_ON_IMPORT'] === 'true';
+}
+
+if (shouldStartServer()) {
+  // Fail fast on a misconfigured runtime. The builder imports this module too,
+  // so the check lives here rather than at module scope.
+  assertJwtSecret();
+
   const port = process.env['PORT'] || 4000;
 
   // Start the server immediately - don't wait for MongoDB
