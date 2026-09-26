@@ -3,10 +3,28 @@ import { CurrencyService } from './currency.service';
 
 describe('CurrencyService', () => {
   let service: CurrencyService;
+  // The service derives the starting currency from the browser locale, so the
+  // default is only "USD" for a US region. jsdom inherits whatever locale the
+  // machine/CI runner has (this one resolves to SA -> SAR), which made this
+  // assertion fail for reasons that have nothing to do with the default. Pin
+  // the language so the test checks the documented default rather than the
+  // environment's locale.
+  const originalLanguage = navigator.language;
 
   beforeEach(() => {
+    Object.defineProperty(navigator, 'language', { value: 'en-US', configurable: true });
+    // The service also restores a currency the user picked earlier, which lives
+    // in localStorage. Without this, whichever test calls setCurrency() first
+    // leaves a stored override that the constructor picks up and the default
+    // test then fails on -- an order dependency that only happens to pass
+    // because the cases currently run top to bottom.
+    localStorage.clear();
     TestBed.configureTestingModule({ providers: [CurrencyService] });
     service = TestBed.inject(CurrencyService);
+  });
+
+  afterEach(() => {
+    Object.defineProperty(navigator, 'language', { value: originalLanguage, configurable: true });
   });
 
   it('should default to USD for the US storefront', () => {

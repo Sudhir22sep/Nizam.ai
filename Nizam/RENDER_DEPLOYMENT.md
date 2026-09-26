@@ -6,7 +6,7 @@
 npm run build
 
 # Start the server (for local production testing)
-node dist/Nizam/server/main.server.mjs
+node dist/Nizam/server/server.mjs
 
 # Development SSR (requires ng serve --ssr)
 npm run dev:ssr
@@ -46,7 +46,7 @@ Region: Oregon (US West) or closest to your users
 Branch: main (or your production branch)
 Runtime: Node
 Build Command: npm ci && npm run build
-Start Command: node dist/Nizam/server/main.server.mjs
+Start Command: node dist/Nizam/server/server.mjs
 ```
 
 ### 3. Set Environment Variables
@@ -187,7 +187,8 @@ dist/Nizam/
 │   ├── main-*.js
 │   └── styles-*.css
 └── server/            # Server-side bundle
-    ├── main.server.mjs        # Entry point (run this)
+    ├── server.mjs               # Entry point (run this)
+    ├── main.server.mjs          # Angular bootstrap only, not runnable
     ├── angular-app-manifest.mjs
     ├── angular-app-engine-manifest.mjs
     └── *.mjs                  # Server chunks
