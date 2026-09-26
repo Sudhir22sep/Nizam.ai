@@ -66,6 +66,31 @@ export function primaryProductImage(images: unknown, image?: unknown, productNam
   return normalizeProductImages(images, image, productName)[0] ?? PRODUCT_IMAGE_PLACEHOLDER;
 }
 
+/** Widths the generated WebP variants exist at (see scripts/optimize-images.mjs). */
+const RESPONSIVE_IMAGE_WIDTHS = [320, 640, 1280];
+
+/**
+ * Builds a `srcset` for a local product photo, or null when there is nothing
+ * useful to offer.
+ *
+ * Only bundled repo images have generated WebP variants. Catalog images are
+ * usually remote (myntassets CDN) or SVG, and those are already served in the
+ * most efficient form available, so they get no srcset rather than candidates
+ * that would 404 and make the browser fall back after a wasted request.
+ */
+export function productImageSrcset(image: string | null | undefined): string | null {
+  if (!image || !/^\/images\/products\/.+\.(jpe?g|png)$/i.test(image)) {
+    return null;
+  }
+
+  const dot = image.lastIndexOf('.');
+  const stem = image.slice(0, dot);
+
+  return RESPONSIVE_IMAGE_WIDTHS
+    .map(width => `${stem}-${width}w.webp ${width}w`)
+    .join(', ');
+}
+
 function toOptionalNumber(value: unknown): number | null {
   const numeric = typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
   return typeof numeric === 'number' && Number.isFinite(numeric) ? numeric : null;
@@ -419,8 +444,22 @@ export class ProductService {
     }
   }
 
+  /**
+   * Base URL for server-side requests.
+   *
+   * A relative URL cannot be resolved during SSR, so the server has to address
+   * itself explicitly. It used to be hardcoded to `http://localhost:4000`, which
+   * silently broke whenever the process ran on any other port (Render's PORT,
+   * a local `PORT=4125`, the Codespaces preview URL) — the catalog fetch failed
+   * with ECONNREFUSED and the page rendered empty. Deriving it from PORT keeps
+   * SSR pointed at whichever port this same process is listening on.
+   */
   private get apiUrl(): string {
-    return isPlatformServer(this.platformId) ? 'http://localhost:4000' : '';
+    if (!isPlatformServer(this.platformId)) {
+      return '';
+    }
+    const port = process.env['PORT'] || '4000';
+    return `http://127.0.0.1:${port}`;
   }
 
   /** Add an image URL to a product's gallery (owner/backend tooling). */

@@ -1,7 +1,7 @@
 .products-container {
-  max-width: 1200px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 0 24px 96px;
+  padding: 0 clamp(16px, 3vw, 48px) 96px;
   background:
     radial-gradient(640px 320px at 92% 4%, rgba(217, 45, 72, 0.08), transparent 60%),
     radial-gradient(560px 300px at 4% 62%, rgba(20, 38, 61, 0.05), transparent 60%),
@@ -76,6 +76,18 @@
 .product-card {
   min-width: 0;
   height: 100%;
+}
+
+/* Auto-load sentinel: zero-height marker the observer watches. */
+.load-more-sentinel {
+  width: 100%;
+  height: 1px;
+}
+
+.load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 40px;
 }
 
 .product-image {
@@ -264,10 +276,11 @@
   padding: 64px 20px;
 }
 
-/* Dark header band on the shop page */
+/* Dark header band on the shop page. The negative inline margin cancels the
+   container gutter so the band runs the full width of the viewport. */
 .products-container .page-header {
-  margin: 0 -24px 48px;
-  padding: 76px 24px 68px;
+  margin: 0 calc(clamp(16px, 3vw, 48px) * -1) 48px;
+  padding: 76px clamp(16px, 3vw, 48px) 68px;
   text-align: center;
   background: linear-gradient(135deg, #03030a 0%, #0d0718 55%, #030b16 100%);
   border-radius: 0 0 40px 40px;

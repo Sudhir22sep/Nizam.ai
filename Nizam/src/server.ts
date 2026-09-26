@@ -2,9 +2,10 @@
 import { createNodeRequestHandler } from '@angular/ssr/node';
 import express, { Response, Request, NextFunction } from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
-import { resolve } from 'path';
+import { resolve, relative, sep } from 'path';
 import { join } from 'path';
 import { existsSync, readFileSync } from 'fs';
 import { writeResponseToNodeResponse } from '@angular/ssr/node';
@@ -17,6 +18,7 @@ import { AngularNodeAppEngine } from '@angular/ssr/node';
 import { ɵsetAngularAppManifest, ɵsetAngularAppEngineManifest } from '@angular/ssr';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { randomBytes, timingSafeEqual } from 'crypto';
 
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -34,6 +36,11 @@ import {
   sanitizeAssistantRequest,
   type AssistantReply
 } from './server/ai-assistant';
+import {
+  buildInboundMessageEmail,
+  parseInboundMessages,
+  verifyMetaSignature,
+} from './server/meta-webhook';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -69,22 +76,57 @@ if (!process.env['NG_TRUST_PROXY_HEADERS']) {
   process.env['NG_TRUST_PROXY_HEADERS'] = 'x-forwarded-for,x-forwarded-host,x-forwarded-port,x-forwarded-proto,x-forwarded-scheme';
 }
 
-// Browser distribution folder for SSR
-// In production build, __dirname is dist/Nizam/server/, so browser is at ../browser
-const browserDistFolder = resolve(__dirname, '../browser');
+// Browser distribution folder for SSR.
+//
+// This has to survive three different places `__dirname` can point at:
+//   - production:  dist/Nizam/server  -> ../browser            (built output)
+//   - `ng serve`:  .angular/vite-root/Nizam -> ../browser       (does NOT exist)
+//   - ts-node/src: src -> ../dist/Nizam/browser               (dev without a build)
+// Only the first exists, so the others are probed rather than assumed. Probing
+// matters because guessing wrong produced ENOENT on every page request under
+// `ng serve`, where the browser assets are served by Vite from memory and there
+// is no `index.csr.html` on disk at all.
+//
+// Paths under `.angular` are excluded outright. The Vite dev server creates
+// `.angular/vite-root/browser` while it builds and deletes it once the build
+// settles, so a plain `existsSync` probe can win that race and select a
+// directory that is gone by the first request -- which is what turned every
+// `ng serve` page load into `ENOENT ... index.csr.html` and a 500. Under
+// `ng serve` there is genuinely no browser bundle on disk, so the candidate is
+// dropped and the request is handed back to Vite, which serves it from memory.
+const isViteScratchPath = (candidate: string): boolean => {
+  const rel = relative(process.cwd(), candidate);
+  return rel === '.angular' || rel.startsWith(`.angular${sep}`);
+};
+
+const BROWSER_DIST_CANDIDATES = [
+  resolve(__dirname, '../browser'),
+  resolve(__dirname, '../../dist/Nizam/browser'),
+  resolve(process.cwd(), 'dist/Nizam/browser'),
+].filter((candidate) => !isViteScratchPath(candidate));
+
+const browserDistFolder =
+  BROWSER_DIST_CANDIDATES.find((candidate) => existsSync(candidate)) ?? BROWSER_DIST_CANDIDATES[0];
 
 /**
  * Angular may emit index.csr.html for client-rendered routes or index.html
  * when CSR is the application's default render output. Support both layouts
  * so the standalone server never points at a file that was not generated.
+ *
+ * Returns null when there is no built client on disk. Callers must treat that
+ * as "there is nothing to send" and hand off to the dev server rather than
+ * calling `res.sendFile` with a path that does not exist.
  */
-function getClientFallbackPath(): string {
+function getClientFallbackPath(): string | null {
   const candidates = [
     join(browserDistFolder, 'index.csr.html'),
     join(browserDistFolder, 'index.html'),
   ];
-  return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0];
+  return candidates.find((candidate) => existsSync(candidate)) ?? null;
 }
+
+/** True when a built browser bundle is available to serve from disk. */
+const hasBuiltClient = (): boolean => getClientFallbackPath() !== null;
 
 // ─── Owner-only product fields & bundled catalog ──────────────────────────────
 
@@ -152,6 +194,7 @@ function loadBundledCatalog(): Record<string, any>[] {
     resolve(browserDistFolder, 'assets/products.json'),
     resolve(process.cwd(), 'public/assets/products.json'),
     resolve(__dirname, '../public/assets/products.json'),
+    resolve(process.cwd(), 'dist/Nizam/browser/assets/products.json'),
   ];
 
   for (const candidate of candidates) {
@@ -578,6 +621,15 @@ const qikink = qikinkApiKey ? true : false;
 console.log('Qikink API Key:', qikinkApiKey ? 'SET' : 'NOT SET');
 console.log('Qikink integration:', qikink ? 'ENABLED' : 'DISABLED');
 
+// Meta (WhatsApp Cloud API / Messenger) Configuration
+// Shared secret typed into the Meta app dashboard when subscribing the webhook.
+const metaVerifyToken = process.env['META_VERIFY_TOKEN'] || 'ammawearssecret2026';
+console.log('Meta verify token:', process.env['META_VERIFY_TOKEN'] ? 'SET (env)' : 'NOT SET (using default)');
+// App secret is what `X-Hub-Signature-256` is computed with. Without it every
+// POST is rejected, so the inbox integration is simply inert until it is set.
+const metaAppSecret = process.env['META_APP_SECRET'] || '';
+console.log('Meta app secret:', metaAppSecret ? 'SET' : 'NOT SET (inbound messages will be rejected)');
+
 // Printful Configuration
 const printfulApiKey = process.env['PRINTFUL_API_KEY'] || '';
 const printful = printfulApiKey ? true : false;
@@ -676,7 +728,14 @@ interface UserDocument {
 app.use('/api/razorpay-webhook', express.raw({ type: 'application/json' }));
 // Stripe signs its webhook payloads the same way, so it also needs the raw body.
 app.use('/api/stripe-webhook', express.raw({ type: 'application/json' }));
+// Meta signs the exact bytes it sent in `X-Hub-Signature-256`, so its callback
+// (POST on the site root, next to the GET handshake) also needs the raw body.
+// Registered as POST-only so normal page requests are untouched.
+app.post('/', express.raw({ type: 'application/json' }));
 app.use(express.json());
+// Parses the short-lived cookies used by the social sign-in handshake
+// (the CSRF `state` nonce and the one-time token cookie).
+app.use(cookieParser());
 
 // CORS configuration for Vercel frontend → Render backend
 const corsOrigin = process.env['CORS_ORIGIN'] || 'http://localhost:4200';
@@ -977,8 +1036,23 @@ app.post('/api/create-printful-order', async (req, res) => {
 // In dev mode (Vite), we try to create the engine; if it fails, we fall back to CSR.
 let angularApp: AngularNodeAppEngine | null = null;
 
+// The in-flight initialization, memoized so it runs at most once.
+//
+// Checking `if (!angularApp)` alone is check-then-act: the first page requests
+// arrive concurrently, and every one of them sees a null engine and builds its
+// own before the first assignment lands. That is not only wasted work, it
+// printed "Angular SSR engine initialized successfully" once per racing request
+// (observed twice on a cold start) and left the losers to be discarded while
+// their listeners were still registered. Storing the promise closes the window:
+// the first caller starts the work, the rest await the same result.
+let angularAppInit: Promise<AngularNodeAppEngine | null> | null = null;
+
 async function getAngularApp(): Promise<AngularNodeAppEngine | null> {
-  if (!angularApp) {
+  if (angularApp) {
+    return angularApp;
+  }
+
+  angularAppInit ??= (async () => {
     try {
       // Load Angular SSR manifests (only available in production build)
       await loadAngularManifests();
@@ -996,15 +1070,25 @@ async function getAngularApp(): Promise<AngularNodeAppEngine | null> {
       // - Production: when the manifest exists (built with ng build)
       // - Development SSR mode (ng run <project>:serve-ssr): when the Angular CLI sets up the environment
       // It will fail in a pure client-side dev setup (ng serve) but we catch the error and fall back to CSR.
-      angularApp = new AngularNodeAppEngine();
+      const engine = new AngularNodeAppEngine();
       console.log('Angular SSR engine initialized successfully');
+      return engine;
     } catch (error) {
       console.warn('AngularNodeAppEngine initialization failed:', error instanceof Error ? error.message : error);
       // Fall back to null to indicate SSR not available
-      angularApp = null;
+      return null;
     }
+  })();
+
+  // A failed init is not cached permanently: `angularAppInit` is reset below so
+  // a later request can retry, but a successful engine is kept for good.
+  const engine = await angularAppInit;
+  if (engine) {
+    angularApp = engine;
+  } else {
+    angularAppInit = null;
   }
-  return angularApp;
+  return engine;
 }
 
 // SES client and verified sender are initialized at the top of the file
@@ -1308,6 +1392,11 @@ async function initializeMongoDB(): Promise<void> {
     await usersCollection.createIndex({ email: 1 }, { unique: true });
     await contactsCollection.createIndex({ email: 1 });
     await productsCollection.createIndex({ name: 'text', description: 'text' });
+    // The shop grid filters by category, sorts by recency and filters on price,
+    // so these match the /api/products query shape and avoid a collection scan.
+    await productsCollection.createIndex({ category: 1, createdAt: -1 });
+    await productsCollection.createIndex({ basePrice: 1 });
+    await productsCollection.createIndex({ isActive: 1, createdAt: -1 });
     await newsletterCollection.createIndex({ email: 1 }, { unique: true });
 
     console.log('MongoDB connected successfully');
@@ -1321,8 +1410,13 @@ async function initializeMongoDB(): Promise<void> {
 
 
 function ensureMongoDBInitialized(): Promise<void> {
-   console.log('ensureMongoDBInitialized called');
+  // Logged inside the guard, not before it. The guard means the connection is
+  // established exactly once, so logging outside it printed
+  // "ensureMongoDBInitialized called" on every request that touched a
+  // collection while the work itself only ever happened once -- which reads as
+  // a repeated failure to anyone watching the log.
   if (!mongoInitPromise) {
+    console.log('ensureMongoDBInitialized called; connecting to MongoDB');
     mongoInitPromise = initializeMongoDB().catch((error) => {
       console.error('MongoDB connection failed, continuing without database:', error.message);
       // Don't exit, just continue without DB
@@ -1418,6 +1512,20 @@ async function getWishlistsCollection() {
     throw new Error('MongoDB not connected');
   }
   return db.collection('wishlists');
+}
+
+// Inbound WhatsApp messages. The unique index on `messageId` is the
+// de-duplication guard: Meta redelivers a payload it considers unacknowledged,
+// and insertOne then fails as a duplicate instead of emailing the owner twice.
+async function getMetaMessagesCollection() {
+  await ensureMongoDBInitialized();
+
+  if (!db) {
+    throw new Error('MongoDB not connected');
+  }
+  const collection = db.collection('meta_messages');
+  await collection.createIndex({ messageId: 1 }, { unique: true });
+  return collection;
 }
 
 // Get or create reviews collection
@@ -1973,6 +2081,276 @@ app.post('/api/save-user', async (req, res) => {
 // ============================================
 // AUTHENTICATION ENDPOINTS
 // ============================================
+
+// ============================================
+// SOCIAL LOGIN (OAuth 2.0)
+// ============================================
+
+/**
+ * Social sign-in providers.
+ *
+ * The flow is the standard OAuth 2.0 authorization-code grant, implemented
+ * directly against each provider's token/userinfo endpoints so the project
+ * needs no extra OAuth library. A provider is only offered when its client id
+ * and secret are configured, so an unconfigured deployment degrades to
+ * email/password instead of showing a button that cannot work.
+ */
+const GOOGLE_CLIENT_ID = process.env['GOOGLE_CLIENT_ID'] || '';
+const GOOGLE_CLIENT_SECRET = process.env['GOOGLE_CLIENT_SECRET'] || '';
+const FACEBOOK_CLIENT_ID = process.env['FACEBOOK_CLIENT_ID'] || '';
+const FACEBOOK_CLIENT_SECRET = process.env['FACEBOOK_CLIENT_SECRET'] || '';
+
+/** How long an unredeemed authorization code or handshake cookie may live. */
+const SOCIAL_STATE_TTL_MS = 10 * 60 * 1000;
+
+/** Exchanges an authorization code for an access token. */
+async function exchangeCodeForToken(tokenUrl: string, params: Record<string, string>): Promise<string> {
+  const response = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+    body: new URLSearchParams(params).toString(),
+  });
+
+  const data: any = await response.json().catch(() => ({}));
+  if (!response.ok || !data?.access_token) {
+    console.error('OAuth token exchange failed:', response.status, data?.error ?? data?.error_description);
+    throw new Error('token_exchange_failed');
+  }
+  return data.access_token as string;
+}
+
+type OAuthProfile = {
+  email: string;
+  firstName: string;
+  lastName: string;
+  avatar?: string;
+  providerId: string;
+};
+
+/** Fetches the normalized profile for an access token. */
+async function fetchOAuthProfile(profileUrl: string, accessToken: string): Promise<OAuthProfile> {
+  const response = await fetch(profileUrl, {
+    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
+  });
+
+  const data: any = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    console.error('OAuth profile fetch failed:', response.status);
+    throw new Error('profile_fetch_failed');
+  }
+
+  if (data.email) {
+    return {
+      email: String(data.email).toLowerCase().trim(),
+      firstName: data.given_name || data.name?.split(' ')[0] || '',
+      lastName: data.family_name || data.name?.split(' ').slice(1).join(' ') || '',
+      avatar: data.picture,
+      providerId: String(data.sub ?? data.id),
+    };
+  }
+
+  // Facebook only returns an email on /me when the email permission was granted.
+  throw new Error(data.error?.message ?? 'email_not_provided');
+}
+
+/** Providers the client may offer, filtered to those actually configured. */
+app.get('/api/auth/social/providers', (_req: Request, res: Response) => {
+  res.json({
+    success: true,
+    providers: [
+      Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) ? 'google' : null,
+      Boolean(FACEBOOK_CLIENT_ID && FACEBOOK_CLIENT_SECRET) ? 'facebook' : null,
+    ].filter(Boolean),
+  });
+});
+
+/**
+ * Starts the flow. The `state` value is a random nonce stored in an httpOnly,
+ * sameSite=lax cookie; the callback compares them, which is what blocks CSRF on
+ * the callback (the cookie is still sent on the provider's top-level redirect).
+ */
+app.get('/api/auth/social/:provider/start', (req: Request, res: Response) => {
+  const { provider } = req.params;
+  const config = provider === 'google'
+    ? { id: GOOGLE_CLIENT_ID, secret: GOOGLE_CLIENT_SECRET, url: 'https://accounts.google.com/o/oauth2/v2/auth', scope: 'openid email profile' }
+    : provider === 'facebook'
+      ? { id: FACEBOOK_CLIENT_ID, secret: FACEBOOK_CLIENT_SECRET, url: 'https://www.facebook.com/v21.0/dialog/oauth', scope: 'email public_profile' }
+      : null;
+
+  if (!config?.id || !config.secret) {
+    return res.status(400).json({ success: false, message: `${provider} sign-in is not configured.` });
+  }
+
+  const state = randomBytes(24).toString('hex');
+  res.cookie('social_state', state, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env['NODE_ENV'] === 'production',
+    maxAge: SOCIAL_STATE_TTL_MS,
+  });
+
+  const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/social/${provider}/callback`;
+  const params = new URLSearchParams({
+    client_id: config.id,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: config.scope,
+    state,
+  });
+  if (provider === 'google') {
+    params.set('access_type', 'offline');
+    params.set('prompt', 'select_account');
+  }
+
+  return res.redirect(`${config.url}?${params.toString()}`);
+});
+
+/**
+ * Completes the flow: verifies state, exchanges the code, then finds or creates
+ * the local user and issues the same JWT shape as /api/auth/login so the client
+ * keeps a single "I have a session" code path.
+ */
+app.get('/api/auth/social/:provider/callback', async (req: Request, res: Response) => {
+  const { provider } = req.params;
+  const query = req.query as Record<string, unknown>;
+  const code = typeof query['code'] === 'string' ? query['code'] : '';
+  const state = typeof query['state'] === 'string' ? query['state'] : '';
+  const error = typeof query['error'] === 'string' ? query['error'] : '';
+
+  if (error) {
+    return res.redirect('/login?socialError=denied');
+  }
+  if (!code || !state) {
+    return res.redirect('/login?socialError=invalid_response');
+  }
+
+  // `res.cookie` only sets; the stored nonce is read back off the request.
+  const expected = req.cookies?.social_state;
+  res.clearCookie('social_state');
+  // Length check first: timingSafeEqual throws on mismatched buffer lengths, and
+  // the constant-time compare is what keeps the nonce from leaking by timing.
+  if (!expected || expected.length !== state.length ||
+      !timingSafeEqual(Buffer.from(expected), Buffer.from(state))) {
+    return res.redirect('/login?socialError=state_mismatch');
+  }
+
+  try {
+    const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/social/${provider}/callback`;
+
+    let profile: OAuthProfile;
+    if (provider === 'google') {
+      const accessToken = await exchangeCodeForToken('https://oauth2.googleapis.com/token', {
+        code, client_id: GOOGLE_CLIENT_ID, client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: redirectUri, grant_type: 'authorization_code',
+      });
+      profile = await fetchOAuthProfile('https://openidconnect.googleapis.com/v1/userinfo', accessToken);
+    } else if (provider === 'facebook') {
+      const accessToken = await exchangeCodeForToken('https://graph.facebook.com/v21.0/oauth/access_token', {
+        code, client_id: FACEBOOK_CLIENT_ID, client_secret: FACEBOOK_CLIENT_SECRET,
+        redirect_uri: redirectUri, grant_type: 'authorization_code',
+      });
+      profile = await fetchOAuthProfile(
+        'https://graph.facebook.com/me?fields=id,name,email,first_name,last_name,picture',
+        accessToken,
+      );
+    } else {
+      return res.redirect('/login?socialError=unsupported_provider');
+    }
+
+    if (!profile.email) {
+      return res.redirect('/login?socialError=email_required');
+    }
+
+    const usersCollection = await getUsersCollection();
+    const now = new Date();
+    // Reuse the existing account so a shopper who signed up with a password can
+    // link a provider and keep their cart, wishlist and order history.
+    const existing = await usersCollection.findOne({ email: profile.email }) as UserDocument | null;
+
+    let userId: any;
+    if (existing) {
+      userId = existing._id;
+      await usersCollection.updateOne(
+        { _id: existing._id },
+        {
+          $set: { lastLogin: now },
+          $addToSet: { socialProviders: { provider, providerId: profile.providerId } },
+        },
+      );
+    } else {
+      const created = await usersCollection.insertOne({
+        email: profile.email,
+        // Social accounts have no password. A random hash keeps the field
+        // non-empty so password login can never match this account.
+        passwordHash: await bcrypt.hash(randomBytes(32).toString('hex'), 10),
+        firstName: profile.firstName || 'Customer',
+        lastName: profile.lastName || '',
+        phone: '',
+        addresses: [],
+        socialProviders: [{ provider, providerId: profile.providerId }],
+        avatar: profile.avatar ?? null,
+        createdAt: now,
+        lastLogin: now,
+        isActive: true,
+        role: 'user',
+      });
+      userId = created.insertedId;
+    }
+
+    const user = await usersCollection.findOne({ _id: userId }) as UserDocument;
+    if (!user.isActive) {
+      return res.redirect('/login?socialError=account_disabled');
+    }
+
+    const token = jwt.sign(
+      { userId: user._id.toString(), email: user.email, role: user.role },
+      jwtSecret,
+      { expiresIn: jwtExpiresIn },
+    );
+
+    // Hand the token over in a short-lived httpOnly cookie so it never sits in
+    // the address bar or browser history; the client exchanges it via
+    // POST /api/auth/social/exchange, which puts it in localStorage like a
+    // normal password login.
+    res.cookie('social_token', token, {
+      httpOnly: true, sameSite: 'lax',
+      secure: process.env['NODE_ENV'] === 'production', maxAge: SOCIAL_STATE_TTL_MS,
+    });
+    return res.redirect('/login?socialCallback=1');
+  } catch (err) {
+    console.error('Social login callback error:', err);
+    return res.redirect('/login?socialError=failed');
+  }
+});
+
+/**
+ * Trades the short-lived social cookie for a normal session response, so the
+ * client stores the token exactly as it does after /api/auth/login. The cookie
+ * is cleared immediately, whether or not the exchange succeeds.
+ */
+app.post('/api/auth/social/exchange', (req: Request, res: Response) => {
+  const token = req.cookies?.social_token;
+  res.clearCookie('social_token');
+
+  if (!token) {
+    return res.status(401).json({ success: false, message: 'No pending social sign-in.' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, jwtSecret) as { userId: string; email: string; role?: string };
+    return res.json({
+      success: true,
+      token,
+      user: {
+        id: decoded.userId,
+        email: decoded.email,
+        role: decoded.role ?? 'user',
+      },
+    });
+  } catch {
+    return res.status(401).json({ success: false, message: 'Social sign-in expired. Please try again.' });
+  }
+});
 
 /**
  * Register a new user
@@ -3620,6 +3998,83 @@ app.get('/api/products/', async (req, res) => {
   }
 });
 
+/**
+ * Lean catalog feed for the shop grid.
+ *
+ * `/api/products/` returns full documents (long descriptions, every variant,
+ * review payloads). The grid only renders a card per product, so this endpoint
+ * projects just the fields a card needs and lets Mongo skip the heavy ones.
+ * The front end falls back to the full endpoint if this one is unavailable.
+ */
+const LIST_PRODUCT_PROJECTION = {
+  _id: 1,
+  name: 1,
+  basePrice: 1,
+  price: 1,
+  originalPrice: 1,
+  currency: 1,
+  category: 1,
+  images: 1,
+  image: 1,
+  rating: 1,
+  averageRating: 1,
+  reviewCount: 1,
+  reviewsCount: 1,
+  numReviews: 1,
+  stock: 1,
+  tags: 1,
+  isActive: 1,
+  createdAt: 1,
+} as const;
+
+app.get('/api/products/list', async (req, res) => {
+  try {
+    const productsCollection = await getProductsCollection();
+    const { category, minPrice, maxPrice, search, limit = 48, page = 1 } = req.query;
+
+    const filter: any = {};
+    if (category) filter.category = category;
+    if (minPrice !== undefined && maxPrice !== undefined) {
+      filter.basePrice = { $gte: Number(minPrice), $lte: Number(maxPrice) };
+    } else if (minPrice !== undefined) {
+      filter.basePrice = { $gte: Number(minPrice) };
+    } else if (maxPrice !== undefined) {
+      filter.basePrice = { $lte: Number(maxPrice) };
+    }
+    if (search) filter.$text = { $search: search };
+
+    const safeLimit = Math.min(Math.max(Number(limit) || 48, 1), 200);
+    const skip = (Math.max(Number(page) || 1, 1) - 1) * safeLimit;
+
+    const [rawProducts, total] = await Promise.all([
+      productsCollection
+        .find(filter, { projection: LIST_PRODUCT_PROJECTION })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(safeLimit)
+        .toArray(),
+      productsCollection.countDocuments(filter),
+    ]);
+
+    // Keep the owner-only strip and name cleanup, but drop the fields the grid
+    // never renders so the response stays small.
+    const products = rawProducts.map((raw: any) => {
+      const product = toPublicCatalogProduct(raw);
+      delete product.description;
+      delete product.variants;
+      delete product.updatedAt;
+      delete product.buyUrl;
+      delete product.supplier;
+      return product;
+    });
+
+    return res.json({ success: true, products, total, page: Number(page) || 1, limit: safeLimit });
+  } catch (error) {
+    console.error('Get product list error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch product list' });
+  }
+});
+
 app.get('/api/products/:id/', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -4218,9 +4673,125 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 /**
+ * Meta (WhatsApp Cloud API / Messenger) webhook verification handshake.
+ *
+ * Meta GETs the configured callback URL with `hub.mode`, `hub.verify_token` and
+ * `hub.challenge` query params and expects the challenge echoed back verbatim.
+ *
+ * This handler MUST NOT swallow ordinary traffic to `/` (the storefront is
+ * served by the static/SSR middleware at the end of this file), so anything
+ * that is not a verification handshake is passed through with `next()`.
+ *
+ * Configure the callback URL as: https://api.ammawears.com/
+ */
+app.get('/', (req: Request, res: Response, next: NextFunction) => {
+  // Guard against invalid response objects (Angular SSR route extraction).
+  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
+    console.error('Invalid response object in meta webhook verification');
+    return;
+  }
+
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+
+  // Not a Meta verification handshake - let the normal page/SSR flow handle it.
+  if (typeof mode !== 'string' || typeof token !== 'string' || typeof challenge !== 'string') {
+    return next();
+  }
+
+  if (mode && token === metaVerifyToken) {
+    console.log('Meta webhook verification succeeded');
+    return res.status(200).type('text/plain').send(challenge);
+  }
+
+  console.warn('Meta webhook verification failed: invalid verify token or mode');
+  return res.status(403).send('Verification failed');
+});
+
+/**
+ * Meta (WhatsApp Cloud API) inbound message delivery.
+ *
+ * Registered on the same callback URL as the handshake above. Meta signs the
+ * exact request bytes, so the raw parser registered near the top of this file
+ * is what makes verification possible; re-serialising the parsed JSON would
+ * change the bytes and the signature would never match.
+ *
+ * Each message is stored first and only the newly inserted ones are emailed, so
+ * a Meta retry cannot notify the store owner twice.
+ */
+app.post('/', async (req: Request, res: Response) => {
+  if (!res || typeof res !== 'object' || typeof res.headersSent !== 'boolean') {
+    console.error('Invalid response object in meta webhook delivery');
+    return;
+  }
+
+  const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body ?? {}));
+  const signature = req.headers['x-hub-signature-256'] as string | undefined;
+
+  if (!verifyMetaSignature(rawBody, signature, metaAppSecret)) {
+    // Fail closed: an unverified payload could be forged by anyone who knows
+    // the callback URL, and it would end up in the owner's inbox.
+    console.warn('Meta webhook delivery rejected: missing or invalid X-Hub-Signature-256');
+    return res.status(401).send('Invalid signature');
+  }
+
+  let payload: unknown;
+  try {
+    payload = JSON.parse(rawBody.toString('utf8'));
+  } catch {
+    console.warn('Meta webhook delivery rejected: body is not valid JSON');
+    return res.status(400).send('Invalid payload');
+  }
+
+  // `parseInboundMessages` is total, so anything unusable simply yields no
+  // messages; acknowledging is still correct because a 4xx would only make
+  // Meta redeliver the same unusable payload.
+  const messages = parseInboundMessages(payload);
+
+  if (messages.length === 0) {
+    return res.status(200).json({ success: true, received: true, processed: 0 });
+  }
+
+  const collection = await getMetaMessagesCollection();
+  let processed = 0;
+  let duplicates = 0;
+
+  for (const message of messages) {
+    // insertOne is the de-duplication gate: a redelivered message collides with
+    // the unique messageId index, so it is counted and skipped rather than
+    // notifying the store owner a second time.
+    let insertedId: ObjectId;
+    try {
+      const inserted = await collection.insertOne({
+        ...message,
+        receivedAt: new Date(),
+        notified: false,
+      });
+      insertedId = inserted.insertedId;
+    } catch (error) {
+      if ((error as { code?: number })?.code === 11000) {
+        duplicates++;
+        continue;
+      }
+      throw error;
+    }
+
+    // Store first, notify second: a crash between the two leaves `notified:
+    // false` to investigate rather than a silently lost customer message.
+    const mail = buildInboundMessageEmail(message);
+    await sendEmail({ to: orderNotificationEmail, ...mail });
+    await collection.updateOne({ _id: insertedId }, { $set: { notified: true } });
+    processed++;
+    console.log(`Meta webhook: stored and notified for message ${message.messageId}`);
+  }
+
+  return res.status(200).json({ success: true, received: true, processed, duplicates });
+});
+
+/**
  * Serve static files from /browser
  * Guard against invalid response objects during Angular SSR route extraction
-
  */ 
 // Competitor price route is handled above - no additional middleware needed here
 
@@ -4254,13 +4825,21 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(
-  express.static(browserDistFolder, {
-    maxAge: '1y',
-    index: false,
-    redirect: false,
-  }),
-);
+// Static assets are only on disk after `ng build`. Under `ng serve` the browser
+// bundle is held in memory by Vite, so registering express.static against a
+// folder that does not exist is pointless; skipping it keeps the error surface
+// clean and lets the dev server answer instead.
+if (hasBuiltClient()) {
+  app.use(
+    express.static(browserDistFolder, {
+      maxAge: '1y',
+      index: false,
+      redirect: false,
+    }),
+  );
+} else {
+  console.log('No built client bundle found; static middleware and CSR fallback disabled (expected under `ng serve`).');
+}
 
 /**
  * Handle all other requests by rendering the Angular application.
@@ -4273,11 +4852,18 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
     return next();
   }
 
-  // This server currently exports an Express app as well as the Angular SSR
-  // entry point. Keep the reliable CSR path as the default until SSR is
-  // explicitly enabled in a deployment using a compatible adapter.
-  if (process.env['ENABLE_SSR'] !== 'true') {
+  // SSR is the default. The CSR path is kept as an explicit opt-out because it
+  // still works when the server bundle is missing (a client-only deployment)
+  // or when an engine change needs to be rolled back quickly.
+  if (process.env['ENABLE_SSR'] === 'false') {
+    // Without a built client there is nothing on disk to send, and calling
+    // `res.sendFile` with a non-existent path throws ENOENT and turns every
+    // page request into a 500. Hand the request back so the Vite dev server
+    // (which serves the client from memory) can answer it instead.
     const fallbackHtml = getClientFallbackPath();
+    if (!fallbackHtml) {
+      return next();
+    }
     if (!res.headersSent) {
       return res.sendFile(fallbackHtml, (err: Error | null) => {
         if (err) {
@@ -4297,8 +4883,13 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
 
     const engine = await getAngularApp();
     if (!engine) {
-      // In development without SSR build, serve the available client entry.
+      // In development without an SSR build, serve the available client entry.
+      // When there is no built client either, pass the request along rather
+      // than erroring on a path that does not exist.
       const fallbackHtml = getClientFallbackPath();
+      if (!fallbackHtml) {
+        return next();
+      }
       if (res && !res.headersSent) {
         res.sendFile(fallbackHtml, (err: Error | null) => {
           if (err) {
@@ -4322,6 +4913,9 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
     // Serve the available CSR entry if SSR fails.
     try {
       const fallbackHtml = getClientFallbackPath();
+      if (!fallbackHtml) {
+        return next(err);
+      }
       if (res && !res.headersSent) {
         res.sendFile(fallbackHtml, (fileErr: Error | null) => {
           if (fileErr) {

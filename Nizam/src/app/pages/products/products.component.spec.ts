@@ -162,4 +162,56 @@ describe('ProductsComponent', () => {
 
     expect(names).toEqual(['Wool Coat', 'Silk Saree', 'Linen Shirt']);
   });
+
+  describe('progressive rendering', () => {
+    function makeCatalog(count: number): Product[] {
+      return Array.from({ length: count }, (_, index) =>
+        makeProduct(String(index), `Style ${index}`, 'Women')
+      );
+    }
+
+    it('mounts only the first page of cards for a large catalog', () => {
+      const fixture = createComponent();
+      productsSignal.set(makeCatalog(120));
+      fixture.detectChanges();
+
+      // A small catalog is never windowed, so the first page is all of it.
+      const rendered = (fixture.nativeElement as HTMLElement).querySelectorAll('.product-card');
+      expect(rendered.length).toBe(24);
+      expect(fixture.componentInstance.filteredProducts().length).toBe(120);
+    });
+
+    it('grows the rendered window one page at a time', () => {
+      const fixture = createComponent();
+      productsSignal.set(makeCatalog(120));
+      fixture.detectChanges();
+
+      fixture.componentInstance.loadMore();
+      fixture.detectChanges();
+
+      expect((fixture.nativeElement as HTMLElement).querySelectorAll('.product-card').length).toBe(48);
+    });
+
+    it('hides the load-more control once the whole catalog is mounted', () => {
+      const fixture = createComponent();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.hasMoreProducts()).toBe(false);
+      expect((fixture.nativeElement as HTMLElement).querySelector('.load-more')).toBeNull();
+    });
+
+    it('resets the window when the category filter changes', () => {
+      const fixture = createComponent();
+      productsSignal.set(makeCatalog(120));
+      fixture.detectChanges();
+      fixture.componentInstance.loadMore();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.visibleCount()).toBe(48);
+
+      fixture.componentInstance.selectedCategory.set('Women');
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.visibleCount()).toBe(24);
+    });
+  });
 });

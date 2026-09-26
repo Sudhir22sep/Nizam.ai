@@ -1,35 +1,79 @@
 import { Routes } from '@angular/router';
 import { HomeComponent } from './pages/home/home.component';
-import { ProductsComponent } from './pages/products/products.component';
-import { CheckoutComponent } from './pages/checkout/checkout.component';
-import { CartComponent } from './pages/cart/cart.component';
-import { ContactComponent } from './pages/contact/contact.component';
-import { CheckoutSuccessComponent } from './pages/checkout-success/checkout-success.component';
-import { LoginComponent } from './pages/login/login.component';
-import { RegisterComponent } from './pages/register/register.component';
-import { ForgotPasswordComponent } from './pages/forgot-password/forgot-password.component';
-import { ResetPasswordComponent } from './pages/reset-password/reset-password.component';
-import { OrdersComponent } from './pages/orders/orders.component';
 import { AuthGuard } from './guards/auth.guard';
-import { AboutComponent } from './pages/about/about.component';
-import { ShippingReturnsComponent } from './pages/shipping-returns/shipping-returns.component';
 
+/**
+ * Every destination except the landing page is lazily loaded.
+ *
+ * The home page is the one route that must be ready for the first paint, so it
+ * stays eager. The rest used to be statically imported, which pulled all of
+ * their templates and components into the initial bundle and pushed it over
+ * the size budget. `loadComponent` splits each into its own chunk that is only
+ * fetched when the shopper actually navigates there, so the initial payload
+ * drops by the combined weight of those pages.
+ */
 export const routes: Routes = [
-  { path: 'home', component: HomeComponent},
-  { path: 'products', component: ProductsComponent },
-  { path: 'cart', component: CartComponent },
-  { path: 'checkout', component: CheckoutComponent, canActivate: [AuthGuard] },
-  { path: 'contact', component: ContactComponent },
-  { path: 'login', component: LoginComponent },
-  { path: 'register', component: RegisterComponent },
-  { path: 'forgot-password', component: ForgotPasswordComponent },
-  { path: 'reset-password', component: ResetPasswordComponent },
-  { path: 'orders', component: OrdersComponent, canActivate: [AuthGuard] },
-  { path: 'about', component: AboutComponent},
-  { path: 'shipping-returns', component: ShippingReturnsComponent},
-  { path: 'wishlist', loadComponent: () => import('./pages/wishlist/wishlist.component').then(m => m.WishlistComponent), canActivate: [AuthGuard] },
-  { path: 'checkout-success', component: CheckoutSuccessComponent, canActivate: [AuthGuard] },
-  { path: 'product/:id', loadComponent: () => import('./pages/product-detail/product-detail.component').then(m => m.ProductDetailComponent) },
-  { path: '', component: ProductsComponent },
+  { path: 'home', redirectTo: '', pathMatch: 'full' },
+  {
+    path: 'products',
+    loadComponent: () => import('./pages/products/products.component').then(m => m.ProductsComponent),
+  },
+  {
+    path: 'cart',
+    loadComponent: () => import('./pages/cart/cart.component').then(m => m.CartComponent),
+  },
+  {
+    path: 'checkout',
+    canActivate: [AuthGuard],
+    loadComponent: () => import('./pages/checkout/checkout.component').then(m => m.CheckoutComponent),
+  },
+  {
+    path: 'contact',
+    loadComponent: () => import('./pages/contact/contact.component').then(m => m.ContactComponent),
+  },
+  {
+    path: 'login',
+    loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent),
+  },
+  {
+    path: 'register',
+    loadComponent: () => import('./pages/register/register.component').then(m => m.RegisterComponent),
+  },
+  {
+    path: 'forgot-password',
+    loadComponent: () => import('./pages/forgot-password/forgot-password.component').then(m => m.ForgotPasswordComponent),
+  },
+  {
+    path: 'reset-password',
+    loadComponent: () => import('./pages/reset-password/reset-password.component').then(m => m.ResetPasswordComponent),
+  },
+  {
+    path: 'orders',
+    canActivate: [AuthGuard],
+    loadComponent: () => import('./pages/orders/orders.component').then(m => m.OrdersComponent),
+  },
+  {
+    path: 'about',
+    loadComponent: () => import('./pages/about/about.component').then(m => m.AboutComponent),
+  },
+  {
+    path: 'shipping-returns',
+    loadComponent: () => import('./pages/shipping-returns/shipping-returns.component').then(m => m.ShippingReturnsComponent),
+  },
+  {
+    path: 'wishlist',
+    canActivate: [AuthGuard],
+    loadComponent: () => import('./pages/wishlist/wishlist.component').then(m => m.WishlistComponent),
+  },
+  {
+    path: 'checkout-success',
+    canActivate: [AuthGuard],
+    loadComponent: () => import('./pages/checkout-success/checkout-success.component').then(m => m.CheckoutSuccessComponent),
+  },
+  {
+    path: 'product/:id',
+    loadComponent: () => import('./pages/product-detail/product-detail.component').then(m => m.ProductDetailComponent),
+  },
+  { path: '', component: HomeComponent },
   { path: '**', redirectTo: '' }
 ];

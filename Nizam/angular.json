@@ -27,12 +27,13 @@
               }
             ],
             "styles": [
-              "src/styles.css",
-              "src/app/app.component.scss"
+              "src/styles.css"
             ],
-            "ssr": true,
-            "prerender": false,
-            "server": "src/server.ts",
+            "ssr": {
+              "entry": "src/server.ts"
+            },
+            "outputMode": "server",
+            "server": "src/main.server.ts",
             "security": {
               "allowedHosts": [
                 "localhost",
@@ -74,8 +75,7 @@
             "development": {
               "optimization": false,
               "extractLicenses": false,
-              "sourceMap": true,
-              "ssr": false
+              "sourceMap": true
             }
           },
           "defaultConfiguration": "production"

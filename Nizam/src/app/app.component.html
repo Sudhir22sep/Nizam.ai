@@ -10,50 +10,6 @@
   <router-outlet></router-outlet>
 </main>
 
-<button
-  type="button"
-  class="glass-preview-launcher"
-  [class.glass-preview-launcher--active]="glassPreviewOpen()"
-  [attr.aria-expanded]="glassPreviewOpen()"
-  aria-controls="site-glass-preview"
-  (click)="glassPreviewOpen.set(true)">
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5Z" />
-    <path d="m4 7.5 8 4.5 8-4.5M12 12v9" />
-  </svg>
-  <span>Glass preview</span>
-</button>
-
-<app-glass-popup
-  id="site-glass-preview"
-  [isOpen]="glassPreviewOpen()"
-  eyebrow="Amma Wears experience"
-  title="Designed to feel beautifully effortless"
-  description="This frosted-glass preview uses layered light, a seamless animated border, and crisp controls—built entirely with Angular and CSS."
-  (closed)="glassPreviewOpen.set(false)">
-  <div class="glass-preview-visual" aria-hidden="true">
-    <span class="glass-preview-visual__orb glass-preview-visual__orb--one"></span>
-    <span class="glass-preview-visual__orb glass-preview-visual__orb--two"></span>
-    <div class="glass-preview-visual__card">
-      <span>Amma Wears</span>
-      <strong>Premium essentials</strong>
-      <small>Comfort · clarity · confidence</small>
-    </div>
-  </div>
-  <div class="glass-preview-actions">
-    <a routerLink="/products" class="btn-primary">
-      Explore the collection <span aria-hidden="true">→</span>
-    </a>
-    <button type="button" class="btn-ghost" (click)="glassPreviewOpen.set(false)">
-      Maybe later
-    </button>
-  </div>
-  <div class="glass-preview-features">
-    <span>30px backdrop blur</span>
-    <span>GPU-friendly motion</span>
-    <span>Accessible controls</span>
-  </div>
-</app-glass-popup>
 
 <app-toast-container></app-toast-container>
 
@@ -64,7 +20,7 @@
 <footer class="site-footer">
   <div class="footer-inner">
     <section class="footer-brand" aria-labelledby="footer-brand-title">
-      <a routerLink="/home" class="footer-logo" id="footer-brand-title">Amma Wears</a>
+      <a routerLink="/" class="footer-logo" id="footer-brand-title">Amma Wears</a>
       <p class="footer-tagline">Everyday luxury for modern wardrobes. Crafted for confident everyday style.</p>
       <div class="footer-social" aria-label="Social media">
         <a href="https://www.instagram.com/ammawears/" target="_blank" rel="noopener noreferrer" aria-label="Amma Wears on Instagram">

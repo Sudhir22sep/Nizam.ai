@@ -14,7 +14,7 @@
           [routerLink]="['/product', product.id]"
           [attr.aria-label]="'View ' + product.name"
         >
-          <img [src]="primaryImage(product)" [alt]="product.name">
+          <img [src]="primaryImage(product)" [attr.srcset]="srcsetFor(product)" [alt]="product.name">
           <span>{{ product.name }}</span>
         </a>
       }
@@ -25,13 +25,14 @@
     <label class="catalog-search">
       <span class="sr-only">Search products</span>
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
-      <input type="search" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" placeholder="Search styles, fabrics, categories…" autocomplete="off">
-      @if (searchQuery()) { <button type="button" (click)="searchQuery.set('')" aria-label="Clear product search">×</button> }
+      <input type="search" [ngModel]="searchQuery()" (ngModelChange)="setSearchQuery($event)" placeholder="Search styles, fabrics, categories…" autocomplete="off">
+      @if (searchQuery()) { <button type="button" (click)="setSearchQuery('')" aria-label="Clear product search">×</button> }
     </label>
     <label class="catalog-sort">
       <span>Sort</span>
-      <select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)" aria-label="Sort products">
+      <select [ngModel]="sortBy()" (ngModelChange)="setSort($event)" aria-label="Sort products">
         <option value="featured">Featured</option>
+        <option value="newest">Newest first</option>
         <option value="price-low">Price: low to high</option>
         <option value="price-high">Price: high to low</option>
         <option value="name">Name: A to Z</option>
@@ -43,7 +44,7 @@
     <span class="results-count">{{ filteredProducts().length }} styles</span>
     <button
       class="filter-btn"
-      [class.active]="selectedCategory() === ''"
+      [class.active]="selectedCategory() === '' && !searchQuery()"
       (click)="resetFilter()">
       All
     </button>
@@ -58,7 +59,7 @@
   </div>
 
   <div class="products-grid">
-    @for (product of filteredProducts(); track product.id) {
+    @for (product of visibleProducts(); track product.id) {
       <app-product-card
         class="product-card"
         [product]="product"
@@ -68,6 +69,16 @@
       />
     }
   </div>
+
+  @if (hasMoreProducts()) {
+    <!-- Observed so the next page mounts just before the user reaches it. -->
+    <div #loadMoreSentinel class="load-more-sentinel" aria-hidden="true"></div>
+    <div class="load-more">
+      <button type="button" class="btn-outline" (click)="loadMore()">
+        Load more products
+      </button>
+    </div>
+  }
 
   @if (filteredProducts().length === 0) {
   <div class="no-products-wrapper">

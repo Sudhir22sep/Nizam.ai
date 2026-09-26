@@ -4,7 +4,7 @@
 # Usage:
 #   BASE=http://localhost:4000 bash scripts/smoke-test.sh
 #
-# Expects a running server (node dist/Nizam/server/main.server.mjs).
+# Expects a running server (node dist/Nizam/server/server.mjs).
 # NOTE: the "no token" order/wishlist cases return 200 in development because
 # development falls back to a sandbox user; in production (NODE_ENV=production)
 # they return 401.

@@ -6,7 +6,7 @@ services:
     plan: free  # or starter, standard, etc.
     workingDirectory: .
     buildCommand: npm install && npm run build
-    startCommand: node dist/Nizam/server/main.server.mjs
+    startCommand: node dist/Nizam/server/server.mjs
     envVars:
       - key: NODE_ENV
         value: production

@@ -29,9 +29,9 @@
 }
 .featured-categories,
 .value-grid-wrap {
-  max-width: 1200px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 96px 24px;
+  padding: 96px clamp(16px, 3vw, 48px);
 }
 .featured-categories {
   position: relative;
@@ -65,9 +65,9 @@
   color: var(--brand-primary-strong);
 }
 .home-bento {
-  max-width: 1200px;
+  max-width: 100%;
   margin: 0 auto 80px;
-  padding: 0 24px;
+  padding: 0 clamp(16px, 3vw, 48px);
 }
 
 .home-bento__head {
@@ -195,9 +195,9 @@
 
 .value-grid {
   position: relative;
-  max-width: 1200px;
+  max-width: 100%;
   margin: 0 auto 80px;
-  padding: 44px 48px;
+  padding: 96px clamp(16px, 3vw, 48px) 44px;
   display: grid;
   grid-template-columns: 1.15fr repeat(3, 1fr);
   gap: 1px;

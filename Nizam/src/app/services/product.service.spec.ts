@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { normalizeProductImages, normalizeProductVariants, primaryProductImage, productSizes, variantPrice } from './product.service';
+import { normalizeProductImages, normalizeProductVariants, primaryProductImage, productImageSrcset, productSizes, variantPrice } from './product.service';
 import { ProductService } from './product.service';
 import { Product } from './product.service';
 
@@ -168,6 +168,23 @@ describe('ProductService', () => {
     it('should keep image paths root-relative on nested detail routes', () => {
       expect(primaryProductImage(['images/products/tee.jpeg'], undefined, 'Tee')).toBe('/images/products/tee.jpeg');
       expect(normalizeProductImages([], undefined, 'Tee')).toEqual([]);
+    });
+
+    it('should offer WebP candidates for bundled product photos', () => {
+      expect(productImageSrcset('/images/products/satin-slip-dress.jpeg')).toBe(
+        '/images/products/satin-slip-dress-320w.webp 320w, ' +
+        '/images/products/satin-slip-dress-640w.webp 640w, ' +
+        '/images/products/satin-slip-dress-1280w.webp 1280w',
+      );
+    });
+
+    it('should not offer candidates for images with no generated variants', () => {
+      // A CDN image would 404 on every candidate and cost an extra round trip.
+      expect(productImageSrcset('https://assets.myntassets.com/assets/images/1.jpg')).toBeNull();
+      // Vector art is already the smallest useful form.
+      expect(productImageSrcset('/images/products/placeholder.svg')).toBeNull();
+      expect(productImageSrcset(null)).toBeNull();
+      expect(productImageSrcset(undefined)).toBeNull();
     });
   });
 });

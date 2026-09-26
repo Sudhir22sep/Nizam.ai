@@ -17,6 +17,10 @@ export class LoginComponent implements OnInit {
   loginForm: FormGroup;
   isLoading = false;
   errorMessage: string | null = null;
+  /** Providers the server has credentials for; empty hides the buttons. */
+  socialProviders: string[] = [];
+  /** Set while the provider redirect is being exchanged for a session. */
+  completingSocialLogin = false;
 
   constructor(
     private fb: FormBuilder,
@@ -31,10 +35,72 @@ export class LoginComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // The provider redirects back here with ?socialCallback=1 (or
+    // ?socialError=…). Finish the handshake before the "already signed in"
+    // check below would redirect away from the page.
+    this.finishSocialLoginFromRedirect();
+
     // If user is already logged in, redirect to home
     if (this.authService.isLoggedIn()) {
       this.router.navigate(['/']);
     }
+
+    this.authService.getSocialProviders().subscribe(providers => {
+      this.socialProviders = providers;
+    });
+  }
+
+  /** Reads the redirect query params and completes or reports the social flow. */
+  private finishSocialLoginFromRedirect(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const failure = params.get('socialError');
+    if (failure) {
+      this.errorMessage = this.socialErrorMessage(failure);
+      return;
+    }
+
+    if (params.get('socialCallback') !== '1') {
+      return;
+    }
+
+    this.completingSocialLogin = true;
+    this.authService.completeSocialLogin().subscribe({
+      next: () => {
+        this.completingSocialLogin = false;
+        const redirectUrl = this.authService.redirectUrl || '/';
+        this.router.navigateByUrl(redirectUrl);
+      },
+      error: () => {
+        this.completingSocialLogin = false;
+        this.errorMessage = 'We could not complete that sign-in. Please try again.';
+      },
+    });
+  }
+
+  private socialErrorMessage(code: string): string {
+    switch (code) {
+      case 'denied':
+        return 'Sign-in was cancelled. No worries — you can use email and password instead.';
+      case 'account_disabled':
+        return 'This account has been deactivated.';
+      case 'email_required':
+        return 'That provider did not share an email address. Please use email and password.';
+      case 'state_mismatch':
+      case 'invalid_response':
+        return 'That sign-in link expired or could not be verified. Please try again.';
+      default:
+        return 'Social sign-in is unavailable right now. Please use email and password.';
+    }
+  }
+
+  /** Hands the browser to the provider's consent screen. */
+  loginWith(provider: string): void {
+    this.errorMessage = null;
+    this.authService.startSocialLogin(provider);
   }
 
   onSubmit(): void {

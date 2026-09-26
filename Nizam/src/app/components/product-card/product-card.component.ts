@@ -14,7 +14,12 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { Product, normalizeProductImages, primaryProductImage } from '../../services/product.service';
+import {
+  Product,
+  normalizeProductImages,
+  primaryProductImage,
+  productImageSrcset,
+} from '../../services/product.service';
 import { ImageFallbackDirective } from '../../directives/image-fallback.directive';
 import { PricePipe } from '../../pipes/price.pipe';
 
@@ -131,6 +136,14 @@ export class ProductCardComponent implements OnDestroy {
   /** Currently visible product image. */
   get image(): string {
     return this.images[this.activeImageIndex()] ?? primaryProductImage(undefined, undefined, this.product?.name);
+  }
+
+  /**
+   * Responsive WebP candidates for a bundled photo, or null for catalog images
+   * that live on a CDN and have no local variants.
+   */
+  productImageSrcset(image: string): string | null {
+    return productImageSrcset(image);
   }
 
   selectImage(index: number): void {

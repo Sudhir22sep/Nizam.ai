@@ -1,6 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
+import { Route } from '@angular/router';
 import { App } from './app';
+import { routes } from './app.routes';
+import { AuthGuard } from './guards/auth.guard';
 
 describe('App', () => {
   beforeEach(async () => {
@@ -31,39 +34,56 @@ describe('App', () => {
     const destinations = links.map(link => link.getAttribute('href'));
 
     expect(destinations).toEqual(expect.arrayContaining([
-      '/home', '/products', '/cart', '/wishlist', '/about', '/contact', '/orders', '/login'
+      '/', '/products', '/cart', '/wishlist', '/about', '/contact', '/orders', '/login'
     ]));
     expect(links.every(link => link.tagName === 'A' && link.textContent?.trim())).toBe(true);
   });
 
-  it('keeps the glass preview and chat launcher available as separate floating controls', async () => {
+  it('keeps the customer chat available as a separate floating control', async () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
 
-    expect(compiled.querySelector('.glass-preview-launcher')).toBeTruthy();
     expect(compiled.querySelector('app-customer-chat')).toBeTruthy();
-    expect(compiled.querySelector('.glass-preview-launcher')?.getAttribute('aria-controls')).toBe('site-glass-preview');
+    expect(compiled.querySelector('.glass-preview-launcher')).toBeFalsy();
+  });
+});
+
+describe('app routes', () => {
+  it('keeps only the landing page out of the lazy chunks', () => {
+    // The home page must be ready for the first paint. Every other destination
+    // uses loadComponent so its template is fetched on demand; statically
+    // importing one would pull it back into the initial bundle and undo the
+    // split that keeps the bundle inside its size budget.
+    const eager = routes.filter(route => route.component);
+    expect(eager.map(route => route.path)).toEqual(['']);
+
+    // Everything that is neither the landing page, the 'home' redirect, nor the
+    // catch-all must be split out into its own chunk.
+    const lazyPaths = routes
+      .filter(route => route.loadComponent)
+      .map(route => route.path);
+    expect(lazyPaths).not.toContain('');
+    expect(lazyPaths).not.toContain('home');
+    expect(lazyPaths).not.toContain('**');
+    expect(lazyPaths.length).toBe(14);
   });
 
-  it('opens the site-wide glass preview from its launcher', async () => {
-    const fixture = TestBed.createComponent(App);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    const compiled = fixture.nativeElement as HTMLElement;
-    const launcher = compiled.querySelector('.glass-preview-launcher') as HTMLButtonElement;
+  it('keeps the auth guard on every private destination', () => {
+    const guarded = new Set(['checkout', 'orders', 'wishlist', 'checkout-success']);
+    // The explicit `is Route & { path: string }` predicate is what narrows
+    // `path` to `string` for the loop below. A plain `filter` callback does not
+    // propagate the narrowing, so `route.path` stayed `string | undefined` and
+    // the whole test bundle failed to compile with TS2345.
+    const privateRoutes = routes.filter(
+      (route): route is Route & { path: string } =>
+        !!route.path && !route.path.includes(':') && route.path !== 'home' && route.path !== '**',
+    );
 
-    expect(compiled.querySelector('#site-glass-preview .glass-popup--open')).toBeFalsy();
-    launcher.click();
-    fixture.detectChanges();
-
-    expect(compiled.querySelector('#site-glass-preview .glass-popup--open')).toBeTruthy();
-    expect(compiled.querySelector('#site-glass-preview')?.textContent).toContain('Premium essentials');
-
-    const primary = compiled.querySelector('.glass-preview-actions .btn-primary') as HTMLElement;
-    const secondary = compiled.querySelector('.glass-preview-actions .btn-ghost') as HTMLElement;
-    expect(getComputedStyle(primary).color).toBe('rgb(255, 255, 255)');
-    expect(getComputedStyle(secondary).color).toBe('rgb(255, 255, 255)');
+    for (const route of privateRoutes) {
+      const shouldBeGuarded = guarded.has(route.path);
+      expect(route.canActivate?.includes(AuthGuard) ?? false).toBe(shouldBeGuarded);
+    }
   });
 });

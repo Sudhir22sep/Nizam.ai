@@ -12,6 +12,10 @@ node_modules/
 npm-debug.log
 yarn-error.log
 
+# Generated responsive image variants (see scripts/optimize-images.mjs).
+# Rebuilt with `npm run optimize:images`, so they do not belong in the repo.
+/public/images/products/*.webp
+
 # IDEs and editors
 .idea/
 .project

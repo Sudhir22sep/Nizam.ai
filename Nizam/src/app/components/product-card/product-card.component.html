@@ -19,6 +19,8 @@
             class="tilt-card__image"
             [class.tilt-card__image--active]="imageIndex === activeImageIndex()"
             [src]="image"
+            [attr.srcset]="productImageSrcset(image)"
+            [attr.sizes]="productImageSrcset(image) ? '(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 260px' : null"
             [alt]="product.name + ' view ' + (imageIndex + 1)"
             appImageFallback
             [loading]="eager && imageIndex === 0 ? 'eager' : 'lazy'"

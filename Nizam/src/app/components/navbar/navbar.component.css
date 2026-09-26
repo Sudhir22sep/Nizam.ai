@@ -238,6 +238,25 @@
 }
 
 /* Mobile */
+/* Account links are secondary, so they read slightly quieter than the
+   primary storefront destinations. */
+.nav-menu__account a {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.nav-menu__account a:hover,
+.nav-menu__account a.active {
+  color: #fff;
+}
+
+@media (max-width: 1180px) {
+  /* Keep the wider nav from crowding the brand once account links appear. */
+  .nav-menu a {
+    padding: 10px clamp(6px, 0.7vw, 10px);
+    font-size: 0.88rem;
+  }
+}
+
 @media (max-width: 1024px) {
   .nav-menu {
     gap: 2px;
