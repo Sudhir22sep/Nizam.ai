@@ -1,5 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { readFileSync } from 'fs';
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 import { HomeComponent } from './home.component';
 
 describe('HomeComponent', () => {
@@ -31,11 +36,21 @@ describe('HomeComponent', () => {
     fixture.detectChanges();
 
     const primaryAction = element.querySelector('.popup-action--primary') as HTMLElement;
-    const primaryStyle = getComputedStyle(primaryAction);
 
     expect(element.querySelector('app-glass-popup .glass-popup--open')).toBeTruthy();
     expect(primaryAction.textContent).toContain('Ask a stylist');
-    expect(primaryStyle.color).toBe('rgb(255, 255, 255)');
-    expect(primaryStyle.webkitTextFillColor).toBe('rgb(255, 255, 255)');
+
+    // The contrast itself is asserted against the stylesheet source rather than
+    // getComputedStyle: this test environment never injects component CSS into
+    // the document (document.styleSheets is empty under jsdom + the Angular
+    // vite plugin), so computed styles would only report jsdom's unstyled
+    // defaults and could never pass or fail meaningfully.
+    const homeStyles = readFileSync(
+      resolve(__dirname, 'home.component.css'),
+      'utf8',
+    );
+    const primaryRule = homeStyles.match(/\.popup-action--primary\s*\{[^}]*\}/)?.[0] ?? '';
+    expect(primaryRule).toContain('color: #fff');
+    expect(primaryRule).toContain('-webkit-text-fill-color: #fff');
   });
 });

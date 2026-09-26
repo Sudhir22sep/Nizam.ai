@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { catchError, tap } from 'rxjs/operators';
+import { catchError, map, tap } from 'rxjs/operators';
 import { BehaviorSubject, Observable, of } from 'rxjs';
 import { Router } from '@angular/router';
 
@@ -87,6 +87,45 @@ export class AuthService {
           this.setCurrentUser(response.user);
         }
       })
+    );
+  }
+
+  /**
+   * Providers the server is configured to offer. An empty list means social
+   * sign-in is unavailable and the login page hides the buttons entirely.
+   */
+  getSocialProviders(): Observable<string[]> {
+    return this.http.get(`${this.apiUrl}/social/providers`).pipe(
+      map((response: any) => (Array.isArray(response?.providers) ? response.providers : [])),
+      catchError(() => of([])),
+    );
+  }
+
+  /**
+   * Sends the browser to the provider. The server owns the whole handshake, so
+   * this is a full-page navigation rather than an XHR.
+   */
+  startSocialLogin(provider: string): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    window.location.href = `${this.apiUrl}/social/${provider}/start`;
+  }
+
+  /**
+   * Completes a social sign-in after the provider redirected back to /login.
+   * The server set a short-lived httpOnly cookie, so the token is fetched here
+   * and stored exactly as a password login would store it.
+   */
+  completeSocialLogin(): Observable<any> {
+    return this.http.post(`${this.apiUrl}/social/exchange`, {}).pipe(
+      tap((response: any) => {
+        if (response?.success && response.token && response.user) {
+          AuthService.storage?.setItem('currentUser', JSON.stringify(response.user));
+          AuthService.storage?.setItem('token', response.token);
+          this.setCurrentUser(response.user);
+        }
+      }),
     );
   }
 

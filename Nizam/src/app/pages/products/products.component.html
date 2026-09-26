@@ -14,7 +14,7 @@
           [routerLink]="['/product', product.id]"
           [attr.aria-label]="'View ' + product.name"
         >
-          <img [src]="primaryImage(product)" [alt]="product.name">
+          <img [src]="primaryImage(product)" [attr.srcset]="srcsetFor(product)" [alt]="product.name">
           <span>{{ product.name }}</span>
         </a>
       }
@@ -32,6 +32,7 @@
       <span>Sort</span>
       <select [ngModel]="sortBy()" (ngModelChange)="setSort($event)" aria-label="Sort products">
         <option value="featured">Featured</option>
+        <option value="newest">Newest first</option>
         <option value="price-low">Price: low to high</option>
         <option value="price-high">Price: high to low</option>
         <option value="name">Name: A to Z</option>
@@ -58,7 +59,7 @@
   </div>
 
   <div class="products-grid">
-    @for (product of filteredProducts(); track product.id) {
+    @for (product of visibleProducts(); track product.id) {
       <app-product-card
         class="product-card"
         [product]="product"
@@ -68,6 +69,16 @@
       />
     }
   </div>
+
+  @if (hasMoreProducts()) {
+    <!-- Observed so the next page mounts just before the user reaches it. -->
+    <div #loadMoreSentinel class="load-more-sentinel" aria-hidden="true"></div>
+    <div class="load-more">
+      <button type="button" class="btn-outline" (click)="loadMore()">
+        Load more products
+      </button>
+    </div>
+  }
 
   @if (filteredProducts().length === 0) {
   <div class="no-products-wrapper">

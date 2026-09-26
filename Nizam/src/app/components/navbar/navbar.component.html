@@ -13,8 +13,15 @@
     <ul id="primary-navigation" class="nav-menu" [class.active]="isMenuOpen">
       <li><a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenu()">Home</a></li>
       <li><a routerLink="/products" routerLinkActive="active" (click)="closeMenu()">Shop</a></li>
-      <li><a routerLink="/products" [queryParams]="{ sort: 'featured' }" routerLinkActive="active" (click)="closeMenu()">New arrivals</a></li>
+      <li><a routerLink="/products" [queryParams]="{ sort: 'newest' }" routerLinkActive="active" (click)="closeMenu()">New arrivals</a></li>
+      <li><a routerLink="/contact" routerLinkActive="active" (click)="closeMenu()">Contact</a></li>
       <li><a routerLink="/about" routerLinkActive="active" (click)="closeMenu()">About</a></li>
+      <!-- Account destinations only exist for a signed-in shopper; the auth
+           guard would bounce anonymous visitors straight back to /login. -->
+      @if (isLoggedIn) {
+        <li class="nav-menu__account"><a routerLink="/orders" routerLinkActive="active" (click)="closeMenu()">My orders</a></li>
+        <li class="nav-menu__account"><a routerLink="/wishlist" routerLinkActive="active" (click)="closeMenu()">Wishlist</a></li>
+      }
     </ul>
 
     <div class="navbar-icons">

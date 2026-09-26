@@ -45,7 +45,7 @@
   --space-7: 48px;
   --space-8: 64px;
   --space-9: 96px;
-  --container: 1200px;
+  --container: 1600px;
   --gradient-brand: linear-gradient(135deg, #D92D48 0%, #B51F38 100%);
   --gradient-dark: linear-gradient(160deg, #14263D 0%, #1B304A 55%, #29415F 100%);
   --gradient-nav: linear-gradient(135deg, rgba(20, 38, 61, 0.98) 0%, rgba(27, 48, 74, 0.96) 100%);
@@ -169,6 +169,7 @@ button {
 .btn-secondary,
 .btn-dark,
 .btn-ghost,
+.btn-outline,
 .cta-button {
   display: inline-flex;
   align-items: center;
@@ -258,6 +259,7 @@ button {
 .btn-outline:hover {
   border-color: var(--brand-primary);
   color: var(--brand-primary);
+  transform: translateY(-2px);
 }
 
 .btn-sm {
