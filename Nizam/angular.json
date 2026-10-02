@@ -170,6 +170,14 @@
             "proxyConfig": "proxy.conf.json"
           }
         },
+        "serve-mobile": {
+          "builder": "@angular/build:dev-server",
+          "options": {
+            "buildTarget": "Nizam:build-mobile:development",
+            "host": "0.0.0.0",
+            "port": 4200
+          }
+        },
         "test": {
           "builder": "@angular/build:unit-test",
           "options": {

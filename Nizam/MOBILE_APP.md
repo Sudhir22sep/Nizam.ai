@@ -43,6 +43,30 @@ a Capacitor plugin is added, removed or upgraded.
 | `serve:mobile` | Dev server on `0.0.0.0:4200`, reachable from a phone on the LAN |
 | `live:android` / `live:ios` | Dev server + sync + launch, with hot reload |
 
+### Building the APK
+
+`android:build` / `android:bundle` invoke Gradle directly, which **requires JDK 21
+specifically**. Gradle 8.14 does not understand the newer class-file format, so a
+newer JDK fails immediately and somewhat cryptically:
+
+```
+> Unsupported class file major version 69
+```
+
+That is Java 25. It is not a bug in the project and no `org.gradle.java.home`
+tweak in the repo can fix it — Gradle itself rejects the JDK. Point `JAVA_HOME` at
+a JDK 21 install before building:
+
+```bash
+export JAVA_HOME=/path/to/jdk-21    # then npm run android:build
+```
+
+A verified debug build produces
+`android/app/build/outputs/apk/debug/app-debug.apk` (~17 MB, `com.ammawears.app`,
+targetSdk 36). It is debug-signed, so it installs directly on a phone via
+sideload but is not uploadable to Play — `android:bundle` needs the release
+signing keystore described below.
+
 ### Testing on a device
 
 The normal loop is `npm run cap:sync`, then `npm run android:run` /
@@ -60,6 +84,21 @@ Inspecting a running app:
 - **Android:** `chrome://inspect` on the desktop Chrome, with the device
   connected and USB debugging on.
 - **iOS:** Safari → Develop → *device*, with the device paired to the Mac.
+
+### Running on a device from Codespaces
+
+Codespaces has no USB port, so a phone cannot be attached to it directly. Two
+options that do not need the phone plugged into the Codespace:
+
+1. **Bundle the build and install it yourself.** Run `npm run cap:sync` here,
+   then copy `Nizam/android/app/build/outputs/apk/debug/app-debug.apk` to the
+   phone and open it (allow "install unknown apps" when prompted). This is the
+   most reliable option, and it tests the exact bundle the store would ship.
+2. **Use the dev server over the public Codespace URL.** Codespaces exposes
+   port 4200 on a forwarded domain. Run `npm run serve:mobile` and open
+   `https://<codespace>-4200.app.github.dev` in the phone's browser to confirm
+   the UI renders. Note this is only the *website-style* shell — the Ionic tab
+   bar and native plugins need a real WebView, so use option 1 to test those.
 
 ## Requirements: what you can and cannot build here
 

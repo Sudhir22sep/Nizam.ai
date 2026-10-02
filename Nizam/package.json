@@ -18,7 +18,7 @@
     "dev:ssr": "npm run build && npm run serve:ssr:Nizam",
     "dev": "npm run build && npm run serve:ssr:Nizam",
     "build:mobile": "ng run Nizam:build-mobile",
-    "watch:mobile": "ng run Nizam:build-mobile -- --watch --configuration development",
+    "watch:mobile": "ng run Nizam:build-mobile:development --watch",
     "assets:source": "node scripts/generate-app-assets.mjs",
     "assets:generate": "capacitor-assets generate --android --ios --assetPath resources",
     "cap:sync": "npm run build:mobile && cap sync",
@@ -31,7 +31,7 @@
     "android:build": "npm run cap:sync && cd android && ./gradlew assembleDebug",
     "android:bundle": "npm run cap:sync && cd android && ./gradlew bundleRelease",
     "ios:build": "npm run cap:sync && cd ios/App && xcodebuild -scheme App -configuration Release -destination \"generic/platform=iOS\" -archivePath \"$(pwd)/../../build/ios/AmmaWears.xcarchive\" archive",
-    "serve:mobile": "ng run Nizam:build-mobile -- --host 0.0.0.0 --port 4200",
+    "serve:mobile": "ng run Nizam:serve-mobile",
     "live:android": "node scripts/live-reload.mjs android",
     "live:ios": "node scripts/live-reload.mjs ios"
   },
