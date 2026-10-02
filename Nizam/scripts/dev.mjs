@@ -141,12 +141,20 @@ process.on('SIGTERM', () => shutdown(0));
 async function main() {
   if (options.build) {
     console.log('Building the server bundle (this takes about 40s)...');
+    const build = run('api', 'npm', ['run', 'build'], {});
+    // The build must be tracked like any other child. It is spawned detached
+    // (see `run`), so it is a process-group leader that does NOT receive the
+    // terminal's Ctrl+C, and `shutdown` only signals what is in this set. An
+    // untracked build therefore survived shutdown as an orphan and kept `ng
+    // build` plus its esbuild service alive, holding CPU and RAM with nothing
+    // left to reap them.
+    children.add(build);
     await new Promise((resolve, reject) => {
-      const build = run('api', 'npm', ['run', 'build'], {});
       build.on('exit', code =>
         code === 0 ? resolve() : reject(new Error(`build exited with code ${code}`))
       );
     });
+    children.delete(build);
   }
 
   const api = run('api', process.execPath, [API_ENTRY], { PORT: String(options.apiPort) });
@@ -175,6 +183,15 @@ async function main() {
 }
 
 main().catch(error => {
+  // A child that we killed on the way out exits 143 (128 + SIGTERM), and
+  // esbuild's Go runtime prints a "all goroutines are asleep - deadlock!"
+  // panic when its service dies mid-request. Both are expected consequences of
+  // an intentional shutdown, so reporting them as a build failure only
+  // misleads whoever is reading the terminal.
+  if (shuttingDown) {
+    shutdown(0);
+    return;
+  }
   console.error(`dev:full failed: ${error.message}`);
   shutdown(1);
 });

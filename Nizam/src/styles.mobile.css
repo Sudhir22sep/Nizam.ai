@@ -1,0 +1,195 @@
+/* ==========================================================================
+   Amma Wears — Ionic / Capacitor global stylesheet (mobile build only).
+
+   Loaded via the `build-mobile` target's `styles` array, alongside Ionic's own
+   CSS entry points. Nothing in this file is used by the SSR website build, so
+   the desktop stylesheet (src/styles.css) is completely unaffected.
+
+   Contents:
+     1. Brand design tokens (mirrored from src/styles.css) + Ionic token remap
+     2. Safe-area handling
+     3. Shared page chrome (.app-header, .app-body, …) used by every screen
+     4. Reset/typography defaults suited to a WebView
+
+   Why the chrome lives here rather than in mobile-app.component.scss: Angular's
+   emulated view encapsulation scopes a component's stylesheet to that
+   component's own template. Shared classes used by ten routed pages have to be
+   global, otherwise every page would need its own copy.
+   ========================================================================== */
+
+:root {
+  /* ---- Brand palette (mirrored from src/styles.css) ---- */
+  --ink-900: #14263d;
+  --ink-800: #1b304a;
+  --ink-700: #29415f;
+  --ink-600: #40516a;
+  --brand-primary: #d92d48;
+  --brand-primary-strong: #b51f38;
+  --brand-secondary: #53657a;
+  --brand-tertiary: #e9b949;
+  --bg-page: #f7f8fa;
+  --bg-light: #eef1f5;
+  --surface: #ffffff;
+  --border-color: #dce2ea;
+  --text-light: #64748b;
+  --gradient-brand: linear-gradient(135deg, #d92d48 0%, #b51f38 100%);
+  --gradient-dark: linear-gradient(160deg, #14263d 0%, #1b304a 55%, #29415f 100%);
+
+  /* ---- Ionic token remap ----
+     Every `ion-*` component reads these, so overriding them once themes the
+     entire native shell. */
+  --ion-color-primary: #14263d;
+  --ion-color-primary-rgb: 20, 38, 61;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #122136;
+  --ion-color-primary-tint: #2c3e57;
+
+  --ion-color-secondary: #d92d48;
+  --ion-color-secondary-rgb: 217, 45, 72;
+  --ion-color-secondary-contrast: #ffffff;
+  --ion-color-secondary-contrast-rgb: 255, 255, 255;
+  --ion-color-secondary-shade: #bf283f;
+  --ion-color-secondary-tint: #dd425a;
+
+  --ion-background-color: var(--bg-page);
+  --ion-text-color: var(--ink-600);
+
+  /* ---- Safe areas ----
+     env() resolves to 0 on devices without a notch, so it is safe to use
+     unconditionally. iOS needs the top inset for the notch and the bottom for
+     the home indicator; Android's gesture pill uses the bottom inset. */
+  --ion-safe-area-top: env(safe-area-inset-top, 0px);
+  --ion-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+
+  --app-tab-bar-height: 56px;
+}
+
+/* Painted navy rather than --bg-page so the frames between the splash screen
+   fading out and Angular's first paint stay on-brand instead of flashing
+   white. The app's own surfaces override this once they render. */
+html {
+  background: var(--ink-800);
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg-page);
+  color: var(--ink-600);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  /* Prevents the whole WebView rubber-banding past the top/bottom edges. */
+  overscroll-behavior: none;
+}
+
+ion-app {
+  background: var(--bg-page);
+}
+
+/* ==========================================================================
+   Shared page chrome
+   ========================================================================== */
+
+.app-page {
+  display: block;
+  background: var(--bg-page);
+  min-height: 100%;
+}
+
+/* Sticky header, positioned under the status bar (the status bar is drawn
+   over the WebView, see NativeShellService). */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: calc(var(--ion-safe-area-top) + 12px) 16px 12px;
+  background: var(--gradient-dark);
+  color: #fff;
+}
+
+.app-header__title {
+  flex: 1;
+  min-width: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+  /* Long product names must not push the trailing icon off screen. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-header__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  /* 44px is the minimum touch target both Apple and Google recommend. */
+  min-width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  text-decoration: none;
+}
+
+.app-header__action ion-icon {
+  font-size: 20px;
+}
+
+.app-header__badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--brand-primary);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* Horizontal page padding plus clearance for the fixed tab bar, so the last row
+   of a list is never trapped underneath it. */
+.app-body {
+  padding: 16px;
+  padding-bottom: calc(24px + var(--app-tab-bar-height) + var(--ion-safe-area-bottom));
+}
+
+.app-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-800);
+  margin: 24px 0 12px;
+}
+
+.app-section-title:first-child {
+  margin-top: 0;
+}
+
+/* Visually hidden, still announced by screen readers. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

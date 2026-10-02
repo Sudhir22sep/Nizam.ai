@@ -5,13 +5,29 @@ services:
     region: oregon  # or frankfurt, singapore, etc.
     plan: free  # or starter, standard, etc.
     workingDirectory: ./Nizam
-    buildCommand: npm install && npm run build
+    # `npm ci --include=dev` is required, not optional.
+    #
+    # This service sets NODE_ENV=production, and Render exports a service's
+    # envVars during the BUILD as well as at runtime. npm treats
+    # NODE_ENV=production as `--omit=dev`, so a plain `npm install`/`npm ci`
+    # installed 178 packages instead of 681 and the build died immediately:
+    #
+    #   Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'sharp'
+    #   imported from .../scripts/optimize-images.mjs
+    #
+    # followed by `sh: 1: ng: not found`, because `sharp`, `@angular/cli`,
+    # `@angular/build` and `typescript` are all devDependencies and the build
+    # genuinely needs them. `--include=dev` overrides the omit implied by
+    # NODE_ENV. The runtime image still only ever loads `dependencies`.
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: node dist/Nizam/server/server.mjs
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: "4000"
+      # PORT is deliberately NOT set here. Render assigns a free port at runtime
+      # and exports it as PORT; pinning it to 4000 here risks the app listening
+      # on a port the proxy does not forward to. `src/server.ts` reads PORT and
+      # falls back to 4000 for local runs.
       # Server-side rendering. The CSR fallback is the escape hatch if the
       # engine is ever disabled; leave unset to serve the built client only.
       - key: ENABLE_SSR
@@ -41,9 +57,15 @@ services:
       - key: RAZORPAY_TEST_KEY_SECRET
         sync: false
       - key: APP_URL
-        value: "https://nizam-ai.onrender.com"  # Update with your actual URL
+        # Must match a hostname that is actually served. The SSR engine rejects
+        # any Host header that is not on its allowlist, so a stale value here
+        # (this used to say `nizam-ai.onrender.com` while the service is
+        # `nizam-ai-zpwn.onrender.com`) makes every page request 400.
+        value: "https://ammawears.com"
+      - key: API_URL
+        value: "https://api.ammawears.com"  # Public API origin the browser calls
       - key: CORS_ORIGIN
-        value: "https://ammawears.com"  # Frontend origin allowed to call this API
+        value: "https://ammawears.com, https://www.ammawears.com"  # Frontend origins allowed to call this API
       - key: environment
         value: "production"
     healthCheckPath: /health

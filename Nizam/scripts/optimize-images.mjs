@@ -14,10 +14,27 @@ import { readdir, stat } from 'fs/promises';
 import { join, parse, extname } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import sharp from 'sharp';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const imageDir = join(here, '..', 'public', 'images', 'products');
+
+// `sharp` is a devDependency and carries native binaries, so it is the first
+// thing to go missing when the build runs with devDependencies omitted (for
+// example `npm ci` under NODE_ENV=production, which is what Render used to do
+// because the service exports NODE_ENV during the build too).
+//
+// Generating the WebP variants is an optimisation, not a correctness
+// requirement -- the storefront falls back to the original JPEG/PNG when a
+// variant is absent. Importing it lazily and degrading gracefully means a
+// missing or unbuildable native module downgrades image weight instead of
+// failing the whole deploy with ERR_MODULE_NOT_FOUND.
+let sharp = null;
+let sharpLoadError = null;
+try {
+  ({ default: sharp } = await import('sharp'));
+} catch (error) {
+  sharpLoadError = error;
+}
 
 /** Widths the storefront requests. 1600 covers the zoomed detail gallery. */
 const WIDTHS = [320, 640, 1280];
@@ -26,6 +43,14 @@ const QUALITY = 78;
 const RASTER = new Set(['.jpg', '.jpeg', '.png']);
 
 async function main() {
+  if (!sharp) {
+    console.warn('sharp is unavailable, so no WebP variants were generated.');
+    console.warn(`  reason: ${sharpLoadError instanceof Error ? sharpLoadError.message : String(sharpLoadError)}`);
+    console.warn('  The originals are still served, so this only costs image weight, not correctness.');
+    console.warn('  Install devDependencies (npm ci --include=dev) to generate them during a build.');
+    return;
+  }
+
   const entries = await readdir(imageDir);
   const sources = entries.filter(name => RASTER.has(extname(name).toLowerCase()));
   if (sources.length === 0) {

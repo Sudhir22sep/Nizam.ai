@@ -1,0 +1,54 @@
+<div class="app-page orders">
+  <header class="app-header">
+    <a routerLink="/account" class="app-header__action" aria-label="Back to account">
+      <ion-icon name="chevron-back-outline"></ion-icon>
+    </a>
+    <h1 class="app-header__title">My orders</h1>
+  </header>
+
+  @if (loading()) {
+    <div class="loading"><ion-spinner name="crescent"></ion-spinner></div>
+  } @else if (orders().length === 0) {
+    <div class="app-body empty">
+      <ion-icon name="receipt-outline" class="empty__icon" aria-hidden="true"></ion-icon>
+      <p class="empty__title">No orders yet</p>
+      <p class="empty__text">When you place an order it will appear here with its status.</p>
+      <a routerLink="/products" class="empty__action">Start shopping</a>
+    </div>
+  } @else {
+    <div class="app-body">
+      <ul class="orders-list">
+        @for (order of orders(); track order.orderReference) {
+          <li class="order">
+            <div class="order__head">
+              <div>
+                <p class="order__reference">{{ order.orderReference }}</p>
+                <p class="order__date">{{ formatDate(order.createdAt) }}</p>
+              </div>
+              <span class="order__status">{{ formatStatus(order.status) }}</span>
+            </div>
+
+            <ul class="order__items">
+              @for (item of order.items; track $index) {
+                <li class="order__item">
+                  {{ item.product?.name ?? 'Product' }}
+                  @if (item.quantity) {
+                    <span class="order__qty">× {{ item.quantity }}</span>
+                  }
+                  @if (item.size) {
+                    <span class="order__qty">({{ item.size }})</span>
+                  }
+                </li>
+              }
+            </ul>
+
+            <div class="order__foot">
+              <span class="order__method">{{ order.paymentMethod }}</span>
+              <strong class="order__total">{{ order.total | price }}</strong>
+            </div>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+</div>

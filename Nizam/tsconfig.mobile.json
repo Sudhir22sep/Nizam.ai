@@ -1,0 +1,27 @@
+{
+  /* TypeScript configuration for the Ionic / Capacitor mobile bundle.
+
+     Extends the shared base so the app and the website compile with identical
+     compiler options, and excludes the SSR entry points — the mobile build
+     renders entirely on the client, so src/server.ts and src/main.server.ts
+     must not be pulled into the bundle.
+
+     @angular/compiler is included because provideIonicAngular()'s standalone
+     entrypoint and the ion-* custom elements are compiled from source at build
+     time rather than distributed as pre-built ESM. */
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/mobile",
+    "types": [],
+    "lib": ["ES2022", "dom", "dom.iterable"]
+  },
+  "files": ["src/main.mobile.ts"],
+  "include": ["src/**/*.ts", "src/index.mobile.html"],
+  "exclude": [
+    "src/**/*.spec.ts",
+    "src/server.ts",
+    "src/main.server.ts",
+    "src/main.ts",
+    "src/test-setup.ts"
+  ]
+}

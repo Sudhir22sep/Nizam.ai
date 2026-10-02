@@ -1,0 +1,130 @@
+/* ==========================================================================
+   Shared auth form styles — sign in and create account.
+
+   Both screens live in their own component with view encapsulation, so the
+   register page @uses this file rather than importing the login component.
+   ========================================================================== */
+
+.auth__intro {
+  margin-bottom: 20px;
+  font-size: 14px;
+  color: var(--ink-600);
+}
+
+.auth__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Two-up row for the name fields; collapses to a single column on a very
+   narrow phone so neither input becomes unusable. */
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 360px) {
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field {
+  display: block;
+}
+
+.field__label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-light);
+}
+
+.field__control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.field__icon {
+  position: absolute;
+  left: 14px;
+  font-size: 18px;
+  color: var(--text-light);
+  pointer-events: none;
+}
+
+.field__input {
+  width: 100%;
+  /* 48px: comfortably above the 44pt minimum and tall enough to avoid the
+     iOS WebView zooming when a 15px+ font is focused. */
+  min-height: 48px;
+  padding: 0 46px 0 44px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink-800);
+  font-size: 16px;
+}
+
+.field__input:focus {
+  outline: none;
+  border-color: var(--ink-700);
+}
+
+.field__toggle {
+  position: absolute;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-light);
+}
+
+.field__error {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--brand-primary);
+}
+
+.auth__submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  margin-top: 4px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--gradient-brand);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.auth__submit:disabled {
+  opacity: 0.7;
+}
+
+.auth__switch {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--ink-600);
+}
+
+.auth__switch a {
+  color: var(--brand-primary);
+  font-weight: 600;
+}

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Amma Wears</title>
+  <base href="/">
+
+  <!--
+    viewport-fit=cover lets the layout extend under the notch and home
+    indicator, which is what the safe-area insets in styles.mobile.css consume.
+    interactive-widget keeps the software keyboard from resizing the layout
+    ourselves, so `ion-content` scroll stays correct.
+  -->
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="description" content="Shop Amma Wears for premium apparel, effortless layering pieces, and curated essentials.">
+  <meta name="theme-color" content="#14263D">
+  <meta name="color-scheme" content="light">
+  <meta name="format-detection" content="telephone=no">
+
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+
+  <!--
+    Same webfonts as the website build, so the app and the site render
+    identically. The brand CSS falls back to system sans-serif when the WebView
+    is offline at cold start, so this is an enhancement rather than a
+    dependency.
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <app-mobile-root></app-mobile-root>
+
+  <!--
+    Razorpay's checkout modal is injected by this script and is required by the
+    checkout screen. It is loaded here so it is available by the time a shopper
+    reaches payment; if the network blocks it, the checkout screen detects the
+    missing global and offers cash on delivery instead.
+  -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</body>
+</html>

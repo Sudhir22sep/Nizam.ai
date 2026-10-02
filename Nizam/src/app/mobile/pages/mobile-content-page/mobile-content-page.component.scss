@@ -1,0 +1,57 @@
+/* ==========================================================================
+   Mobile editorial pages (about / contact / shipping & returns).
+   ========================================================================== */
+
+.content__hero {
+  padding: calc(var(--ion-safe-area-top) + 28px) 20px 28px;
+  background: var(--gradient-dark);
+  color: #fff;
+}
+
+.content__eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--brand-tertiary);
+}
+
+.content__title {
+  margin: 8px 0 0;
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-family: 'Fraunces', Georgia, serif;
+}
+
+.section + .section {
+  margin-top: 22px;
+}
+
+.section__heading {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink-900);
+  margin-bottom: 6px;
+}
+
+.section__body {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ink-600);
+}
+
+.content__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 50px;
+  margin-top: 28px;
+  border-radius: 10px;
+  background: var(--gradient-brand);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}

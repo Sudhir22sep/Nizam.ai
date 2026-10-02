@@ -1,0 +1,103 @@
+<div class="app-page home">
+  <!-- Promo strip: the single most important store promise, kept above the fold. -->
+  <div class="promo-strip">
+    <p>Free shipping over ₹2999 · COD available</p>
+  </div>
+
+  <!-- Hero -->
+  <section class="hero">
+    <img class="hero__image" [src]="hero.image" [alt]="hero.title" fetchpriority="high" />
+    <div class="hero__overlay">
+      <span class="hero__eyebrow">{{ hero.eyebrow }}</span>
+      <h1 class="hero__title">{{ hero.title }}</h1>
+      <p class="hero__subtitle">{{ hero.subtitle }}</p>
+      <a routerLink="/products" class="hero__cta">
+        {{ hero.cta }} <ion-icon name="arrow-forward-outline"></ion-icon>
+      </a>
+    </div>
+  </section>
+
+  <!-- Category rail: horizontally scrollable, thumb-friendly on a phone. -->
+  <section class="rail" aria-labelledby="rail-heading">
+    <h2 id="rail-heading" class="app-section-title">Shop by category</h2>
+    <div class="rail__track">
+      @for (collection of collections; track collection.title) {
+        <a [routerLink]="collection.href" class="rail__card">
+          <img [src]="collection.imageUrl" [alt]="collection.title" loading="lazy" />
+          <span>{{ collection.title }}</span>
+        </a>
+      }
+    </div>
+  </section>
+
+  <!-- New arrivals -->
+  <section class="featured" aria-labelledby="featured-heading">
+    <div class="section-head">
+      <h2 id="featured-heading" class="app-section-title">New arrivals</h2>
+      <a routerLink="/products" class="section-head__link">See all</a>
+    </div>
+
+    @if (loading()) {
+      <div class="loading">
+        <ion-spinner name="crescent"></ion-spinner>
+      </div>
+    } @else if (featured().length === 0) {
+      <p class="empty">No products available right now. Pull to refresh later.</p>
+    } @else {
+      <div class="product-grid">
+        @for (product of featured(); track product.id) {
+          <article class="product-card">
+            <a [routerLink]="['/product', product.id]" class="product-card__media">
+              <img
+                [src]="image(product)"
+                [alt]="product.name"
+                loading="lazy"
+                appImageFallback
+              />
+              @if (isSoldOut(product)) {
+                <span class="badge badge--sold">Sold out</span>
+              } @else if (product.stock !== null && product.stock !== undefined && product.stock <= 3) {
+                <span class="badge badge--low">Only {{ product.stock }} left</span>
+              }
+              @if (product.originalPrice && product.originalPrice > product.basePrice) {
+                <span class="badge badge--off">
+                  {{ discountPercent(product) }}% off
+                </span>
+              }
+            </a>
+
+            <button
+              type="button"
+              class="product-card__heart"
+              (click)="toggleWishlist(product, $event)"
+              [attr.aria-label]="'Save ' + product.name + ' to wishlist'"
+            >
+              <ion-icon name="heart-outline"></ion-icon>
+            </button>
+
+            <div class="product-card__info">
+              <p class="product-card__category">{{ product.category }}</p>
+              <a [routerLink]="['/product', product.id]" class="product-card__name">
+                {{ product.name }}
+              </a>
+              <p class="product-card__price">
+                {{ product.basePrice | price }}
+                @if (product.originalPrice && product.originalPrice > product.basePrice) {
+                  <s>{{ product.originalPrice | price }}</s>
+                }
+              </p>
+              <button
+                type="button"
+                class="product-card__add"
+                (click)="addToCart(product, $event)"
+                [disabled]="isSoldOut(product)"
+              >
+                {{ isSoldOut(product) ? 'Sold out' : 'Add to cart' }}
+              </button>
+            </div>
+          </article>
+        }
+      </div>
+    }
+  </section>
+</div>

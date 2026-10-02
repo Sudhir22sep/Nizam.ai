@@ -1,0 +1,117 @@
+<div class="app-page shop">
+  <!-- Sticky header + search: stays put while the grid scrolls beneath it. -->
+  <header class="shop__header">
+    <div class="app-header">
+      <h1 class="app-header__title">Shop</h1>
+      <a routerLink="/cart" class="app-header__action" aria-label="Shopping cart">
+        <ion-icon name="cart-outline"></ion-icon>
+      </a>
+    </div>
+
+    <div class="search">
+      <ion-icon name="search-outline" class="search__icon" aria-hidden="true"></ion-icon>
+      <input
+        type="search"
+        class="search__input"
+        placeholder="Search shirts, dresses, denim…"
+        [value]="searchTerm()"
+        (input)="onSearch($event)"
+        aria-label="Search products"
+        enterkeyhint="search"
+      />
+      @if (searchTerm()) {
+        <button type="button" class="search__clear" (click)="clearSearch()" aria-label="Clear search">
+          <ion-icon name="close-outline"></ion-icon>
+        </button>
+      }
+    </div>
+
+    <!-- Category chips scroll horizontally instead of wrapping to many rows,
+         which would push the grid below the fold. -->
+    <div class="chips" role="tablist" aria-label="Product categories">
+      @for (category of categories(); track category) {
+        <button
+          type="button"
+          class="chip"
+          role="tab"
+          [attr.aria-selected]="activeCategory() === category"
+          [class.chip--active]="activeCategory() === category"
+          (click)="selectCategory(category)"
+        >
+          {{ category }}
+        </button>
+      }
+    </div>
+
+    <div class="toolbar">
+      <p class="toolbar__count">
+        {{ resultCount() }} {{ resultCount() === 1 ? 'item' : 'items' }}
+      </p>
+      <label class="toolbar__sort">
+        <span class="visually-hidden">Sort products</span>
+        <select [value]="sort()" (change)="onSortChange($event)">
+          @for (option of sortOptions; track option[0]) {
+            <option [value]="option[0]">{{ option[1] }}</option>
+          }
+        </select>
+      </label>
+    </div>
+  </header>
+
+  <div class="app-body">
+    @if (loading()) {
+      <div class="loading"><ion-spinner name="crescent"></ion-spinner></div>
+    } @else if (visibleProducts().length === 0) {
+      <div class="empty">
+        <ion-icon name="search-outline" class="empty__icon" aria-hidden="true"></ion-icon>
+        <p class="empty__title">No products found</p>
+        <p class="empty__text">Try a different search or clear your filters.</p>
+        @if (hasActiveFilters) {
+          <button type="button" class="empty__action" (click)="resetFilters()">
+            Clear filters
+          </button>
+        }
+      </div>
+    } @else {
+      <div class="product-grid">
+        @for (product of visibleProducts(); track product.id) {
+          <article class="product-card">
+            <a [routerLink]="['/product', product.id]" class="product-card__media">
+              <img [src]="image(product)" [alt]="product.name" loading="lazy" appImageFallback />
+              @if (isSoldOut(product)) {
+                <span class="badge badge--sold">Sold out</span>
+              } @else if (product.stock !== null && product.stock !== undefined && product.stock <= 3) {
+                <span class="badge badge--low">Only {{ product.stock }} left</span>
+              }
+            </a>
+
+            <button
+              type="button"
+              class="product-card__heart"
+              (click)="toggleWishlist(product, $event)"
+              [attr.aria-label]="'Save ' + product.name + ' to wishlist'"
+            >
+              <ion-icon name="heart-outline"></ion-icon>
+            </button>
+
+            <div class="product-card__info">
+              <p class="product-card__category">{{ product.category }}</p>
+              <a [routerLink]="['/product', product.id]" class="product-card__name">
+                {{ product.name }}
+              </a>
+              <p class="product-card__price">{{ product.basePrice | price }}</p>
+              <button
+                type="button"
+                class="product-card__add"
+                (click)="addToCart(product, $event)"
+                [disabled]="isSoldOut(product)"
+              >
+                {{ isSoldOut(product) ? 'Sold out' : 'Add' }}
+              </button>
+            </div>
+          </article>
+        }
+      </div>
+    }
+  </div>
+</div>

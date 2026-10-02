@@ -30,6 +30,7 @@ import {
   reserveInventory,
   type InventoryLine
 } from './server/order-inventory';
+import { buildAllowedHosts, buildAllowedOrigins } from './server/allowed-hosts';
 import {
   ASSISTANT_SYSTEM_PROMPT,
   localAssistantReply,
@@ -396,8 +397,30 @@ try {
   }
 }
 
+// The database actually used is whatever MONGODB_URI points at; `defaultDbName`
+// is only the fallback appended when the URI carries no database path. The two
+// can disagree (a _dev URI while NODE_ENV=production), so print the real one --
+// logging only the default previously claimed "Database: ammawears_prod" while
+// the client was connected to ammawears_dev, which misleads anyone verifying a
+// production deploy.
+const uriDbName = (() => {
+  try {
+    const url = new URL(mongoUrl.replace('mongodb+srv://', 'https://').replace('mongodb://', 'http://'));
+    return url.pathname.slice(1).split('?')[0];
+  } catch {
+    return '';
+  }
+})();
+const activeDbName = uriDbName || defaultDbName;
+
 console.log("MONGODB_URI resolved:", mongoUrl.replace(/\/\/[^:]+:[^@]+@/, '//***:***@'));
-console.log("Environment:", isProduction ? 'production' : 'development', "| Database:", defaultDbName);
+console.log(
+  "Environment:", isProduction ? 'production' : isIntegration ? 'integration' : 'development',
+  "| Database:", activeDbName,
+  uriDbName && uriDbName !== defaultDbName
+    ? `(NOTE: differs from the "${defaultDbName}" default for this environment; MONGODB_URI wins)`
+    : ''
+);
 let mongoClient: MongoClient | null = null;
 let db: Db | null = null;
 // Order docum
@@ -773,13 +796,10 @@ app.use(express.json());
 // (the CSRF `state` nonce and the one-time token cookie).
 app.use(cookieParser());
 
-// CORS configuration for Vercel frontend → Render backend
-const corsOrigin = process.env['CORS_ORIGIN'] || 'http://localhost:4200';
-// Allow localhost:4000 for local SSR development (same origin)
-const allowedOrigins = corsOrigin.split(',').map(o => o.trim());
-if (process.env['NODE_ENV'] !== 'production') {
-  allowedOrigins.push('http://localhost:4000', 'http://localhost:4200', 'http://127.0.0.1:4000', 'http://127.0.0.1:4200');
-}
+// CORS configuration for Vercel frontend -> Render backend, plus the fixed
+// origins the native app reports. See buildAllowedOrigins for why the Capacitor
+// origins must survive into production.
+const allowedOrigins = buildAllowedOrigins();
 app.use(cors({
   origin: allowedOrigins,
   credentials: true,
@@ -1093,9 +1113,24 @@ async function getAngularApp(): Promise<AngularNodeAppEngine | null> {
       // Load Angular SSR manifests (only available in production build)
       await loadAngularManifests();
       
-      // Set allowed hosts via environment variables if not already set
+      // Allowed hosts for the SSR engine's Host-header check.
+      //
+      // Angular's SSRF protection rejects any request whose `Host` header is not
+      // on this list, answering 400 before the app renders. The previous value
+      // was a hardcoded localhost/codespaces list, so in production EVERY page
+      // request came back as:
+      //
+      //   ERROR: Bad Request ("https://ammawears.com/")
+      //   Header "host" with value "ammawears.com" is not allowed.
+      //
+      // i.e. the storefront was unreachable on Render even though the build and
+      // the health check passed. The deployed hostnames are not knowable at
+      // build time, so they are derived from the environment the platform
+      // already provides (APP_URL, CORS_ORIGIN, RENDER_EXTERNAL_URL). An
+      // explicit NG_ALLOWED_HOSTS from the dashboard still wins, so the list
+      // stays overridable without a rebuild.
       if (!process.env['NG_ALLOWED_HOSTS']) {
-        process.env['NG_ALLOWED_HOSTS'] = 'localhost,localhost:4000,localhost:4200,verbose-cod-96rq44v9pjh7r69-4000.app.github.dev,*.app.github.dev';
+        process.env['NG_ALLOWED_HOSTS'] = buildAllowedHosts().join(',');
       }
       // Set trust proxy headers to allow X-Forwarded-* headers
       if (!process.env['NG_TRUST_PROXY_HEADERS']) {

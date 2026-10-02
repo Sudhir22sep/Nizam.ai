@@ -1,0 +1,181 @@
+// Shared product grid + card, used by both the mobile home and shop screens.
+//
+// Extracted so the two screens cannot drift apart: a card that looks one way on
+// the landing page must look identical in the shop grid. Brand tokens
+// (--ink-*, --surface, …) come from mobile-app.component.scss.
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 12px;
+}
+
+.product-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.product-card__media {
+  position: relative;
+  display: block;
+  aspect-ratio: 3 / 4;
+  background: var(--bg-light);
+}
+
+.product-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: var(--ink-700);
+}
+
+.badge--sold {
+  background: #64748b;
+}
+
+.badge--low {
+  background: #b45309;
+}
+
+.badge--off {
+  top: auto;
+  bottom: 8px;
+  background: var(--brand-primary);
+}
+
+.product-card__heart {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  // Translucent white so the heart stays visible over any product photo.
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink-700);
+}
+
+.product-card__heart ion-icon {
+  font-size: 18px;
+}
+
+.product-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+}
+
+.product-card__category {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-light);
+}
+
+.product-card__name {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink-800);
+  text-decoration: none;
+  // Two-line clamp keeps every card in the grid the same height.
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.product-card__price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.product-card__price s {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-light);
+}
+
+.product-card__add {
+  margin-top: 6px;
+  min-height: 40px;
+  border: 1px solid var(--ink-800);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-800);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.product-card__add:disabled {
+  border-color: var(--border-color);
+  color: var(--text-light);
+}
+
+// Empty / loading states shared by both screens.
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+.empty {
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--text-light);
+}
+
+.empty__icon {
+  font-size: 40px;
+  opacity: 0.4;
+}
+
+.empty__title {
+  margin-top: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink-800);
+}
+
+.empty__text {
+  font-size: 14px;
+}
+
+.empty__action {
+  margin-top: 16px;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--gradient-brand);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}

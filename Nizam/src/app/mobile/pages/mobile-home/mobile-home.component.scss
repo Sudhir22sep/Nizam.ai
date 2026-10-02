@@ -1,0 +1,151 @@
+/* ==========================================================================
+   Mobile home — promo strip, hero, category rail, product grid.
+   Brand tokens (--ink-*, --brand-*, …) come from mobile-app.component.scss.
+
+   Product grid, cards and empty/loading states are shared with the shop screen.
+   ========================================================================== */
+
+// @use must precede every other rule in a Sass file, so it sits above the CSS.
+@use "../../shared/product-card.scss";
+
+.home {
+  padding-bottom: 8px;
+}
+
+/* ---------- Promo strip ---------- */
+.promo-strip {
+  padding: 8px 16px;
+  background: var(--brand-dark);
+  color: #fff;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+/* ---------- Hero ---------- */
+.hero {
+  position: relative;
+  /* 4:5 portrait crop fills the phone nicely without letterboxing. */
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--ink-800);
+}
+
+.hero__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Dark gradient at the bottom keeps the white text legible on any photo. */
+.hero__overlay {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 24px 20px;
+  background: linear-gradient(
+    to top,
+    rgba(20, 38, 61, 0.92) 0%,
+    rgba(20, 38, 61, 0.72) 45%,
+    rgba(20, 38, 61, 0) 100%
+  );
+  color: #fff;
+}
+
+.hero__eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--brand-tertiary);
+}
+
+.hero__title {
+  margin: 8px 0 6px;
+  font-size: 26px;
+  line-height: 1.18;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-family: 'Fraunces', Georgia, serif;
+}
+
+.hero__subtitle {
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.hero__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 13px 20px;
+  /* 48px tall: comfortably above the 44pt minimum touch target. */
+  min-height: 48px;
+  border-radius: 8px;
+  background: var(--gradient-brand);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.hero__cta ion-icon {
+  font-size: 16px;
+}
+
+/* ---------- Category rail ---------- */
+.rail {
+  margin-top: 24px;
+}
+
+.rail__track {
+  display: flex;
+  gap: 12px;
+  /* Bleed to the screen edges so the rail reads as scrollable. */
+  padding: 2px 16px 4px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  /* Hide the scrollbar; the peek of the next card signals scrollability. */
+  scrollbar-width: none;
+}
+
+.rail__track::-webkit-scrollbar {
+  display: none;
+}
+
+.rail__card {
+  flex: 0 0 auto;
+  width: 132px;
+  scroll-snap-align: start;
+  text-decoration: none;
+  color: var(--ink-800);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.rail__card img {
+  width: 132px;
+  height: 168px;
+  object-fit: cover;
+  display: block;
+  border-radius: 10px;
+  background: var(--bg-light);
+  margin-bottom: 8px;
+}
+
+/* ---------- Section head ---------- */
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.section-head__link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand-primary);
+  text-decoration: none;
+}
+

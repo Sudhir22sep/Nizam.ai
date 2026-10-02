@@ -16,9 +16,13 @@
     "src/**/*.ts",
     "src/index.html"
   ],
+  "//": "Excludes the Capacitor/Ionic app (`main.mobile.ts` + `src/app/mobile/**`). It is a SEPARATE entry point that the web/SSR build Render runs never compiles, but `include: src/**/*.ts` swept it into this program, so an unfinished mobile file failed the whole deploy with TS2339/TS2307. Mobile sources are type-checked on their own via tsconfig.mobile.json.",
   "exclude": [
     "src/**/*.spec.ts",
     "src/server.ts",
-    "src/test-setup.ts"
+    "src/test-setup.ts",
+    "src/app/mobile/**",
+    "src/main.mobile.ts",
+    "src/environments/environment.mobile.ts"
   ]
 }

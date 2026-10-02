@@ -1,0 +1,4 @@
+// Login and register share one stylesheet: the two forms are near-identical,
+// and a single source keeps their spacing and control sizes exactly matched.
+// (mobile-register.component.scss simply @uses this file.)
+@use "./auth-form.scss";

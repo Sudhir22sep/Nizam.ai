@@ -1,0 +1,19 @@
+<div class="app-page content">
+  @if (page(); as current) {
+    <header class="content__hero">
+      <span class="content__eyebrow">{{ current.eyebrow }}</span>
+      <h1 class="content__title">{{ current.title }}</h1>
+    </header>
+
+    <div class="app-body">
+      @for (section of current.sections; track section.heading) {
+        <section class="section">
+          <h2 class="section__heading">{{ section.heading }}</h2>
+          <p class="section__body">{{ section.body }}</p>
+        </section>
+      }
+
+      <a routerLink="/products" class="content__cta">Shop the collection</a>
+    </div>
+  }
+</div>

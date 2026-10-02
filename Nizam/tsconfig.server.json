@@ -5,6 +5,12 @@
  * exists so the server can also be checked on its own with
  * `tsc -p tsconfig.server.json`. It includes the whole `src` tree because
  * `src/middleware/auth.ts` augments Express' `Request` with `user`.
+ *
+ * Two groups are excluded so this check is usable on its own: specs (because
+ * `types: ["node"]` supplies no test globals), and the Capacitor/Ionic app --
+ * a separate entry point (`src/main.mobile.ts`) that the web/SSR build Render
+ * runs never compiles. See `tsconfig.app.json` for why mobile sources must stay
+ * out of that build.
  */
 {
   "extends": "./tsconfig.json",
@@ -14,5 +20,11 @@
   },
   "include": [
     "src/**/*.ts"
+  ],
+  "exclude": [
+    "src/**/*.spec.ts",
+    "src/app/mobile/**",
+    "src/main.mobile.ts",
+    "src/environments/environment.mobile.ts"
   ]
 }

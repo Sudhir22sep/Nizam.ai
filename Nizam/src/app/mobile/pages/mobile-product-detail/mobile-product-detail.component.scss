@@ -1,0 +1,294 @@
+/* ==========================================================================
+   Mobile product detail — gallery, size picker, sticky buy bar.
+   ========================================================================== */
+
+.product__header {
+  gap: 8px;
+}
+
+/* ---------- Gallery ---------- */
+.gallery {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  background: var(--bg-light);
+  overflow: hidden;
+}
+
+.gallery__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Only the active slide is visible; the others stack behind it. */
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.gallery__image--active {
+  opacity: 1;
+}
+
+.gallery__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink-800);
+  box-shadow: 0 2px 8px rgba(20, 38, 61, 0.18);
+}
+
+.gallery__nav ion-icon {
+  font-size: 20px;
+}
+
+.gallery__nav--prev {
+  left: 10px;
+}
+
+.gallery__nav--next {
+  right: 10px;
+}
+
+/* The single "back" glyph is reused for both directions. */
+.gallery__nav--next ion-icon.flip {
+  transform: scaleX(-1);
+}
+
+.gallery__dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.gallery__dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.gallery__dot--active {
+  background: #fff;
+}
+
+/* ---------- Copy ---------- */
+.product__category {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-light);
+}
+
+.product__name {
+  margin: 4px 0 10px;
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ink-900);
+}
+
+.product__pricing {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.product__price {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.product__discount {
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--brand-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.product__compare {
+  font-size: 14px;
+  color: var(--text-light);
+}
+
+.stock {
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.stock--out {
+  color: #64748b;
+}
+
+.stock--low {
+  color: #b45309;
+}
+
+/* ---------- Size picker ---------- */
+.sizes,
+.quantity {
+  margin-top: 22px;
+}
+
+.sizes__label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-light);
+  margin-bottom: 8px;
+}
+
+.sizes__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.size {
+  min-width: 48px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink-700);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.size--active {
+  background: var(--ink-800);
+  border-color: var(--ink-800);
+  color: #fff;
+}
+
+/* ---------- Quantity stepper ---------- */
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.stepper__btn {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: var(--bg-light);
+  color: var(--ink-700);
+}
+
+.stepper__btn ion-icon {
+  font-size: 16px;
+}
+
+.stepper__value {
+  min-width: 44px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-800);
+}
+
+.product__description {
+  margin-top: 22px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ink-600);
+}
+
+.promises {
+  list-style: none;
+  margin: 22px 0 0;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--ink-600);
+}
+
+.promises li + li {
+  margin-top: 6px;
+}
+
+/* ---------- Sticky buy bar ---------- */
+.buy-bar {
+  position: sticky;
+  bottom: 0;
+  padding: 12px 16px calc(12px + var(--ion-safe-area-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border-color);
+  box-shadow: 0 -4px 20px rgba(20, 38, 61, 0.08);
+}
+
+.buy-bar__cta {
+  width: 100%;
+  min-height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--gradient-brand);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.buy-bar__cta:disabled {
+  background: var(--bg-light);
+  color: var(--text-light);
+}
+
+.buy-bar__cta ion-icon {
+  font-size: 20px;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-top: 72px;
+}
+
+.empty__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20px;
+  min-height: 48px;
+  padding: 0 28px;
+  border-radius: 10px;
+  background: var(--gradient-brand);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
