@@ -1,0 +1,124 @@
+<div class="app-page checkout">
+  <header class="app-header">
+    <button type="button" class="app-header__action" (click)="backToCart()" aria-label="Back to cart">
+      <ion-icon name="chevron-back-outline"></ion-icon>
+    </button>
+    <h1 class="app-header__title">Checkout</h1>
+  </header>
+
+  <div class="app-body">
+    <!-- Order summary -->
+    <h2 class="app-section-title">Your order</h2>
+    <ul class="summary-lines">
+      @for (item of items(); track $index) {
+        <li class="summary-line">
+          <img class="summary-line__media" [src]="image($index)" [alt]="item.product.name" loading="lazy" appImageFallback />
+          <div class="summary-line__body">
+            <p class="summary-line__name">{{ item.product.name }}</p>
+            @if (item.size) {
+              <p class="summary-line__meta">Size {{ item.size }} · Qty {{ item.quantity }}</p>
+            } @else {
+              <p class="summary-line__meta">Qty {{ item.quantity }}</p>
+            }
+          </div>
+          <span class="summary-line__price">{{ item.unitPrice * item.quantity | price }}</span>
+        </li>
+      }
+    </ul>
+
+    <div class="total">
+      <span>Total</span>
+      <strong>{{ total() | price }}</strong>
+    </div>
+
+    <!-- Delivery details -->
+    <h2 class="app-section-title">Delivery details</h2>
+    <form class="checkout__form" (ngSubmit)="placeOrder()" novalidate>
+      <label class="field">
+        <span class="field__label">Full name</span>
+        <span class="field__control">
+          <input
+            type="text"
+            class="field__input"
+            placeholder="Your name"
+            autocomplete="name"
+            enterkeyhint="next"
+            [value]="name()"
+            (input)="name.set($any($event.target).value)"
+          />
+        </span>
+      </label>
+
+      <label class="field">
+        <span class="field__label">Email</span>
+        <span class="field__control">
+          <input
+            type="email"
+            class="field__input"
+            placeholder="you@example.com"
+            autocomplete="email"
+            inputmode="email"
+            enterkeyhint="next"
+            [value]="email()"
+            (input)="email.set($any($event.target).value)"
+          />
+        </span>
+      </label>
+
+      <label class="field">
+        <span class="field__label">Delivery address</span>
+        <span class="field__control">
+          <textarea
+            class="field__input field__input--area"
+            rows="3"
+            placeholder="Street, city, state and PIN code"
+            autocomplete="street-address"
+            enterkeyhint="done"
+            [value]="address()"
+            (input)="address.set($any($event.target).value)"
+          ></textarea>
+        </span>
+      </label>
+
+      <!-- Payment method -->
+      <h2 class="app-section-title">Payment method</h2>
+      <div class="methods" role="radiogroup" aria-label="Payment method">
+        @for (option of methods; track option.id) {
+          <button
+            type="button"
+            class="method"
+            role="radio"
+            [attr.aria-checked]="method() === option.id"
+            [class.method--active]="method() === option.id"
+            (click)="selectMethod(option.id)"
+          >
+            <span class="method__dot" aria-hidden="true"></span>
+            <span class="method__body">
+              <span class="method__label">{{ option.label }}</span>
+              <span class="method__hint">{{ option.hint }}</span>
+            </span>
+          </button>
+        }
+      </div>
+
+      <!-- The sticky bar is the submit control, so the form's own submit button
+           is only reachable via Enter on the keyboard. -->
+      <button type="submit" class="visually-hidden">Place order</button>
+    </form>
+  </div>
+
+  <footer class="pay-bar">
+    <div class="pay-bar__total">
+      <span>Total</span>
+      <strong>{{ total() | price }}</strong>
+    </div>
+    <button type="button" class="pay-bar__cta" (click)="placeOrder()" [disabled]="submitting()">
+      @if (submitting()) {
+        <ion-spinner name="crescent"></ion-spinner>
+      } @else {
+        <ion-icon name="lock-closed-outline" aria-hidden="true"></ion-icon>
+        Place order
+      }
+    </button>
+  </footer>
+</div>

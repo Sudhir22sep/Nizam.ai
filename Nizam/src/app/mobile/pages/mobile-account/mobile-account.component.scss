@@ -1,0 +1,196 @@
+/* ==========================================================================
+   Mobile account — identity card, menu rows, auth actions, currency.
+   ========================================================================== */
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 16px;
+  background: var(--gradient-dark);
+  color: #fff;
+}
+
+.identity__avatar {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.identity__avatar ion-icon {
+  font-size: 28px;
+}
+
+.identity__body {
+  min-width: 0;
+}
+
+.identity__name {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.identity__email {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+  /* Long addresses must not wrap the card into three lines. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Menu ---------- */
+.menu {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.menu__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* 48px keeps every row a comfortable thumb target. */
+  min-height: 56px;
+  padding: 10px 14px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.menu__item + .menu__item {
+  border-top: 1px solid var(--border-color);
+}
+
+.menu__icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--bg-light);
+  color: var(--ink-700);
+}
+
+.menu__icon ion-icon {
+  font-size: 18px;
+}
+
+.menu__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.menu__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-800);
+}
+
+.menu__description {
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+.menu__chevron {
+  flex: 0 0 auto;
+  font-size: 16px;
+  color: var(--text-light);
+}
+
+/* ---------- Cart summary ---------- */
+.cart-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-700);
+  text-decoration: none;
+}
+
+/* ---------- Auth actions ---------- */
+.auth-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auth-actions__primary,
+.auth-actions__secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-actions__primary {
+  background: var(--gradient-brand);
+  color: #fff;
+}
+
+.auth-actions__secondary {
+  background: var(--surface);
+  border: 1px solid var(--ink-800);
+  color: var(--ink-800);
+}
+
+/* ---------- Sign out ---------- */
+.signout {
+  width: 100%;
+  min-height: 50px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--brand-primary);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.signout ion-icon {
+  font-size: 18px;
+}
+
+/* ---------- Currency ---------- */
+.currency select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink-800);
+  font-size: 15px;
+}
+
+.version {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-light);
+}

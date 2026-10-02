@@ -1,0 +1,199 @@
+// Field styles are shared with the sign-in / register forms.
+@use "../mobile-login/auth-form.scss";
+
+/* ==========================================================================
+   Mobile checkout — order summary, address form, payment methods, pay bar.
+   ========================================================================== */
+
+/* ---------- Order summary ---------- */
+.summary-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.summary-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+}
+
+.summary-line__media {
+  flex: 0 0 auto;
+  width: 52px;
+  height: 66px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--bg-light);
+}
+
+.summary-line__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.summary-line__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-800);
+  line-height: 1.3;
+}
+
+.summary-line__meta {
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+.summary-line__price {
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 15px;
+  color: var(--ink-700);
+}
+
+.total strong {
+  font-size: 20px;
+  color: var(--ink-900);
+}
+
+/* The address textarea needs no icon padding. */
+.field__input--area {
+  padding: 12px 14px;
+  height: auto;
+  line-height: 1.5;
+  resize: none;
+}
+
+.field__control:has(textarea) {
+  display: block;
+}
+
+/* ---------- Payment methods ---------- */
+.methods {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.method {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+}
+
+.method--active {
+  border-color: var(--brand-primary);
+  /* A 2px border on an already-1px element avoids a layout shift when the
+     selection state toggles. */
+  border-width: 2px;
+  padding: 13px;
+}
+
+.method__dot {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-strong, #b8c4d2);
+  border-radius: 50%;
+}
+
+.method--active .method__dot {
+  border-color: var(--brand-primary);
+  /* Inner fill, so no extra element is needed. */
+  box-shadow: inset 0 0 0 4px var(--brand-primary);
+}
+
+.method__body {
+  display: flex;
+  flex-direction: column;
+}
+
+.method__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-800);
+}
+
+.method__hint {
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+/* ---------- Sticky pay bar ---------- */
+.pay-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px calc(12px + var(--ion-safe-area-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border-color);
+  box-shadow: 0 -4px 20px rgba(20, 38, 61, 0.08);
+}
+
+.pay-bar__total {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+.pay-bar__total strong {
+  font-size: 18px;
+  color: var(--ink-900);
+}
+
+.pay-bar__cta {
+  flex: 1;
+  min-height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--gradient-brand);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.pay-bar__cta:disabled {
+  opacity: 0.7;
+}
+
+.pay-bar__cta ion-icon {
+  font-size: 16px;
+}
+
+/* The tab bar is hidden on this screen, so the body needs no clearance for it
+   and the sticky bar can sit flush at the bottom. */
+.checkout .app-body {
+  padding-bottom: 24px;
+}

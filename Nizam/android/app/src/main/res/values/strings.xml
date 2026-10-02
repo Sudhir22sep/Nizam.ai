@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Amma Wears</string>
+    <string name="title_activity_main">Amma Wears</string>
+    <string name="package_name">com.ammawears.app</string>
+    <string name="custom_url_scheme">com.ammawears.app</string>
+</resources>

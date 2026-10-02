@@ -3,7 +3,7 @@
 ## Build Commands
 ```bash
 # Build the application (run this in CI/CD)
-npm run build
+npm ci --include=dev && npm run build
 
 # Start the server (for local production testing)
 node dist/Nizam/server/server.mjs
@@ -11,6 +11,18 @@ node dist/Nizam/server/server.mjs
 # Development SSR (requires ng serve --ssr)
 npm run dev:ssr
 ```
+
+> **Why `--include=dev`?**
+> The build genuinely needs devDependencies: `@angular/cli` provides `ng`,
+> and `sharp` is used by the `optimize:images` step. Render exports a service's
+> `envVars` **during the build**, so `NODE_ENV=production` is set while
+> dependencies install, and npm interprets that as `--omit=dev`. A plain
+> `npm install` therefore installed 178 packages instead of 681 and failed with
+> `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'sharp'`, then
+> `sh: 1: ng: not found`. `--include=dev` overrides that omit.
+>
+> Node must be `>= 22.12.0` (declared in `package.json` -> `engines`). Angular 21 requires `>=20.19`, and
+> `>=22` is also what the AWS SDK v3 wants -- on Node 20 it logs a `NodeVersionSupportWarning` on every boot.
 
 ## Environment Variables Required
 
@@ -68,7 +80,23 @@ In Render dashboard → Settings → Environment Variables, add:
 - `RAZORPAY_TEST_KEY_SECRET` = test secret
 
 > **Blueprint note:** Render reads `render.yaml` from the **repository root** (`Nizam.ai/render.yaml`), which sets
-> `workingDirectory: ./Nizam`. The copy at `Nizam/render.yaml` is not read by Render.
+> `workingDirectory: ./Nizam`. The copy at `Nizam/render.yaml` is not read by Render; keep the two in sync.
+>
+> **PORT note:** do not set `PORT` in the blueprint. Render assigns a free port at runtime and exports it as
+> `PORT`; the server reads it and only falls back to `4000` when unset (local runs).
+>
+> **Host-header note (the "Header \"host\" ... is not allowed" 400):** Angular's SSR engine validates the
+> `Host` header against an allowlist and answers **400 for the whole page** when it does not match. The server
+> builds that allowlist at startup from `APP_URL`, `CORS_ORIGIN`, `API_URL`, `RENDER_EXTERNAL_URL` and
+> `EXTRA_ALLOWED_HOSTS`, plus a `*.onrender.com` wildcard so renaming the service cannot break it.
+> `NG_ALLOWED_HOSTS` overrides everything if set.
+> Two mistakes caused a full outage here and are worth avoiding:
+> - `APP_URL` pointed at `nizam-ai.onrender.com` while the service was actually `nizam-ai-zpwn.onrender.com`.
+>   **Keep `APP_URL` equal to a hostname that is really served.**
+> - `api.ammawears.com` was never listed, so the API subdomain 400'd. The `api.` variant is now derived
+>   automatically.
+>
+> After changing any of these variables, redeploy — the allowlist is computed at startup, not at build time.
 >
 > **`.env` note:** the server loads a `.env` file only as a *fallback* - values injected by Render always win.
 > Never rely on a committed `.env` in production, and never commit real secrets.

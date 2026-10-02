@@ -1,0 +1,49 @@
+/* ==========================================================================
+   Mobile shell — bottom tab bar.
+
+   Brand tokens, Ionic token remaps, safe areas and the shared page chrome
+   (.app-header / .app-body / …) live in the GLOBAL styles.mobile.css, because
+   they are used by every routed page and Angular's view encapsulation would
+   otherwise scope them to this component's template alone.
+   ========================================================================== */
+
+.app-tabs {
+  --background: var(--surface);
+  --border: 1px solid var(--border-color);
+
+  /* Height grows by the bottom inset so the bar clears the iPhone home
+     indicator and the Android gesture pill. */
+  height: calc(var(--app-tab-bar-height) + var(--ion-safe-area-bottom));
+  padding-bottom: var(--ion-safe-area-bottom);
+  box-shadow: 0 -1px 12px rgba(20, 38, 61, 0.06);
+
+  ion-tab-button {
+    --color: var(--text-light);
+    --color-selected: var(--brand-primary);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+
+    ion-icon {
+      font-size: 22px;
+      margin-bottom: 2px;
+    }
+
+    ion-label {
+      font-size: 11px;
+    }
+  }
+
+  /* Cart badge, anchored to the icon so it never shifts the tab layout. */
+  ion-badge {
+    position: absolute;
+    top: 2px;
+    right: calc(50% - 20px);
+    height: 16px;
+    --padding-start: 4px;
+    --padding-end: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+  }
+}

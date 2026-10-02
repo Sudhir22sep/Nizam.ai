@@ -1,0 +1,47 @@
+<div class="app-page wishlist">
+  <header class="app-header">
+    <h1 class="app-header__title">Saved items</h1>
+  </header>
+
+  @if (loading()) {
+    <div class="loading"><ion-spinner name="crescent"></ion-spinner></div>
+  } @else if (!isSignedIn()) {
+    <div class="app-body empty">
+      <ion-icon name="heart-outline" class="empty__icon" aria-hidden="true"></ion-icon>
+      <p class="empty__title">Sign in to save favourites</p>
+      <p class="empty__text">Your saved items are tied to your account, so they follow you to any device.</p>
+      <a routerLink="/login" class="empty__action">Sign in</a>
+    </div>
+  } @else if (saved().length === 0) {
+    <div class="app-body empty">
+      <ion-icon name="heart-outline" class="empty__icon" aria-hidden="true"></ion-icon>
+      <p class="empty__title">Nothing saved yet</p>
+      <p class="empty__text">Tap the heart on any product to keep it here.</p>
+      <a routerLink="/products" class="empty__action">Browse the collection</a>
+    </div>
+  } @else {
+    <div class="app-body">
+      <ul class="items">
+        @for (item of saved(); track item.productId) {
+          <li class="item">
+            <a [routerLink]="['/product', item.productId]" class="item__media">
+              <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" appImageFallback />
+            </a>
+            <div class="item__body">
+              <a [routerLink]="['/product', item.productId]" class="item__name">{{ item.name }}</a>
+              <p class="item__price">{{ item.price | price }}</p>
+            </div>
+            <button
+              type="button"
+              class="item__remove"
+              (click)="remove(item)"
+              [attr.aria-label]="'Remove ' + item.name + ' from saved items'"
+            >
+              <ion-icon name="trash-outline"></ion-icon>
+            </button>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+</div>

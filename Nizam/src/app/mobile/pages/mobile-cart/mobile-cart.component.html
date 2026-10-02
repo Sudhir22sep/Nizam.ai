@@ -1,0 +1,106 @@
+<div class="app-page cart">
+  <header class="app-header">
+    <h1 class="app-header__title">Your cart</h1>
+    @if (itemCount() > 0) {
+      <button type="button" class="app-header__link" (click)="clear()">Clear</button>
+    }
+  </header>
+
+  @if (rows().length === 0) {
+    <div class="app-body empty">
+      <ion-icon name="cart-outline" class="empty__icon" aria-hidden="true"></ion-icon>
+      <p class="empty__title">Your cart is empty</p>
+      <p class="empty__text">Browse the collection and add something you love.</p>
+      <a routerLink="/products" class="empty__action">Start shopping</a>
+    </div>
+  } @else {
+    <!-- Free-shipping progress: the single most common reason a shopper adds
+         one more item, so it sits above the lines rather than in the summary. -->
+    <div class="shipping">
+      @if (amountToFreeShipping() > 0) {
+        <p class="shipping__text">
+          Add <strong>{{ amountToFreeShipping() | price }}</strong> more for free shipping
+        </p>
+      } @else {
+        <p class="shipping__text shipping__text--done">You have unlocked free shipping</p>
+      }
+      <div
+        class="shipping__track"
+        role="progressbar"
+        [attr.aria-valuenow]="freeShippingProgress()"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-label="Free shipping progress"
+      >
+        <div class="shipping__fill" [style.width.%]="freeShippingProgress()"></div>
+      </div>
+    </div>
+
+    <div class="app-body">
+      <ul class="lines">
+        @for (row of rows(); track row.key) {
+          <li class="line">
+            <a [routerLink]="['/product', row.item.product.id]" class="line__media">
+              <img [src]="image(row.item)" [alt]="row.item.product.name" loading="lazy" appImageFallback />
+            </a>
+
+            <div class="line__body">
+              <a [routerLink]="['/product', row.item.product.id]" class="line__name">
+                {{ row.item.product.name }}
+              </a>
+              @if (row.item.size) {
+                <p class="line__meta">Size: {{ row.item.size }}</p>
+              }
+
+              <div class="line__row">
+                <!-- Stepper: −, quantity, +. Each control is its own 40px
+                     target rather than a combined widget, which is far easier
+                     to hit with a thumb. -->
+                <div class="stepper">
+                  <button
+                    type="button"
+                    class="stepper__btn"
+                    (click)="decrease(row.item)"
+                    [attr.aria-label]="'Decrease quantity of ' + row.item.product.name"
+                  >
+                    <ion-icon name="remove-outline"></ion-icon>
+                  </button>
+                  <span class="stepper__value">{{ row.item.quantity }}</span>
+                  <button
+                    type="button"
+                    class="stepper__btn"
+                    (click)="increase(row.item)"
+                    [attr.aria-label]="'Increase quantity of ' + row.item.product.name"
+                  >
+                    <ion-icon name="add-outline"></ion-icon>
+                  </button>
+                </div>
+
+                <span class="line__price">{{ row.item.unitPrice * row.item.quantity | price }}</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="line__remove"
+              (click)="remove(row.item)"
+              [attr.aria-label]="'Remove ' + row.item.product.name + ' from cart'"
+            >
+              <ion-icon name="trash-outline"></ion-icon>
+            </button>
+          </li>
+        }
+      </ul>
+    </div>
+
+    <!-- Sticky summary: checkout stays reachable from any scroll position. -->
+    <footer class="summary">
+      <div class="summary__row">
+        <span>Subtotal ({{ itemCount() }} {{ itemCount() === 1 ? 'item' : 'items' }})</span>
+        <strong>{{ total() | price }}</strong>
+      </div>
+      <p class="summary__note">Shipping and taxes are calculated at checkout.</p>
+      <button type="button" class="summary__cta" (click)="checkout()">Checkout</button>
+    </footer>
+  }
+</div>

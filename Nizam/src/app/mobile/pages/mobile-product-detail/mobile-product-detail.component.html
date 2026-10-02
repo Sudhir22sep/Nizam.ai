@@ -1,0 +1,140 @@
+<div class="app-page product">
+  <header class="app-header product__header">
+    <button type="button" class="app-header__action" (click)="back()" aria-label="Go back">
+      <ion-icon name="chevron-back-outline"></ion-icon>
+    </button>
+    <h1 class="app-header__title">{{ product()?.name ?? 'Product' }}</h1>
+    @if (product(); as item) {
+      <button
+        type="button"
+        class="app-header__action"
+        (click)="toggleWishlist()"
+        [attr.aria-label]="'Save ' + item.name + ' to wishlist'"
+      >
+        <ion-icon name="heart-outline"></ion-icon>
+      </button>
+    }
+  </header>
+
+  @if (loading()) {
+    <div class="loading"><ion-spinner name="crescent"></ion-spinner></div>
+  } @else if (product(); as item) {
+    <!-- Gallery -->
+    <div class="gallery">
+      @for (image of images(); track image; let index = $index) {
+        <img
+          class="gallery__image"
+          [class.gallery__image--active]="index === imageIndex()"
+          [src]="image"
+          [alt]="item.name + ' view ' + (index + 1)"
+          [loading]="index === 0 ? 'eager' : 'lazy'"
+          appImageFallback
+        />
+      }
+
+      @if (images().length > 1) {
+        <button type="button" class="gallery__nav gallery__nav--prev" (click)="previousImage()" aria-label="Previous image">
+          <ion-icon name="chevron-back-outline"></ion-icon>
+        </button>
+        <button type="button" class="gallery__nav gallery__nav--next" (click)="nextImage()" aria-label="Next image">
+          <ion-icon name="chevron-back-outline" class="flip"></ion-icon>
+        </button>
+
+        <div class="gallery__dots">
+          @for (image of images(); track image; let index = $index) {
+            <button
+              type="button"
+              class="gallery__dot"
+              [class.gallery__dot--active]="index === imageIndex()"
+              (click)="selectImage(index)"
+              [attr.aria-label]="'Show image ' + (index + 1)"
+              [attr.aria-current]="index === imageIndex()"
+            ></button>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="app-body">
+      <p class="product__category">{{ item.category }}</p>
+      <h2 class="product__name">{{ item.name }}</h2>
+
+      <div class="product__pricing">
+        <span class="product__price">{{ item.basePrice | price }}</span>
+        @if (discountPercent() !== null) {
+          <span class="product__discount">{{ discountPercent() }}% off</span>
+          <s class="product__compare">{{ item.originalPrice | price }}</s>
+        }
+      </div>
+
+      @if (isSoldOut()) {
+        <p class="stock stock--out">Sold out</p>
+      } @else if (lowStock() !== null) {
+        <p class="stock stock--low">Only {{ lowStock() }} left in stock</p>
+      }
+
+      @if (sizes().length > 0) {
+        <div class="sizes">
+          <h3 class="sizes__label">Size</h3>
+          <div class="sizes__options">
+            @for (size of sizes(); track size) {
+              <button
+                type="button"
+                class="size"
+                [class.size--active]="selectedSize() === size"
+                [attr.aria-pressed]="selectedSize() === size"
+                (click)="selectSize(size)"
+              >
+                {{ size }}
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      @if (!isSoldOut()) {
+        <div class="quantity">
+          <h3 class="sizes__label">Quantity</h3>
+          <div class="stepper">
+            <button type="button" class="stepper__btn" (click)="decreaseQuantity()" aria-label="Decrease quantity">
+              <ion-icon name="remove-outline"></ion-icon>
+            </button>
+            <span class="stepper__value">{{ quantity() }}</span>
+            <button type="button" class="stepper__btn" (click)="increaseQuantity()" aria-label="Increase quantity">
+              <ion-icon name="add-outline"></ion-icon>
+            </button>
+          </div>
+        </div>
+      }
+
+      @if (item.description) {
+        <p class="product__description">{{ item.description }}</p>
+      }
+
+      <!-- Store promises, matching the website footer/trust bar. -->
+      <ul class="promises">
+        <li>Free shipping over ₹2999</li>
+        <li>7-day easy returns</li>
+        <li>COD available</li>
+      </ul>
+    </div>
+
+    <footer class="buy-bar">
+      <button
+        type="button"
+        class="buy-bar__cta"
+        (click)="addToCart()"
+        [disabled]="isSoldOut()"
+      >
+        <ion-icon name="cart-outline"></ion-icon>
+        {{ isSoldOut() ? 'Sold out' : 'Add to cart' }}
+      </button>
+    </footer>
+  } @else {
+    <div class="app-body empty">
+      <p class="empty__title">Product not found</p>
+      <p class="empty__text">This item may have been removed from the collection.</p>
+      <a routerLink="/products" class="empty__action">Back to shop</a>
+    </div>
+  }
+</div>

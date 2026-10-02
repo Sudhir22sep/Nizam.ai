@@ -1,0 +1,93 @@
+<div class="app-page account">
+  <header class="app-header">
+    <h1 class="app-header__title">Account</h1>
+  </header>
+
+  @if (user(); as shopper) {
+    <!-- Signed-in identity card -->
+    <section class="identity">
+      <div class="identity__avatar" aria-hidden="true">
+        <ion-icon name="person-outline"></ion-icon>
+      </div>
+      <div class="identity__body">
+        <p class="identity__name">{{ displayName }}</p>
+        <p class="identity__email">{{ shopper.email }}</p>
+      </div>
+    </section>
+
+    <div class="app-body">
+      <nav class="menu" aria-label="Account">
+        @for (link of accountLinks; track link.path) {
+          <a [routerLink]="link.path" class="menu__item">
+            <span class="menu__icon" aria-hidden="true"><ion-icon [name]="link.icon"></ion-icon></span>
+            <span class="menu__body">
+              <span class="menu__label">{{ link.label }}</span>
+              <span class="menu__description">{{ link.description }}</span>
+            </span>
+            <ion-icon name="chevron-forward-outline" class="menu__chevron" aria-hidden="true"></ion-icon>
+          </a>
+        }
+      </nav>
+
+      <!-- Cart summary: the tab badge alone is not enough context. -->
+      <a routerLink="/cart" class="cart-summary">
+        <span>Items in cart</span>
+        <strong>{{ cartCount() }}</strong>
+      </a>
+    </div>
+
+    <div class="app-body">
+      <button type="button" class="signout" (click)="signOut()">
+        <ion-icon name="log-out-outline" aria-hidden="true"></ion-icon>
+        Sign out
+      </button>
+    </div>
+  } @else {
+    <!-- Signed-out: identity plus the account actions -->
+    <section class="identity">
+      <div class="identity__avatar" aria-hidden="true">
+        <ion-icon name="person-outline"></ion-icon>
+      </div>
+      <div class="identity__body">
+        <p class="identity__name">Welcome to Amma Wears</p>
+        <p class="identity__email">Sign in for orders, wishlist and faster checkout</p>
+      </div>
+    </section>
+
+    <div class="app-body">
+      <div class="auth-actions">
+        <a routerLink="/login" class="auth-actions__primary">Sign in</a>
+        <a routerLink="/register" class="auth-actions__secondary">Create an account</a>
+      </div>
+    </div>
+  }
+
+  <!-- Store information + currency, visible in both states -->
+  <div class="app-body">
+    <h2 class="app-section-title">Store</h2>
+    <nav class="menu" aria-label="Store information">
+      @for (link of infoLinks; track link.path) {
+        <a [routerLink]="link.path" class="menu__item">
+          <span class="menu__icon" aria-hidden="true"><ion-icon [name]="link.icon"></ion-icon></span>
+          <span class="menu__body">
+            <span class="menu__label">{{ link.label }}</span>
+            <span class="menu__description">{{ link.description }}</span>
+          </span>
+          <ion-icon name="chevron-forward-outline" class="menu__chevron" aria-hidden="true"></ion-icon>
+        </a>
+      }
+    </nav>
+
+    <h2 class="app-section-title">Currency</h2>
+    <label class="currency">
+      <span class="visually-hidden">Display currency</span>
+      <select [value]="activeCurrency()" (change)="onCurrencyChange($event)">
+        @for (currency of currencies; track currency.code) {
+          <option [value]="currency.code">{{ currency.label }}</option>
+        }
+      </select>
+    </label>
+
+    <p class="version">Amma Wears · app version 1.0.0</p>
+  </div>
+</div>

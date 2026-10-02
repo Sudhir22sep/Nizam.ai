@@ -1,0 +1,73 @@
+<!--
+  The Ionic shell. `ion-app` must be the single root element so Ionic's overlay
+  stack (toasts, modals) can portal against it.
+-->
+<ion-app>
+  <ion-router-outlet [animated]="true"></ion-router-outlet>
+
+  @if (showTabs()) {
+    <ion-tab-bar slot="bottom" class="app-tabs">
+      <ion-tab-button
+        tab="home"
+        [selected]="activeTab() === 'home'"
+        routerLink="/"
+        routerDirection="root"
+        (click)="onTabClick('home')"
+      >
+        <ion-icon name="home-outline"></ion-icon>
+        <ion-label>Home</ion-label>
+      </ion-tab-button>
+
+      <ion-tab-button
+        tab="products"
+        [selected]="activeTab() === 'products'"
+        routerLink="/products"
+        routerDirection="root"
+        (click)="onTabClick('products')"
+      >
+        <ion-icon name="search-outline"></ion-icon>
+        <ion-label>Shop</ion-label>
+      </ion-tab-button>
+
+      <ion-tab-button
+        tab="cart"
+        [selected]="activeTab() === 'cart'"
+        routerLink="/cart"
+        routerDirection="root"
+        (click)="onTabClick('cart')"
+      >
+        <ion-icon name="cart-outline"></ion-icon>
+        <ion-label>Cart</ion-label>
+        @if (cartCount() > 0) {
+          <ion-badge color="danger">{{ cartCount() }}</ion-badge>
+        }
+      </ion-tab-button>
+
+      <ion-tab-button
+        tab="wishlist"
+        [selected]="activeTab() === 'wishlist'"
+        routerLink="/wishlist"
+        routerDirection="root"
+        (click)="onTabClick('wishlist')"
+      >
+        <ion-icon name="heart-outline"></ion-icon>
+        <ion-label>Saved</ion-label>
+      </ion-tab-button>
+
+      <ion-tab-button
+        tab="account"
+        [selected]="activeTab() === 'account'"
+        routerLink="/account"
+        routerDirection="root"
+        (click)="onTabClick('account')"
+      >
+        <ion-icon name="person-outline"></ion-icon>
+        <ion-label>Account</ion-label>
+      </ion-tab-button>
+    </ion-tab-bar>
+  }
+
+  <!-- Toasts are a website component reused as-is; its fixed positioning
+       resolves against the WebView, which is what we want on device too. -->
+  <app-toast-container />
+</ion-app>

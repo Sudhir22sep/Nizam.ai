@@ -1,0 +1,3 @@
+// Register reuses the shared auth form styles so sign in and create account are
+// pixel-identical where it matters.
+@use "../mobile-login/auth-form.scss";

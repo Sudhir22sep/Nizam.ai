@@ -5,15 +5,30 @@ services:
     region: oregon  # or frankfurt, singapore, etc.
     plan: free  # or starter, standard, etc.
     workingDirectory: .
-    buildCommand: npm install && npm run build
+    # `npm ci --include=dev` is required, not optional. This service sets
+    # NODE_ENV=production, and Render exports a service's envVars during the
+    # BUILD as well as at runtime. npm reads NODE_ENV=production as
+    # `--omit=dev`, so a plain `npm install` skipped every devDependency and the
+    # build failed with `Cannot find package 'sharp'` and then `ng: not found`
+    # (sharp, @angular/cli, @angular/build and typescript are all devDeps that
+    # the build genuinely needs). `--include=dev` overrides that omit.
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: node dist/Nizam/server/server.mjs
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: "4000"
+      # PORT is deliberately NOT set here. Render assigns a free port at runtime
+      # and exports it as PORT; pinning it here risks the app listening on a
+      # port the proxy does not forward to. `src/server.ts` reads PORT and falls
+      # back to 4000 for local runs.
       - key: MONGODB_URI
-        value: "mongodb+srv://sudhir22sep_db_user:Sudhir0501@amma-wear.vgvwvpo.mongodb.net/ammawears_prod?retryWrites=true&w=majority"
+        sync: false  # Set in Render dashboard; never commit a real URI here
+      - key: ENABLE_SSR
+        value: "true"
+      - key: META_VERIFY_TOKEN
+        sync: false  # Set in Render dashboard (WhatsApp webhook handshake)
+      - key: META_APP_SECRET
+        sync: false  # Set in Render dashboard (X-Hub-Signature-256 verification)
       - key: SES_REGION
         sync: false  # Set in Render dashboard
       - key: SES_VERIFIED_SENDER
@@ -47,9 +62,14 @@ services:
       - key: JWT_SECRET
         sync: false  # Set in Render dashboard (required, server exits without it)
       - key: APP_URL
+        # Must match a hostname that is actually served. The SSR engine rejects
+        # any Host header that is not on its allowlist, so a stale value here
+        # makes every page request 400.
         value: "https://ammawears.com"
+      - key: API_URL
+        value: "https://api.ammawears.com"  # Public API origin the browser calls
       - key: CORS_ORIGIN
-        value: "https://ammawears.com"
+        value: "https://ammawears.com, https://www.ammawears.com"  # Frontend origins allowed to call this API
       - key: environment
         value: "production"
     healthCheckPath: /health

@@ -1,0 +1,119 @@
+<div class="app-page auth">
+  <header class="app-header">
+    <h1 class="app-header__title">Create account</h1>
+  </header>
+
+  <div class="app-body">
+    <p class="auth__intro">One account for orders, saved items and faster checkout.</p>
+
+    <form class="auth__form" (ngSubmit)="submit()" novalidate>
+      <div class="field-row">
+        <label class="field">
+          <span class="field__label">First name</span>
+          <span class="field__control">
+            <ion-icon name="person-outline" class="field__icon" aria-hidden="true"></ion-icon>
+            <input
+              type="text"
+              class="field__input"
+              placeholder="First"
+              autocomplete="given-name"
+              enterkeyhint="next"
+              [value]="firstName()"
+              (input)="firstName.set($any($event.target).value)"
+            />
+          </span>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Last name</span>
+          <span class="field__control">
+            <ion-icon name="person-outline" class="field__icon" aria-hidden="true"></ion-icon>
+            <input
+              type="text"
+              class="field__input"
+              placeholder="Last"
+              autocomplete="family-name"
+              enterkeyhint="next"
+              [value]="lastName()"
+              (input)="lastName.set($any($event.target).value)"
+            />
+          </span>
+        </label>
+      </div>
+
+      <label class="field">
+        <span class="field__label">Email</span>
+        <span class="field__control">
+          <ion-icon name="mail-outline" class="field__icon" aria-hidden="true"></ion-icon>
+          <input
+            type="email"
+            class="field__input"
+            placeholder="you@example.com"
+            autocomplete="email"
+            inputmode="email"
+            enterkeyhint="next"
+            [value]="email()"
+            (input)="email.set($any($event.target).value)"
+          />
+        </span>
+      </label>
+
+      <label class="field">
+        <span class="field__label">Phone (optional)</span>
+        <span class="field__control">
+          <input
+            type="tel"
+            class="field__input"
+            placeholder="For delivery updates"
+            autocomplete="tel"
+            inputmode="tel"
+            enterkeyhint="next"
+            [value]="phone()"
+            (input)="phone.set($any($event.target).value)"
+          />
+        </span>
+      </label>
+
+      <label class="field">
+        <span class="field__label">Password</span>
+        <span class="field__control">
+          <ion-icon name="lock-closed-outline" class="field__icon" aria-hidden="true"></ion-icon>
+          <input
+            [type]="showPassword() ? 'text' : 'password'"
+            class="field__input"
+            placeholder="At least 8 characters"
+            autocomplete="new-password"
+            enterkeyhint="go"
+            [value]="password()"
+            (input)="password.set($any($event.target).value)"
+            (blur)="markTouched()"
+          />
+          <button
+            type="button"
+            class="field__toggle"
+            (click)="togglePasswordVisibility()"
+            [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+          >
+            <ion-icon [name]="showPassword() ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
+          </button>
+        </span>
+        @if (touched() && passwordTooShort) {
+          <span class="field__error">Password must be at least 8 characters.</span>
+        }
+      </label>
+
+      <button type="submit" class="auth__submit" [disabled]="submitting()">
+        @if (submitting()) {
+          <ion-spinner name="crescent"></ion-spinner>
+        } @else {
+          Create account
+        }
+      </button>
+    </form>
+
+    <p class="auth__switch">
+      Already have an account?
+      <a routerLink="/login">Sign in</a>
+    </p>
+  </div>
+</div>
